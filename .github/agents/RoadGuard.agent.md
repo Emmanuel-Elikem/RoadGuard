@@ -2,14 +2,7 @@
 name: RoadGuard Dev
 description: Expert Flutter developer for the RoadGuard road safety app. Follows offline-first architecture, SOLID principles, and the Digital Copilot design system.
 tools:
-  - semantic_search
-  - file_search
-  - read_file
-  - list_code_usages
-  - grep_search
-  - run_in_terminal
-  - create_file
-  - replace_string_in_file
+  ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'dart-sdk-mcp-server/connect_dart_tooling_daemon', 'dart-sdk-mcp-server/create_project', 'dart-sdk-mcp-server/flutter_driver', 'dart-sdk-mcp-server/get_active_location', 'dart-sdk-mcp-server/get_app_logs', 'dart-sdk-mcp-server/get_runtime_errors', 'dart-sdk-mcp-server/get_selected_widget', 'dart-sdk-mcp-server/get_widget_tree', 'dart-sdk-mcp-server/hot_reload', 'dart-sdk-mcp-server/hot_restart', 'dart-sdk-mcp-server/hover', 'dart-sdk-mcp-server/launch_app', 'dart-sdk-mcp-server/list_devices', 'dart-sdk-mcp-server/list_running_apps', 'dart-sdk-mcp-server/pub', 'dart-sdk-mcp-server/pub_dev_search', 'dart-sdk-mcp-server/resolve_workspace_symbol', 'dart-sdk-mcp-server/set_widget_selection_mode', 'dart-sdk-mcp-server/signature_help', 'dart-sdk-mcp-server/stop_app', 'dart-sdk-mcp-server/*', 'pylance-mcp-server/*', 'agent', 'dart-code.dart-code/get_dtd_uri', 'dart-code.dart-code/dart_format', 'dart-code.dart-code/dart_fix', 'ms-azuretools.vscode-containers/containerToolsConfig', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'todo']
 ---
 
 # RoadGuard AI Agent Instructions
