@@ -1,15 +1,4 @@
-/// RoadGuard Theme Barrel Export
-/// 
-/// WHY barrel exports:
-/// Instead of importing multiple files:
-///   import 'package:road_guard/core/theme/app_colors.dart';
-///   import 'package:road_guard/core/theme/app_typography.dart';
-///   import 'package:road_guard/core/theme/app_dimensions.dart';
-/// 
-/// You can import just one file:
-///   import 'package:road_guard/core/theme/theme.dart';
-/// 
-/// This keeps imports clean and organized.
+/// Barrel export for theme system.
 library;
 
 export 'app_colors.dart';

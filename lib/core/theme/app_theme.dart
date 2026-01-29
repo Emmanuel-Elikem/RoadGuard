@@ -1,12 +1,4 @@
-/// RoadGuard Theme Configuration
-/// 
-/// This file creates the complete Flutter ThemeData
-/// by combining our colors, typography, and dimensions.
-/// 
-/// WHY separate theme file:
-/// 1. Single place to configure Material components
-/// 2. Overrides default Flutter styling to match our design
-/// 3. Easy to add dark/light theme switching later
+/// RoadGuard Theme - Combines colors, typography, and dimensions into ThemeData.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,104 +8,62 @@ import 'app_colors.dart';
 import 'app_typography.dart';
 import 'app_dimensions.dart';
 
-/// Creates the complete app theme
-/// 
-/// This function returns a ThemeData that:
-/// - Uses our custom colors throughout
-/// - Applies our typography to all text
-/// - Customizes all Material components
-/// 
-/// TEACHING NOTE:
-/// ThemeData is Flutter's way of applying consistent
-/// styling across the entire app. When you use 
-/// Theme.of(context).colorScheme.primary, it gets
-/// the value we define here.
+/// Creates the complete app theme.
 ThemeData createAppTheme() {
   return ThemeData(
-    // Use Material 3 design system
     useMaterial3: true,
-    
-    // Brightness affects system UI (status bar, etc.)
     brightness: Brightness.dark,
-    
-    // ==========================================
-    // COLOR SCHEME
-    // ==========================================
+
+    // === COLOR SCHEME ===
     colorScheme: const ColorScheme.dark(
-      // Primary colors
       primary: AppColors.primary,
-      onPrimary: AppColors.background, // Text ON primary
+      onPrimary: AppColors.background,
       primaryContainer: AppColors.primaryMuted,
       onPrimaryContainer: AppColors.primary,
-      
-      // Secondary colors
       secondary: AppColors.secondary,
       onSecondary: AppColors.background,
       secondaryContainer: AppColors.surfaceVariant,
       onSecondaryContainer: AppColors.secondary,
-      
-      // Tertiary colors
       tertiary: AppColors.tertiary,
       onTertiary: AppColors.background,
-      
-      // Background & Surface
       surface: AppColors.surface,
       onSurface: AppColors.textPrimary,
       surfaceContainerHighest: AppColors.cardBackground,
-      
-      // Error colors
       error: AppColors.error,
       onError: AppColors.textPrimary,
-      
-      // Outline colors
       outline: AppColors.border,
       outlineVariant: AppColors.divider,
     ),
-    
-    // ==========================================
-    // SCAFFOLD (Main background)
-    // ==========================================
+
     scaffoldBackgroundColor: AppColors.background,
-    
-    // ==========================================
-    // APP BAR THEME
-    // ==========================================
+
+    // === APP BAR ===
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.background,
       foregroundColor: AppColors.textPrimary,
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTypography.titleLarge,
-      iconTheme: IconThemeData(
-        color: AppColors.textPrimary,
-        size: AppDimensions.iconMd,
-      ),
+      iconTheme: IconThemeData(color: AppColors.textPrimary, size: AppDimensions.iconMd),
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
     ),
-    
-    // ==========================================
-    // CARD THEME
-    // ==========================================
+
+    // === CARD ===
     cardTheme: CardThemeData(
       color: AppColors.cardBackground,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        side: const BorderSide(
-          color: AppColors.border,
-          width: 1,
-        ),
+        side: const BorderSide(color: AppColors.border, width: 1),
       ),
       margin: const EdgeInsets.all(AppDimensions.spacingSm),
     ),
-    
-    // ==========================================
-    // ELEVATED BUTTON THEME
-    // ==========================================
+
+    // === ELEVATED BUTTON ===
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
@@ -130,10 +80,8 @@ ThemeData createAppTheme() {
         textStyle: AppTypography.labelLarge,
       ),
     ),
-    
-    // ==========================================
-    // OUTLINED BUTTON THEME
-    // ==========================================
+
+    // === OUTLINED BUTTON ===
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
@@ -149,10 +97,8 @@ ThemeData createAppTheme() {
         textStyle: AppTypography.labelLarge,
       ),
     ),
-    
-    // ==========================================
-    // TEXT BUTTON THEME
-    // ==========================================
+
+    // === TEXT BUTTON ===
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
@@ -163,10 +109,8 @@ ThemeData createAppTheme() {
         textStyle: AppTypography.labelLarge,
       ),
     ),
-    
-    // ==========================================
-    // INPUT DECORATION THEME (Text fields)
-    // ==========================================
+
+    // === INPUT DECORATION ===
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surfaceVariant,
@@ -195,15 +139,11 @@ ThemeData createAppTheme() {
         borderSide: const BorderSide(color: AppColors.error, width: 2),
       ),
       labelStyle: AppTypography.bodyMedium,
-      hintStyle: AppTypography.bodyMedium.copyWith(
-        color: AppColors.textTertiary,
-      ),
+      hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
       errorStyle: AppTypography.errorText,
     ),
-    
-    // ==========================================
-    // BOTTOM NAVIGATION BAR THEME
-    // ==========================================
+
+    // === BOTTOM NAVIGATION ===
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: AppColors.surface,
       selectedItemColor: AppColors.primary,
@@ -213,10 +153,8 @@ ThemeData createAppTheme() {
       selectedLabelStyle: AppTypography.labelSmall,
       unselectedLabelStyle: AppTypography.labelSmall,
     ),
-    
-    // ==========================================
-    // FLOATING ACTION BUTTON THEME
-    // ==========================================
+
+    // === FAB ===
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary,
       foregroundColor: AppColors.background,
@@ -225,10 +163,8 @@ ThemeData createAppTheme() {
         borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
       ),
     ),
-    
-    // ==========================================
-    // SNACK BAR THEME
-    // ==========================================
+
+    // === SNACKBAR ===
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.cardBackground,
       contentTextStyle: AppTypography.bodyMedium,
@@ -237,10 +173,8 @@ ThemeData createAppTheme() {
       ),
       behavior: SnackBarBehavior.floating,
     ),
-    
-    // ==========================================
-    // DIALOG THEME
-    // ==========================================
+
+    // === DIALOG ===
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.surface,
       elevation: AppDimensions.elevationLg,
@@ -250,40 +184,30 @@ ThemeData createAppTheme() {
       titleTextStyle: AppTypography.headlineSmall,
       contentTextStyle: AppTypography.bodyMedium,
     ),
-    
-    // ==========================================
-    // BOTTOM SHEET THEME
-    // ==========================================
+
+    // === BOTTOM SHEET ===
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.surface,
       modalBackgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimensions.radiusXl),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXl)),
       ),
     ),
-    
-    // ==========================================
-    // DIVIDER THEME
-    // ==========================================
+
+    // === DIVIDER ===
     dividerTheme: const DividerThemeData(
       color: AppColors.divider,
       thickness: 1,
       space: AppDimensions.spacingMd,
     ),
-    
-    // ==========================================
-    // ICON THEME
-    // ==========================================
+
+    // === ICON ===
     iconTheme: const IconThemeData(
       color: AppColors.textSecondary,
       size: AppDimensions.iconMd,
     ),
-    
-    // ==========================================
-    // TEXT THEME
-    // ==========================================
+
+    // === TEXT THEME ===
     textTheme: const TextTheme(
       displayLarge: AppTypography.displayLarge,
       displayMedium: AppTypography.displayMedium,
