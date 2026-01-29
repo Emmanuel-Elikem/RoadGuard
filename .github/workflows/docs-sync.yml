@@ -1,0 +1,111 @@
+name: Auto-Sync Documentation
+
+on:
+  push:
+    paths:
+      - '.github/agents/**'
+      - '.github/copilot-instructions.md'
+    branches:
+      - develop
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-docs:
+    name: Sync Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check for Mistakes Log changes
+        id: check-mistakes
+        run: |
+          if git diff HEAD~1 --name-only | grep -q "RoadGuard-Mistakes-Log.md"; then
+            echo "mistakes_changed=true" >> $GITHUB_OUTPUT
+            echo "📝 Mistakes Log was updated"
+          else
+            echo "mistakes_changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "## 📄 Documentation Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          git diff HEAD~1 --name-only -- '.github/agents/' '.github/copilot-instructions.md' >> $GITHUB_STEP_SUMMARY || true
+      
+      - name: Validate Markdown
+        run: |
+          # Check for broken links in agent files
+          for file in .github/agents/*.md; do
+            echo "Checking $file..."
+            # Extract markdown links and check if referenced files exist
+            grep -oP '\[.*?\]\(\K[^)]+' "$file" 2>/dev/null | while read link; do
+              if [[ "$link" != http* ]] && [[ "$link" != "#"* ]]; then
+                dir=$(dirname "$file")
+                if [[ ! -f "$dir/$link" ]] && [[ ! -f "$link" ]]; then
+                  echo "⚠️ Warning: Broken link in $file: $link"
+                fi
+              fi
+            done
+          done
+      
+      - name: Update timestamp in Mistakes Log
+        if: steps.check-mistakes.outputs.mistakes_changed == 'true'
+        run: |
+          # Update the last modified timestamp
+          sed -i "s/\*\*Last Updated:\*\*.*/\*\*Last Updated:\*\* $(date +'%Y-%m-%d %H:%M UTC')/" .github/agents/RoadGuard-Mistakes-Log.md || true
+      
+      - name: Commit timestamp update
+        if: steps.check-mistakes.outputs.mistakes_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/agents/RoadGuard-Mistakes-Log.md
+          git diff --staged --quiet || git commit -m "docs: update mistakes log timestamp [skip ci]"
+          git push || echo "Nothing to push"
+      
+      - name: Create summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Documentation Sync Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All agent documentation files have been validated." >> $GITHUB_STEP_SUMMARY
+
+  notify-on-mistakes:
+    name: Notify on New Mistakes
+    runs-on: ubuntu-latest
+    needs: sync-docs
+    if: contains(github.event.head_commit.message, 'mistake') || contains(github.event.head_commit.message, 'MXXX')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract new mistakes
+        id: extract
+        run: |
+          # Count mistakes in the log
+          CRITICAL=$(grep -c "🔴 Active" .github/agents/RoadGuard-Mistakes-Log.md || echo "0")
+          HIGH=$(grep -c "🟠 Active" .github/agents/RoadGuard-Mistakes-Log.md || echo "0")
+          
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high=$HIGH" >> $GITHUB_OUTPUT
+      
+      - name: Post summary
+        run: |
+          echo "## 🐛 Mistakes Log Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Severity | Active Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔴 Critical | ${{ steps.extract.outputs.critical }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟠 High | ${{ steps.extract.outputs.high }} |" >> $GITHUB_STEP_SUMMARY

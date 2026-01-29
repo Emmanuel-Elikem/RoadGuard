@@ -1,0 +1,76 @@
+name: Copilot Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  copilot-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: GitHub Copilot Review
+        uses: github/copilot-code-review-action@v1
+        with:
+          # Review configuration
+          model: 'gpt-4'
+          
+          # What to review
+          review-scope: 'changed-files'
+          
+          # Review criteria based on our coding standards
+          custom-instructions: |
+            Review this Flutter/Dart code against these criteria:
+            
+            1. OFFLINE-FIRST: Does it save to local storage (Hive) before remote?
+            2. ERROR HANDLING: Are async operations wrapped in try-catch?
+            3. HARDCODED VALUES: Are there any hardcoded colors, sizes, or strings?
+            4. FILE NAMING: Are files lowercase with underscores?
+            5. RIVERPOD: Is ref.watch used in build() and ref.read in callbacks?
+            6. MEMORY LEAKS: Are streams/subscriptions properly disposed?
+            7. NULL SAFETY: Is nullability properly handled?
+            8. CONST: Are const constructors used where possible?
+            
+            Flag any violations of these patterns from our RoadGuard coding standards.
+          
+          # Severity thresholds
+          fail-on-severity: 'error'
+          
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Add a summary comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🤖 Copilot Code Review Complete
+              
+              The AI has reviewed your changes against RoadGuard coding standards.
+              
+              **Checklist verified:**
+              - [ ] Offline-first pattern
+              - [ ] Error handling
+              - [ ] No hardcoded values
+              - [ ] Correct file naming
+              - [ ] Proper Riverpod usage
+              - [ ] Memory management
+              - [ ] Null safety
+              - [ ] Const constructors
+              
+              Please address any comments before merging.`
+            });
