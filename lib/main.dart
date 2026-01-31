@@ -25,17 +25,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Configure system UI for immersive dark experience
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: AppColors.background,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-
   runApp(const ProviderScope(child: RoadGuardApp()));
 }
 
@@ -46,12 +35,51 @@ class RoadGuardApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
+    // Update system UI based on theme
+    _updateSystemUI(themeMode, context);
 
     return MaterialApp.router(
       title: 'RoadGuard',
       debugShowCheckedModeBanner: false,
-      theme: createAppTheme(),
+
+      // Light theme - "The Soft Look"
+      theme: createLightTheme(),
+
+      // Dark theme - "The Cockpit"
+      darkTheme: createDarkTheme(),
+
+      // Which theme to use (system/light/dark)
+      themeMode: themeMode,
+
       routerConfig: router,
+    );
+  }
+
+  /// Configure system UI overlay style based on current theme.
+  void _updateSystemUI(ThemeMode themeMode, BuildContext context) {
+    // Determine if we're actually in dark mode
+    final brightness = switch (themeMode) {
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.light => Brightness.light,
+      ThemeMode.system => MediaQuery.platformBrightnessOf(context),
+    };
+
+    final isDark = brightness == Brightness.dark;
+
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: isDark
+            ? AppColorsDark.background
+            : AppColorsLight.background,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
     );
   }
 }
