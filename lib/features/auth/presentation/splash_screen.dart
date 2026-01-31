@@ -3,8 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/storage_service.dart';
 
 /// Splash screen shown during app initialization.
+///
+/// TEACHING: The splash screen serves multiple purposes:
+/// 1. Show branding while app loads
+/// 2. Initialize services (storage, auth)
+/// 3. Decide where to navigate based on app state
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -45,11 +51,23 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateAfterDelay() async {
+    // Wait for splash animation to play
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      // TODO: Check auth state and navigate accordingly
-      // For now, always go to onboarding
+
+    if (!mounted) return;
+
+    // Check app state and navigate accordingly
+    final storage = StorageService.instance;
+
+    if (storage.isFirstLaunch) {
+      // First time user → Show onboarding
       context.go(Routes.onboarding);
+    } else if (storage.isLoggedIn) {
+      // Returning logged-in user → Go to home
+      context.go(Routes.home);
+    } else {
+      // Returning user but not logged in → Go to auth
+      context.go(Routes.auth);
     }
   }
 

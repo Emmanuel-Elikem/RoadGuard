@@ -16,8 +16,11 @@ void main() {
     final router = GoRouter(
       initialLocation: '/',
       routes: [
-        GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
-        GoRoute(path: '/auth', builder: (_, __) => const Scaffold()),
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const OnboardingScreen(),
+        ),
+        GoRoute(path: '/auth', builder: (context, state) => const Scaffold()),
       ],
     );
 

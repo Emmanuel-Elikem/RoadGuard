@@ -4,8 +4,15 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/storage_service.dart';
 
 /// Onboarding data for each slide.
+///
+/// TEACHING: Using a data class to hold slide information.
+/// This separates the DATA from the UI, making it easy to:
+/// - Add/remove slides without touching UI code
+/// - Localize the content later
+/// - Test the content independently
 class OnboardingSlide {
   final IconData icon;
   final Color iconColor;
@@ -69,12 +76,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeOutCubic,
       );
     } else {
-      _goToAuth();
+      _completeOnboarding();
     }
   }
 
-  void _goToAuth() {
-    context.go(Routes.auth);
+  Future<void> _completeOnboarding() async {
+    // Mark first launch complete so user won't see onboarding again
+    await StorageService.instance.setFirstLaunchComplete();
+    if (mounted) {
+      context.go(Routes.auth);
+    }
   }
 
   @override
@@ -90,7 +101,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(AppDimensions.spacingMd),
                 child: TextButton(
-                  onPressed: _goToAuth,
+                  onPressed: _completeOnboarding,
                   child: Text(
                     'Skip',
                     style: AppTypography.labelLarge.copyWith(

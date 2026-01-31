@@ -7,17 +7,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/router.dart';
 import 'core/theme/theme.dart';
+import 'shared/services/storage_service.dart';
 
-void main() {
+void main() async {
+  // CRITICAL: This must be called before any async operations
+  // It initializes Flutter's binding with the native platform
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize local storage (Hive)
+  // MUST happen before runApp() so storage is ready
+  await StorageService.initialize();
+
   // Lock to portrait mode
-  SystemChrome.setPreferredOrientations([
+  // Most users hold phones vertically while driving
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Configure system UI
+  // Configure system UI for immersive dark experience
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
