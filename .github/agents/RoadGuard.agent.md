@@ -302,7 +302,9 @@ After completing ANY task:
 - [ ] Light AND dark mode tested
 - [ ] No hardcoded values
 - [ ] Mistakes logged if any found
-- [ ] Teaching explanation provided to user
+- [ ] **Dependencies are latest stable versions** (`flutter pub outdated`)
+- [ ] **Code comments are minimal** (teaching in chat, not code)
+- [ ] Teaching explanation provided to user (in chat response)
 
 ---
 
@@ -317,7 +319,108 @@ After completing ANY task:
 
 ---
 
-## 📚 Quick Links
+## � KEEP DEPENDENCIES UP-TO-DATE (MANDATORY)
+
+**Always use the latest STABLE versions of tools and packages.**
+
+### Before Adding a Package:
+1. **Check pub.dev** for the latest version
+2. **Verify compatibility** with our Flutter/Dart version
+3. **Check last updated date** - avoid abandoned packages (>1 year stale)
+4. **Review GitHub issues** for critical bugs
+
+### Regular Maintenance:
+```bash
+# Check for outdated packages
+flutter pub outdated
+
+# Upgrade to latest compatible versions
+flutter pub upgrade
+
+# For major version upgrades (be careful!)
+flutter pub upgrade --major-versions
+```
+
+### Why This Matters:
+- 🔒 **Security** - Old packages may have vulnerabilities
+- 🐛 **Bug fixes** - Newer versions fix known issues
+- ⚡ **Performance** - Updates often include optimizations
+- 🛠️ **Compatibility** - Stay compatible with latest Flutter SDK
+
+### Package Version Rules:
+```yaml
+# ✅ GOOD - Use caret syntax for auto-updates within major version
+dependencies:
+  flutter_riverpod: ^2.6.1
+  
+# ❌ BAD - Pinned to exact version (misses patches)
+dependencies:
+  flutter_riverpod: 2.6.1
+  
+# ❌ BAD - Using any version (unpredictable)
+dependencies:
+  flutter_riverpod: any
+```
+
+---
+
+## 📖 TEACHING MODE (MANDATORY)
+
+**Explain in CHAT, not in CODE comments.**
+
+### Code Comments = Self-Documentation ONLY
+Comments in code should make the code self-explanatory, NOT teach concepts.
+
+```dart
+// ✅ GOOD - Brief, explains WHAT/WHY for the code
+/// Calculates speed using GPS Doppler velocity for higher accuracy
+double calculateSpeed(Position position) { ... }
+
+// ❌ BAD - Teaching essay in code
+/// This function calculates speed. Speed is distance over time.
+/// We use GPS Doppler because it measures velocity directly from
+/// the frequency shift of satellite signals, which is more accurate
+/// than calculating from position changes. The Doppler effect was
+/// discovered by Christian Doppler in 1842... [50 more lines]
+double calculateSpeed(Position position) { ... }
+```
+
+### Teaching Goes in Chat Response:
+When explaining something, put the teaching in your response message:
+
+```
+**📚 Teaching Moment: GPS Doppler Velocity**
+
+WHAT: We use `position.speed` from the GPS instead of calculating distance/time.
+
+WHY: GPS calculates speed using the Doppler effect - measuring frequency shifts 
+in satellite signals. This is more accurate than position-based calculations 
+because position has ±3-5m error, but Doppler velocity is accurate to ±0.1 m/s.
+
+ALTERNATIVE: Could calculate `distance / time` from two positions, but this 
+amplifies GPS position errors, especially at low speeds.
+
+REFERENCE: See RoadGuard-Algorithms.md for the full speed calculation algorithm.
+```
+
+### Comment Guidelines:
+| Use Comments For | Don't Use Comments For |
+|------------------|----------------------|
+| Brief "what" and "why" | Teaching concepts |
+| Non-obvious logic | Explaining basic syntax |
+| TODO markers | Long explanations |
+| Doc comments for public APIs | History lessons |
+| Warning about gotchas | Alternative approaches |
+
+### This Keeps Code Clean:
+- 📄 Code stays readable and scannable
+- 🎓 Teaching is in chat where user can ask follow-ups
+- 🧹 No comment bloat cluttering the codebase
+- 📚 Can reference MD docs for deep dives
+
+---
+
+## �📚 Quick Links
 
 | Need | Reference |
 |------|-----------|
