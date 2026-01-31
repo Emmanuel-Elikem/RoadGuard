@@ -44,7 +44,10 @@ ThemeData createAppTheme() {
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTypography.titleLarge,
-      iconTheme: IconThemeData(color: AppColors.textPrimary, size: AppDimensions.iconMd),
+      iconTheme: IconThemeData(
+        color: AppColors.textPrimary,
+        size: AppDimensions.iconMd,
+      ),
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
@@ -139,7 +142,9 @@ ThemeData createAppTheme() {
         borderSide: const BorderSide(color: AppColors.error, width: 2),
       ),
       labelStyle: AppTypography.bodyMedium,
-      hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
+      hintStyle: AppTypography.bodyMedium.copyWith(
+        color: AppColors.textTertiary,
+      ),
       errorStyle: AppTypography.errorText,
     ),
 
@@ -190,7 +195,9 @@ ThemeData createAppTheme() {
       backgroundColor: AppColors.surface,
       modalBackgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXl)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppDimensions.radiusXl),
+        ),
       ),
     ),
 

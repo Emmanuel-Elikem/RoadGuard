@@ -67,21 +67,29 @@ class _PlaceholderHomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
-                child: const Icon(Icons.shield, size: 64, color: AppColors.primary),
+                child: const Icon(
+                  Icons.shield,
+                  size: 64,
+                  color: AppColors.primary,
+                ),
               ),
 
               const SizedBox(height: AppDimensions.spacingXl),
 
               Text(
                 'RoadGuard',
-                style: AppTypography.headlineLarge.copyWith(color: AppColors.primary),
+                style: AppTypography.headlineLarge.copyWith(
+                  color: AppColors.primary,
+                ),
               ),
 
               const SizedBox(height: AppDimensions.spacingSm),
 
               Text(
                 'Your Digital Copilot',
-                style: AppTypography.bodyLarge.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
 
               const SizedBox(height: AppDimensions.spacingXxl),
@@ -95,7 +103,9 @@ class _PlaceholderHomeScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -111,7 +121,9 @@ class _PlaceholderHomeScreen extends StatelessWidget {
                     const SizedBox(width: AppDimensions.spacingSm),
                     Text(
                       'Project Setup Complete',
-                      style: AppTypography.labelMedium.copyWith(color: AppColors.success),
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.success,
+                      ),
                     ),
                   ],
                 ),
@@ -119,7 +131,10 @@ class _PlaceholderHomeScreen extends StatelessWidget {
 
               const SizedBox(height: AppDimensions.spacingXl),
 
-              Text('v0.1.0 • Week 1 Foundation', style: AppTypography.bodySmall),
+              Text(
+                'v0.1.0 • Week 1 Foundation',
+                style: AppTypography.bodySmall,
+              ),
             ],
           ),
         ),
