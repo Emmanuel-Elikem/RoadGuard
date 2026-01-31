@@ -3,21 +3,32 @@
 /// Basic smoke test to verify the app builds and runs.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:road_guard/main.dart';
+import 'package:go_router/go_router.dart';
+import 'package:road_guard/features/auth/presentation/onboarding_screen.dart';
 
 void main() {
-  testWidgets('App should render home screen with navigation', (
+  testWidgets('Onboarding screen renders correctly', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: RoadGuardApp()));
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
+        GoRoute(path: '/auth', builder: (_, __) => const Scaffold()),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
     await tester.pumpAndSettle();
 
-    // Verify home screen greeting is displayed
-    expect(find.text('Hello, Driver'), findsOneWidget);
-
-    // Verify floating nav bar items exist
-    expect(find.text('Home'), findsOneWidget);
+    // Verify onboarding elements are displayed
+    expect(find.text('Track Your Speed'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
   });
 }

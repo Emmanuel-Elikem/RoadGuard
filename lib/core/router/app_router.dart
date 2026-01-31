@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/shell/shell_screen.dart';
+import '../../features/auth/presentation/auth_screen.dart';
+import '../../features/auth/presentation/onboarding_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
-import '../../features/stats/presentation/stats_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/shell/shell_screen.dart';
+import '../../features/stats/presentation/stats_screen.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -16,9 +19,26 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: Routes.home,
+    initialLocation: Routes.splash,
     debugLogDiagnostics: true,
     routes: [
+      // Auth flow routes
+      GoRoute(
+        path: Routes.splash,
+        name: RouteNames.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: Routes.onboarding,
+        name: RouteNames.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: Routes.auth,
+        name: RouteNames.auth,
+        builder: (context, state) => const AuthScreen(),
+      ),
+
       // Shell route wraps bottom navigation destinations
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
