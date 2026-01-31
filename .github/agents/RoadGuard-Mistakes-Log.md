@@ -802,15 +802,51 @@ Added a minimal GoRouter configuration in the test file.
 
 ---
 
-## �📊 Issue Statistics
+#### M022: Unnecessary Double Underscore for Unused Parameters
+**Status:** 🟢 Resolved  
+**Severity:** Low (Lint warning)
+**Date Found:** 2025-01-31
+**Date Resolved:** 2025-01-31
+
+**Symptom:**
+```
+info • Unnecessary use of multiple underscores • test/widget_test.dart:19:41
+```
+
+**Cause:**
+Used `(_, __)` to indicate unused parameters in GoRoute builder, but Dart lint prefers a single underscore `_` OR named parameters like `(context, state)`.
+
+```dart
+// ❌ Lint warning - double underscore unnecessary
+GoRoute(path: '/', builder: (_, __) => const MyScreen()),
+```
+
+**Prevention:**
+```dart
+// ✅ Option 1: Use single underscore (if linter allows)
+GoRoute(path: '/', builder: (_, _) => const MyScreen()),
+
+// ✅ Option 2: Use named parameters (clearer)
+GoRoute(path: '/', builder: (context, state) => const MyScreen()),
+```
+
+**Fix:**
+Changed `(_, __)` to `(context, state)` in test file.
+
+**Related Files:**
+- `test/widget_test.dart`
+
+---
+
+## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
 | 🔴 Critical | 4 | 0 | 0 |
-| 🟠 High | 4 | 0 | 0 |
+| 🟠 High | 4 | 0 | 2 |
 | 🟡 Medium | 4 | 0 | 0 |
-| 🟢 Low | 2 | 0 | 0 |
-| **Total** | **14** | **0** | **0** |
+| 🟢 Low | 2 | 0 | 1 |
+| **Total** | **14** | **0** | **3** |
 
 ---
 
