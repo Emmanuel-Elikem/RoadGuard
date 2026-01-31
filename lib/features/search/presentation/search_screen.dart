@@ -3,58 +3,63 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
 
-/// Vehicle search screen placeholder.
+/// Vehicle search screen with theme-aware styling.
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppDimensions.spacingLg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Search',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              Text('Search', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppDimensions.spacingXs),
               Text(
                 'Look up drivers by plate number',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
 
               const SizedBox(height: AppDimensions.spacingLg),
 
-              // Search input placeholder
+              // Modern search input with pill shape
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.spacingMd,
                   vertical: AppDimensions.spacingMd,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                  border: Border.all(color: AppColors.border),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.search,
-                      color: AppColors.textTertiary,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
                       size: 20,
                     ),
                     const SizedBox(width: AppDimensions.spacingMd),
-                    Text(
-                      'Enter plate number (e.g., GR-1234-20)',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textTertiary,
+                    Expanded(
+                      child: Text(
+                        'Enter plate number (e.g., GR-1234-20)',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
                       ),
                     ),
                   ],
@@ -63,7 +68,7 @@ class SearchScreen extends StatelessWidget {
 
               const Spacer(),
 
-              // Empty state
+              // Empty state with modern design
               Center(
                 child: Column(
                   children: [
@@ -71,27 +76,27 @@ class SearchScreen extends StatelessWidget {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
+                        color: colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusLg,
+                          AppDimensions.radiusXl,
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.car,
                         size: 48,
-                        color: AppColors.primary,
+                        color: colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: AppDimensions.spacingMd),
                     Text(
                       'Search for a vehicle',
-                      style: AppTypography.titleLarge,
+                      style: theme.textTheme.titleLarge,
                     ),
                     const SizedBox(height: AppDimensions.spacingXs),
                     Text(
                       'Enter a Ghana plate number to see ratings',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       textAlign: TextAlign.center,
                     ),

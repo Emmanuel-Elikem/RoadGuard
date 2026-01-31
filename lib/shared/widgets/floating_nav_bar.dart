@@ -21,6 +21,7 @@ class NavItem {
 }
 
 /// Floating bottom navigation bar with mercury indicator animation.
+/// Fully theme-aware with modern rounded pill design.
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({super.key});
 
@@ -61,6 +62,8 @@ class FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final currentIndex = _getCurrentIndex(context);
 
     return Container(
@@ -75,9 +78,19 @@ class FloatingNavBar extends StatelessWidget {
         vertical: AppDimensions.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: AppColors.border, width: 1),
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -93,6 +106,7 @@ class FloatingNavBar extends StatelessWidget {
   }
 }
 
+/// Theme-aware nav bar item with smooth animations.
 class _NavBarItem extends StatelessWidget {
   final NavItem item;
   final bool isSelected;
@@ -106,6 +120,9 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -119,11 +136,13 @@ class _NavBarItem extends StatelessWidget {
           vertical: AppDimensions.spacingSm,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryMuted : Colors.transparent,
+          color: isSelected
+              ? colorScheme.primary.withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
           border: isSelected
               ? Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: colorScheme.primary.withValues(alpha: 0.3),
                   width: 1,
                 )
               : null,
@@ -136,7 +155,9 @@ class _NavBarItem extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               child: Icon(
                 isSelected ? item.activeIcon : item.icon,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                color: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.onSurface.withValues(alpha: 0.6),
                 size: 22,
               ),
             ),
@@ -150,8 +171,8 @@ class _NavBarItem extends StatelessWidget {
                       ),
                       child: Text(
                         item.label,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: AppColors.primary,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

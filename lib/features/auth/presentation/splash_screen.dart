@@ -7,10 +7,10 @@ import '../../../shared/services/storage_service.dart';
 
 /// Splash screen shown during app initialization.
 ///
-/// TEACHING: The splash screen serves multiple purposes:
-/// 1. Show branding while app loads
-/// 2. Initialize services (storage, auth)
-/// 3. Decide where to navigate based on app state
+/// Handles initial navigation based on user state:
+/// - First launch → Onboarding
+/// - Logged in → Home
+/// - Logged out → Auth
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -51,22 +51,17 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateAfterDelay() async {
-    // Wait for splash animation to play
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
-    // Check app state and navigate accordingly
     final storage = StorageService.instance;
 
     if (storage.isFirstLaunch) {
-      // First time user → Show onboarding
       context.go(Routes.onboarding);
     } else if (storage.isLoggedIn) {
-      // Returning logged-in user → Go to home
       context.go(Routes.home);
     } else {
-      // Returning user but not logged in → Go to auth
       context.go(Routes.auth);
     }
   }
@@ -79,8 +74,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -96,37 +94,37 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // App icon
+              // App icon with theme-aware styling
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryMuted,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                  border: Border.all(color: AppColors.primary, width: 2),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
+                  border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.shield,
-                  size: 64,
-                  color: AppColors.primary,
-                ),
+                child: Icon(Icons.shield, size: 64, color: colorScheme.primary),
               ),
               const SizedBox(height: AppDimensions.spacingLg),
               Text(
                 'RoadGuard',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.primary,
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: AppDimensions.spacingSm),
               Text(
                 'Your Digital Copilot',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: AppDimensions.spacingXxl),
-              const _LoadingIndicator(),
+              _LoadingIndicator(color: colorScheme.primary),
             ],
           ),
         ),
@@ -136,7 +134,9 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 class _LoadingIndicator extends StatefulWidget {
-  const _LoadingIndicator();
+  final Color color;
+
+  const _LoadingIndicator({required this.color});
 
   @override
   State<_LoadingIndicator> createState() => _LoadingIndicatorState();
@@ -180,7 +180,7 @@ class _LoadingIndicatorState extends State<_LoadingIndicator>
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: opacity),
+                color: widget.color.withValues(alpha: opacity),
                 shape: BoxShape.circle,
               ),
             );

@@ -3,13 +3,17 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
 
-/// Home/Dashboard screen placeholder.
+/// Home/Dashboard screen with theme-aware styling.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppDimensions.spacingLg),
@@ -17,17 +21,12 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Greeting
-              Text(
-                'Hello, Driver',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              Text('Hello, Driver', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppDimensions.spacingXs),
               Text(
                 'Ready to hit the road?',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
 
@@ -39,7 +38,7 @@ class HomeScreen extends StatelessWidget {
                   icon: LucideIcons.gauge,
                   title: 'Speed Tracking',
                   subtitle: 'Coming in Week 3',
-                  color: AppColors.primary,
+                  accentColor: colorScheme.primary,
                 ),
               ),
 
@@ -53,7 +52,7 @@ class HomeScreen extends StatelessWidget {
                       icon: LucideIcons.star,
                       title: 'Rate Driver',
                       subtitle: 'Week 5',
-                      color: AppColors.warning,
+                      accentColor: colorScheme.tertiary,
                       compact: true,
                     ),
                   ),
@@ -63,7 +62,7 @@ class HomeScreen extends StatelessWidget {
                       icon: LucideIcons.map,
                       title: 'Trip Map',
                       subtitle: 'Week 7',
-                      color: AppColors.secondary,
+                      accentColor: colorScheme.secondary,
                       compact: true,
                     ),
                   ),
@@ -77,43 +76,47 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+/// Theme-aware placeholder card with modern rounded design.
 class _PlaceholderCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color color;
+  final Color accentColor;
   final bool compact;
 
   const _PlaceholderCard({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.color,
+    required this.accentColor,
     this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: EdgeInsets.all(
         compact ? AppDimensions.spacingMd : AppDimensions.spacingLg,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        border: Border.all(color: AppColors.border),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: compact ? 48 : 80,
-            height: compact ? 48 : 80,
+            width: compact ? 56 : 88,
+            height: compact ? 56 : 88,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
             ),
-            child: Icon(icon, size: compact ? 24 : 40, color: color),
+            child: Icon(icon, size: compact ? 28 : 44, color: accentColor),
           ),
           SizedBox(
             height: compact ? AppDimensions.spacingSm : AppDimensions.spacingMd,
@@ -121,15 +124,15 @@ class _PlaceholderCard extends StatelessWidget {
           Text(
             title,
             style: compact
-                ? AppTypography.titleSmall
-                : AppTypography.titleLarge,
+                ? theme.textTheme.titleSmall
+                : theme.textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppDimensions.spacingXs),
           Text(
             subtitle,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textTertiary,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
           ),

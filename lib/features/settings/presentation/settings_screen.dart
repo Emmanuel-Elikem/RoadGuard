@@ -1,38 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
 
-/// Settings/Profile screen placeholder.
-class SettingsScreen extends StatelessWidget {
+/// Settings/Profile screen with theme-aware styling.
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final currentTheme = ref.watch(themeProvider);
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppDimensions.spacingLg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Settings',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              // Header
+              Text('Settings', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppDimensions.spacingXs),
               Text(
                 'App preferences & account',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
 
               const SizedBox(height: AppDimensions.spacingXl),
 
-              // Profile placeholder
+              // === ACCOUNT SECTION ===
+              _SectionHeader(title: 'Account'),
+              const SizedBox(height: AppDimensions.spacingSm),
+
               _SettingsTile(
                 icon: LucideIcons.user,
                 title: 'Profile',
@@ -40,24 +45,58 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () {},
               ),
 
+              const SizedBox(height: AppDimensions.spacingMd),
+
+              // === APPEARANCE SECTION ===
+              _SectionHeader(title: 'Appearance'),
+              const SizedBox(height: AppDimensions.spacingSm),
+
+              // Theme selector with modern pill design
+              _ThemeSelector(
+                currentTheme: currentTheme,
+                onThemeChanged: (mode) {
+                  ref.read(themeProvider.notifier).setThemeMode(mode);
+                },
+              ),
+
+              const SizedBox(height: AppDimensions.spacingMd),
+
+              // === NOTIFICATIONS SECTION ===
+              _SectionHeader(title: 'Notifications'),
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SettingsTile(
                 icon: LucideIcons.bell,
-                title: 'Notifications',
-                subtitle: 'Manage alerts',
+                title: 'Push Notifications',
+                subtitle: 'Speed alerts & updates',
+                trailing: Switch.adaptive(
+                  value: true,
+                  onChanged: (value) {},
+                  activeTrackColor: colorScheme.primary,
+                  activeThumbColor: colorScheme.onPrimary,
+                ),
                 onTap: () {},
               ),
 
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SettingsTile(
-                icon: LucideIcons.palette,
-                title: 'Appearance',
-                subtitle: 'Dark mode',
+                icon: LucideIcons.volume2,
+                title: 'Sound Alerts',
+                subtitle: 'Audio warnings',
+                trailing: Switch.adaptive(
+                  value: true,
+                  onChanged: (value) {},
+                  activeTrackColor: colorScheme.primary,
+                  activeThumbColor: colorScheme.onPrimary,
+                ),
                 onTap: () {},
               ),
 
+              const SizedBox(height: AppDimensions.spacingMd),
+
+              // === PRIVACY SECTION ===
+              _SectionHeader(title: 'Privacy & Data'),
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SettingsTile(
@@ -67,15 +106,208 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () {},
               ),
 
-              const Spacer(),
+              const SizedBox(height: AppDimensions.spacingSm),
+
+              _SettingsTile(
+                icon: LucideIcons.helpCircle,
+                title: 'Help & Support',
+                subtitle: 'FAQ & contact',
+                onTap: () {},
+              ),
+
+              const SizedBox(height: AppDimensions.spacingXl),
 
               // Version info
               Center(
                 child: Text(
                   'RoadGuard v0.1.0 • Week 2',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textTertiary,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
+                ),
+              ),
+
+              const SizedBox(height: AppDimensions.spacingMd),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Section header with subtle styling.
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: AppDimensions.spacingXs),
+      child: Text(
+        title.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+/// Modern theme selector with pill-shaped segmented control.
+class _ThemeSelector extends StatelessWidget {
+  final AppThemeMode currentTheme;
+  final ValueChanged<AppThemeMode> onThemeChanged;
+
+  const _ThemeSelector({
+    required this.currentTheme,
+    required this.onThemeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spacingMd),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                LucideIcons.palette,
+                size: 20,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: AppDimensions.spacingSm),
+              Text('Theme', style: theme.textTheme.titleSmall),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingMd),
+
+          // Segmented button with modern pill design
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+            ),
+            child: Row(
+              children: [
+                _ThemeOption(
+                  icon: Icons.brightness_auto,
+                  label: 'System',
+                  isSelected: currentTheme == AppThemeMode.system,
+                  onTap: () => onThemeChanged(AppThemeMode.system),
+                ),
+                _ThemeOption(
+                  icon: Icons.light_mode,
+                  label: 'Light',
+                  isSelected: currentTheme == AppThemeMode.light,
+                  onTap: () => onThemeChanged(AppThemeMode.light),
+                ),
+                _ThemeOption(
+                  icon: Icons.dark_mode,
+                  label: 'Dark',
+                  isSelected: currentTheme == AppThemeMode.dark,
+                  onTap: () => onThemeChanged(AppThemeMode.dark),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppDimensions.spacingSm),
+
+          // Helper text
+          Text(
+            currentTheme == AppThemeMode.system
+                ? 'Follows your device settings'
+                : currentTheme == AppThemeMode.light
+                ? 'Always use light theme'
+                : 'Always use dark theme',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual theme option pill.
+class _ThemeOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeOption({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spacingSm,
+            vertical: AppDimensions.spacingSm,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected ? colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: isSelected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ],
@@ -86,62 +318,79 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+/// Theme-aware settings tile with modern rounded design.
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   const _SettingsTile({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.trailing,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppDimensions.spacingMd),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-              ),
-              child: Icon(icon, color: AppColors.textSecondary, size: 20),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.all(AppDimensions.spacingMd),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
             ),
-            const SizedBox(width: AppDimensions.spacingMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTypography.titleSmall),
-                  Text(
-                    subtitle,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+          ),
+          child: Row(
+            children: [
+              // Icon container with rounded background
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                ),
+                child: Icon(icon, color: colorScheme.primary, size: 20),
+              ),
+              const SizedBox(width: AppDimensions.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Icon(
-              LucideIcons.chevronRight,
-              color: AppColors.textTertiary,
-              size: 20,
-            ),
-          ],
+              if (trailing != null)
+                trailing!
+              else
+                Icon(
+                  LucideIcons.chevronRight,
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 20,
+                ),
+            ],
+          ),
         ),
       ),
     );

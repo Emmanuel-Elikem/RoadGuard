@@ -1,4 +1,6 @@
 /// RoadGuard Dimensions System - Single source of truth for spacing and sizes.
+///
+/// Follows Material 3 design guidelines with modern rounded corners.
 library;
 
 /// Spacing, sizes, and radius values based on 8px grid system.
@@ -13,13 +15,17 @@ abstract final class AppDimensions {
   static const double spacingXxxl = 64.0;
 
   // === BORDER RADIUS ===
-  static const double radiusSm = 8.0;
-  static const double radiusMd = 12.0;
-  static const double radiusLg = 16.0;
-  static const double radiusXl = 24.0;
-  static const double radiusFull = 999.0;
+  // Modern Material 3 style with generous rounding
+  static const double radiusXs = 4.0; // Subtle rounding
+  static const double radiusSm = 8.0; // Chips, small buttons
+  static const double radiusMd = 12.0; // Standard cards
+  static const double radiusLg = 16.0; // Large cards, dialogs
+  static const double radiusXl = 24.0; // Bottom sheets
+  static const double radiusXxl = 32.0; // Extra large containers
+  static const double radiusFull = 999.0; // Pills, circular buttons
 
   // === ICON SIZES ===
+  static const double iconXs = 12.0;
   static const double iconSm = 16.0;
   static const double iconMd = 24.0;
   static const double iconLg = 32.0;

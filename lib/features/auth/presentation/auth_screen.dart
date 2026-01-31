@@ -32,7 +32,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _handleSubmit() {
     // TODO: Implement Firebase auth
-    // For now, just navigate to home
     context.go(Routes.home);
   }
 
@@ -48,8 +47,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppDimensions.spacingLg),
@@ -58,20 +60,23 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const SizedBox(height: AppDimensions.spacingXl),
 
-              // Logo
+              // Logo with modern rounded design
               Center(
                 child: Container(
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryMuted,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                    border: Border.all(color: AppColors.primary, width: 2),
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.shield,
                     size: 40,
-                    color: AppColors.primary,
+                    color: colorScheme.primary,
                   ),
                 ),
               ),
@@ -80,14 +85,17 @@ class _AuthScreenState extends State<AuthScreen> {
               // Title
               Text(
                 _isSignUp ? 'Create Account' : 'Welcome Back',
-                style: AppTypography.headlineLarge,
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppDimensions.spacingSm),
               Text(
                 _isSignUp ? 'Sign up to start tracking' : 'Sign in to continue',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -114,7 +122,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
-                    color: AppColors.textTertiary,
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
                     size: 20,
                   ),
                   onPressed: () =>
@@ -131,8 +139,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     },
                     child: Text(
                       'Forgot password?',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.primary,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
@@ -143,24 +151,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
               const SizedBox(height: AppDimensions.spacingMd),
 
-              // Submit button
+              // Submit button with modern style
               SizedBox(
                 height: AppDimensions.buttonHeightLg,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.background,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusMd,
+                        AppDimensions.radiusLg,
                       ),
                     ),
                   ),
                   child: Text(
                     _isSignUp ? 'Sign Up' : 'Sign In',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.background,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -172,19 +180,27 @@ class _AuthScreenState extends State<AuthScreen> {
               // Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: AppColors.border)),
+                  Expanded(
+                    child: Divider(
+                      color: colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppDimensions.spacingMd,
                     ),
                     child: Text(
                       'or',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textTertiary,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                   ),
-                  Expanded(child: Divider(color: AppColors.border)),
+                  Expanded(
+                    child: Divider(
+                      color: colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ],
               ),
 
@@ -198,11 +214,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   icon: const Icon(LucideIcons.chrome, size: 20),
                   label: const Text('Continue with Google'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: BorderSide(color: AppColors.border),
+                    foregroundColor: colorScheme.onSurface,
+                    side: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.3),
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusMd,
+                        AppDimensions.radiusLg,
                       ),
                     ),
                   ),
@@ -218,8 +236,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: _handleGuestMode,
                   child: Text(
                     'Continue as Guest',
-                    style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.textSecondary,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -235,16 +253,16 @@ class _AuthScreenState extends State<AuthScreen> {
                     _isSignUp
                         ? 'Already have an account?'
                         : 'Don\'t have an account?',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   TextButton(
                     onPressed: _toggleMode,
                     child: Text(
                       _isSignUp ? 'Sign In' : 'Sign Up',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: AppColors.primary,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -259,6 +277,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
+/// Theme-aware text field for authentication forms.
 class _AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -280,13 +299,16 @@ class _AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: AppTypography.labelMedium.copyWith(
-            color: AppColors.textSecondary,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
         const SizedBox(height: AppDimensions.spacingSm),
@@ -294,27 +316,37 @@ class _AuthTextField extends StatelessWidget {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: AppTypography.bodyLarge,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: AppTypography.bodyLarge.copyWith(
-              color: AppColors.textTertiary,
+            hintStyle: theme.textTheme.bodyLarge?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.4),
             ),
-            prefixIcon: Icon(icon, color: AppColors.textTertiary, size: 20),
+            prefixIcon: Icon(
+              icon,
+              color: colorScheme.onSurface.withValues(alpha: 0.4),
+              size: 20,
+            ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: AppColors.surfaceVariant,
+            fillColor: colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.5,
+            ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              borderSide: BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withValues(alpha: 0.2),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              borderSide: BorderSide(color: AppColors.primary, width: 2),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.spacingMd,
