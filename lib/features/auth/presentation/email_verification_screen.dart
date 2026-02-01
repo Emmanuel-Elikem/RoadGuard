@@ -13,6 +13,7 @@ import '../domain/providers/auth_providers.dart';
 ///
 /// Prompts user to verify their email before accessing the app.
 /// Auto-checks verification status periodically.
+/// Pauses checking when app is backgrounded to save battery.
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
 
@@ -22,7 +23,8 @@ class EmailVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _EmailVerificationScreenState
-    extends ConsumerState<EmailVerificationScreen> {
+    extends ConsumerState<EmailVerificationScreen>
+    with WidgetsBindingObserver {
   Timer? _checkTimer;
   bool _isResending = false;
   int _resendCooldown = 0;
@@ -31,6 +33,8 @@ class _EmailVerificationScreenState
   @override
   void initState() {
     super.initState();
+    // Register for lifecycle events to pause/resume timer
+    WidgetsBinding.instance.addObserver(this);
     // Start periodic check for email verification
     _startVerificationCheck();
     // Send verification email on first load
@@ -39,16 +43,45 @@ class _EmailVerificationScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _checkTimer?.cancel();
     _cooldownTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pause timer when app is backgrounded, resume when foregrounded
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _checkTimer?.cancel();
+      _checkTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      // Check immediately when returning to app
+      _checkVerificationNow();
+      // Restart periodic check
+      _startVerificationCheck();
+    }
+  }
+
+  Future<void> _checkVerificationNow() async {
+    final isVerified = await ref
+        .read(authNotifierProvider.notifier)
+        .checkEmailVerified();
+    if (isVerified && mounted) {
+      _checkTimer?.cancel();
+      context.go(Routes.home);
+    }
+  }
+
   void _startVerificationCheck() {
+    // Cancel existing timer if any
+    _checkTimer?.cancel();
     // Check every 3 seconds if user has verified
     _checkTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      final isVerified =
-          await ref.read(authNotifierProvider.notifier).checkEmailVerified();
+      final isVerified = await ref
+          .read(authNotifierProvider.notifier)
+          .checkEmailVerified();
       if (isVerified && mounted) {
         _checkTimer?.cancel();
         context.go(Routes.home);
@@ -63,8 +96,9 @@ class _EmailVerificationScreenState
       _isResending = true;
     });
 
-    final success =
-        await ref.read(authNotifierProvider.notifier).sendEmailVerification();
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .sendEmailVerification();
 
     if (mounted) {
       setState(() {
@@ -130,10 +164,7 @@ class _EmailVerificationScreenState
         actions: [
           TextButton(
             onPressed: _handleSignOut,
-            child: Text(
-              'Sign Out',
-              style: TextStyle(color: colorScheme.error),
-            ),
+            child: Text('Sign Out', style: TextStyle(color: colorScheme.error)),
           ),
         ],
       ),
@@ -212,7 +243,9 @@ class _EmailVerificationScreenState
               Container(
                 padding: const EdgeInsets.all(AppDimensions.spacingMd),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                   border: Border.all(
                     color: colorScheme.outline.withValues(alpha: 0.2),
@@ -269,8 +302,9 @@ class _EmailVerificationScreenState
                       color: colorScheme.primary.withValues(alpha: 0.5),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppDimensions.radiusMd),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusMd,
+                      ),
                     ),
                   ),
                 ),
@@ -307,11 +341,7 @@ class _InstructionRow extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: colorScheme.primary,
-        ),
+        Icon(icon, size: 20, color: colorScheme.primary),
         const SizedBox(width: AppDimensions.spacingSm),
         Expanded(
           child: Text(

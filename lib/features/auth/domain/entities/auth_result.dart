@@ -8,10 +8,22 @@ sealed class AuthResult {
   const AuthResult();
 }
 
-/// Successful authentication.
+/// Successful authentication with a user.
 class AuthSuccess extends AuthResult {
   final AppUser user;
   const AuthSuccess(this.user);
+}
+
+/// Password reset email sent successfully.
+/// Does not include a user since no authentication occurred.
+class PasswordResetEmailSent extends AuthResult {
+  final String email;
+  const PasswordResetEmailSent(this.email);
+}
+
+/// Email verification sent successfully.
+class EmailVerificationSent extends AuthResult {
+  const EmailVerificationSent();
 }
 
 /// Authentication failed with an error.
@@ -37,7 +49,9 @@ enum AuthError {
   accountExistsWithDifferentCredential(
     'An account already exists with this email using a different sign-in method',
   ),
-  credentialAlreadyInUse('This credential is already linked to another account'),
+  credentialAlreadyInUse(
+    'This credential is already linked to another account',
+  ),
 
   // Account errors
   requiresRecentLogin('Please sign in again to perform this action'),

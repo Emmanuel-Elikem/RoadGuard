@@ -55,8 +55,9 @@ final isGuestProvider = Provider<bool>((ref) {
 /// ```dart
 /// ref.read(authNotifierProvider.notifier).signInWithEmail(email, password);
 /// ```
-final authNotifierProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
+  ref,
+) {
   final repo = ref.watch(authRepositoryProvider);
   return AuthNotifier(repo);
 });
@@ -85,7 +86,8 @@ class AuthUnauthenticated extends AuthState {
 
 class AuthErrorState extends AuthState {
   final String message;
-  const AuthErrorState(this.message);
+  final AuthError? error; // Store the actual error type for robust checking
+  const AuthErrorState(this.message, {this.error});
 }
 
 /// Notifier that handles auth actions and state.
@@ -140,7 +142,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final result = await _repo.sendPasswordResetEmail(email);
 
-    if (result is AuthSuccess) {
+    if (result is PasswordResetEmailSent) {
       state = const AuthInitial(); // Reset to initial, not authenticated
       return true;
     } else if (result is AuthFailure) {
@@ -156,8 +158,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final result = await _repo.sendEmailVerification();
 
-    if (result is AuthSuccess) {
-      state = AuthAuthenticated(result.user);
+    if (result is EmailVerificationSent || result is AuthSuccess) {
+      // Keep user authenticated, just sent verification
+      final user = _repo.currentUser;
+      if (user != null) {
+        state = AuthAuthenticated(user);
+      } else {
+        state = const AuthInitial();
+      }
       return true;
     } else if (result is AuthFailure) {
       state = AuthErrorState(result.error.message);
@@ -190,10 +198,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> linkWithEmail(String email, String password) async {
     state = const AuthLoading();
 
-    final result = await _repo.linkWithEmail(
-      email: email,
-      password: password,
-    );
+    final result = await _repo.linkWithEmail(email: email, password: password);
 
     return _handleResult(result);
   }
@@ -217,7 +222,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthAuthenticated(result.user);
       return true;
     } else if (result is AuthFailure) {
-      state = AuthErrorState(result.error.message);
+      // Pass the error type for robust checking in UI
+      state = AuthErrorState(result.error.message, error: result.error);
       return false;
     }
     return false;

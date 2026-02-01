@@ -216,8 +216,8 @@ class _ThemeSelector extends StatelessWidget {
             currentTheme == AppThemeMode.system
                 ? 'Follows your device settings'
                 : currentTheme == AppThemeMode.light
-                    ? 'Always use light theme'
-                    : 'Always use dark theme',
+                ? 'Always use light theme'
+                : 'Always use dark theme',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.5),
             ),
@@ -239,10 +239,10 @@ class _AnimatedThemeToggle extends StatelessWidget {
   });
 
   int get _selectedIndex => switch (currentTheme) {
-        AppThemeMode.system => 0,
-        AppThemeMode.light => 1,
-        AppThemeMode.dark => 2,
-      };
+    AppThemeMode.system => 0,
+    AppThemeMode.light => 1,
+    AppThemeMode.dark => 2,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -252,7 +252,7 @@ class _AnimatedThemeToggle extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final itemWidth = (constraints.maxWidth - 8) / 3; // 8 = padding
-        
+
         return Container(
           height: 44,
           padding: const EdgeInsets.all(4),
@@ -273,7 +273,9 @@ class _AnimatedThemeToggle extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: colorScheme.primary,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                    borderRadius: BorderRadius.circular(
+                      AppDimensions.radiusFull,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: colorScheme.primary.withValues(alpha: 0.4),

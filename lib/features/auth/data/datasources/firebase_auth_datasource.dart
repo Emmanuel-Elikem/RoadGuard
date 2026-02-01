@@ -19,10 +19,9 @@ class FirebaseAuthRepository implements AuthRepository {
   bool _googleSignInInitialized = false;
   Completer<GoogleSignInAccount?>? _authCompleter;
 
-  FirebaseAuthRepository({
-    FirebaseAuth? auth,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = GoogleSignIn.instance;
+  FirebaseAuthRepository({FirebaseAuth? auth})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _googleSignIn = GoogleSignIn.instance;
 
   /// Initialize Google Sign In (must be called before using Google auth).
   Future<void> _ensureGoogleSignInInitialized() async {
@@ -30,6 +29,80 @@ class FirebaseAuthRepository implements AuthRepository {
 
     await _googleSignIn.initialize();
     _googleSignInInitialized = true;
+  }
+
+  /// Common helper for Google authentication flow.
+  /// Returns GoogleAuthCredential on success, or AuthFailure on error.
+  /// This extracts the common logic between signInWithGoogle and linkWithGoogle.
+  Future<({OAuthCredential? credential, AuthFailure? failure})>
+  _getGoogleCredential() async {
+    await _ensureGoogleSignInInitialized();
+
+    // Check if authenticate is supported (not supported on web)
+    if (!_googleSignIn.supportsAuthenticate()) {
+      return (
+        credential: null,
+        failure: const AuthFailure(AuthError.googleSignInFailed),
+      );
+    }
+
+    // Set up a completer to get the authentication result
+    _authCompleter = Completer<GoogleSignInAccount?>();
+    StreamSubscription<GoogleSignInAuthenticationEvent>? subscription;
+
+    subscription = _googleSignIn.authenticationEvents.listen(
+      (event) {
+        if (event is GoogleSignInAuthenticationEventSignIn) {
+          _authCompleter?.complete(event.user);
+          subscription?.cancel();
+        } else if (event is GoogleSignInAuthenticationEventSignOut) {
+          _authCompleter?.complete(null);
+          subscription?.cancel();
+        }
+      },
+      onError: (error) {
+        _authCompleter?.completeError(error);
+        subscription?.cancel();
+      },
+    );
+
+    // Trigger authentication
+    await _googleSignIn.authenticate();
+
+    // Wait for the result
+    final googleUser = await _authCompleter!.future.timeout(
+      const Duration(minutes: 2),
+      onTimeout: () => null,
+    );
+
+    if (googleUser == null) {
+      return (
+        credential: null,
+        failure: const AuthFailure(AuthError.googleSignInCancelled),
+      );
+    }
+
+    // Get auth credentials for Firebase
+    final authorization = await googleUser.authorizationClient
+        .authorizationForScopes(['email']);
+
+    if (authorization == null) {
+      // Request authorization
+      final newAuth = await googleUser.authorizationClient.authorizeScopes([
+        'email',
+      ]);
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: newAuth.accessToken,
+      );
+      return (credential: credential, failure: null);
+    }
+
+    // Create Firebase credential
+    final credential = GoogleAuthProvider.credential(
+      accessToken: authorization.accessToken,
+    );
+    return (credential: credential, failure: null);
   }
 
   @override
@@ -82,70 +155,16 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> signInWithGoogle() async {
     try {
-      await _ensureGoogleSignInInitialized();
+      final result = await _getGoogleCredential();
 
-      // Check if authenticate is supported (not supported on web)
-      if (!_googleSignIn.supportsAuthenticate()) {
-        return const AuthFailure(AuthError.googleSignInFailed);
+      if (result.failure != null) {
+        return result.failure!;
       }
 
-      // Set up a completer to get the authentication result
-      _authCompleter = Completer<GoogleSignInAccount?>();
-      StreamSubscription<GoogleSignInAuthenticationEvent>? subscription;
-
-      subscription = _googleSignIn.authenticationEvents.listen(
-        (event) {
-          if (event is GoogleSignInAuthenticationEventSignIn) {
-            _authCompleter?.complete(event.user);
-            subscription?.cancel();
-          } else if (event is GoogleSignInAuthenticationEventSignOut) {
-            _authCompleter?.complete(null);
-            subscription?.cancel();
-          }
-        },
-        onError: (error) {
-          _authCompleter?.completeError(error);
-          subscription?.cancel();
-        },
+      // Sign in to Firebase with credential
+      final userCredential = await _auth.signInWithCredential(
+        result.credential!,
       );
-
-      // Trigger authentication
-      await _googleSignIn.authenticate();
-
-      // Wait for the result
-      final googleUser = await _authCompleter!.future.timeout(
-        const Duration(minutes: 2),
-        onTimeout: () => null,
-      );
-
-      if (googleUser == null) {
-        return const AuthFailure(AuthError.googleSignInCancelled);
-      }
-
-      // Get auth credentials for Firebase
-      final authorization = await googleUser.authorizationClient
-          .authorizationForScopes(['email']);
-
-      if (authorization == null) {
-        // Request authorization
-        final newAuth = await googleUser.authorizationClient
-            .authorizeScopes(['email']);
-        
-        final credential = GoogleAuthProvider.credential(
-          accessToken: newAuth.accessToken,
-        );
-
-        final userCredential = await _auth.signInWithCredential(credential);
-        return AuthSuccess(_mapUser(userCredential.user)!);
-      }
-
-      // Create Firebase credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: authorization.accessToken,
-      );
-
-      // Sign in to Firebase
-      final userCredential = await _auth.signInWithCredential(credential);
       return AuthSuccess(_mapUser(userCredential.user)!);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
@@ -175,8 +194,8 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AuthResult> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-      // Return success with a placeholder user (email was sent)
-      return AuthSuccess(AppUser(uid: '', email: email));
+      // Return specific result type for password reset (no user authentication occurred)
+      return PasswordResetEmailSent(email.trim());
     } on FirebaseAuthException catch (e) {
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
@@ -192,11 +211,12 @@ class FirebaseAuthRepository implements AuthRepository {
         return const AuthFailure(AuthError.userNotFound);
       }
       if (user.emailVerified) {
-        // Already verified, return success
+        // Already verified, return success with user
         return AuthSuccess(_mapUser(user)!);
       }
       await user.sendEmailVerification();
-      return AuthSuccess(_mapUser(user)!);
+      // Return specific result type for email verification sent
+      return const EmailVerificationSent();
     } on FirebaseAuthException catch (e) {
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
@@ -258,52 +278,15 @@ class FirebaseAuthRepository implements AuthRepository {
         return const AuthFailure(AuthError.userNotFound);
       }
 
-      await _ensureGoogleSignInInitialized();
+      final result = await _getGoogleCredential();
 
-      if (!_googleSignIn.supportsAuthenticate()) {
-        return const AuthFailure(AuthError.googleSignInFailed);
+      if (result.failure != null) {
+        return result.failure!;
       }
 
-      // Set up completer for auth result
-      _authCompleter = Completer<GoogleSignInAccount?>();
-      StreamSubscription<GoogleSignInAuthenticationEvent>? subscription;
-
-      subscription = _googleSignIn.authenticationEvents.listen(
-        (event) {
-          if (event is GoogleSignInAuthenticationEventSignIn) {
-            _authCompleter?.complete(event.user);
-            subscription?.cancel();
-          } else if (event is GoogleSignInAuthenticationEventSignOut) {
-            _authCompleter?.complete(null);
-            subscription?.cancel();
-          }
-        },
-        onError: (error) {
-          _authCompleter?.completeError(error);
-          subscription?.cancel();
-        },
-      );
-
-      await _googleSignIn.authenticate();
-
-      final googleUser = await _authCompleter!.future.timeout(
-        const Duration(minutes: 2),
-        onTimeout: () => null,
-      );
-
-      if (googleUser == null) {
-        return const AuthFailure(AuthError.googleSignInCancelled);
-      }
-
-      final authorization = await googleUser.authorizationClient
-          .authorizeScopes(['email']);
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: authorization.accessToken,
-      );
-
-      final result = await user.linkWithCredential(credential);
-      return AuthSuccess(_mapUser(result.user)!);
+      // Link with Firebase credential
+      final linkResult = await user.linkWithCredential(result.credential!);
+      return AuthSuccess(_mapUser(linkResult.user)!);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         return const AuthFailure(AuthError.googleSignInCancelled);
@@ -354,7 +337,8 @@ class FirebaseAuthRepository implements AuthRepository {
       'operation-not-allowed' => AuthError.operationNotAllowed,
       'too-many-requests' => AuthError.tooManyRequests,
       'network-request-failed' => AuthError.networkError,
-      'account-exists-with-different-credential' => AuthError.accountExistsWithDifferentCredential,
+      'account-exists-with-different-credential' =>
+        AuthError.accountExistsWithDifferentCredential,
       'requires-recent-login' => AuthError.requiresRecentLogin,
       'credential-already-in-use' => AuthError.credentialAlreadyInUse,
       _ => AuthError.unknown,

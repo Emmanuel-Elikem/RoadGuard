@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
+import '../domain/entities/entities.dart';
 import '../domain/providers/auth_providers.dart';
 
 /// Auth screen with sign in/up toggle and Firebase authentication.
@@ -68,10 +69,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         }
         context.go(Routes.home);
       } else {
-        // Check if it was a user-not-found error
+        // Check if it was a user-not-found or invalid-credential error
         final currentState = ref.read(authNotifierProvider);
         if (currentState is AuthErrorState &&
-            currentState.message.toLowerCase().contains('user not found')) {
+            (currentState.error == AuthError.userNotFound ||
+                currentState.error == AuthError.invalidCredential)) {
           // Offer to sign up instead
           if (mounted) {
             _showSignUpOfferDialog();
@@ -135,11 +137,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               final router = GoRouter.of(context);
               navigator.pop();
               // Sign up with the same credentials
-              final success =
-                  await ref.read(authNotifierProvider.notifier).signUpWithEmail(
-                        _emailController.text,
-                        _passwordController.text,
-                      );
+              final success = await ref
+                  .read(authNotifierProvider.notifier)
+                  .signUpWithEmail(
+                    _emailController.text,
+                    _passwordController.text,
+                  );
               if (success && mounted) {
                 // New accounts need email verification
                 router.go(Routes.emailVerification);
@@ -159,8 +162,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
-    final success =
-        await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .signInWithGoogle();
 
     if (success && mounted) {
       context.go(Routes.home);
@@ -168,8 +172,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _handleGuestMode() async {
-    final success =
-        await ref.read(authNotifierProvider.notifier).signInAsGuest();
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .signInAsGuest();
 
     if (success && mounted) {
       context.go(Routes.home);
@@ -186,8 +191,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     // Listen for errors and show snackbar
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next is AuthErrorState) {
-        // Don't show snackbar for user-not-found (we handle it with dialog)
-        if (!next.message.toLowerCase().contains('user not found')) {
+        // Don't show snackbar for user-not-found/invalid-credential (we handle it with dialog)
+        final isHandledWithDialog =
+            next.error == AuthError.userNotFound ||
+            next.error == AuthError.invalidCredential;
+        if (!isHandledWithDialog) {
           // Clear any existing snackbars first
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -250,11 +258,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             height: 64,
                             decoration: BoxDecoration(
                               color: colorScheme.primary.withValues(alpha: 0.1),
-                              borderRadius:
-                                  BorderRadius.circular(AppDimensions.radiusLg),
+                              borderRadius: BorderRadius.circular(
+                                AppDimensions.radiusLg,
+                              ),
                               border: Border.all(
-                                color:
-                                    colorScheme.primary.withValues(alpha: 0.3),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -322,8 +332,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               _obscurePassword
                                   ? LucideIcons.eyeOff
                                   : LucideIcons.eye,
-                              color:
-                                  colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -374,8 +385,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: colorScheme.primary,
                               foregroundColor: colorScheme.onPrimary,
-                              disabledBackgroundColor:
-                                  colorScheme.primary.withValues(alpha: 0.5),
+                              disabledBackgroundColor: colorScheme.primary
+                                  .withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                   AppDimensions.radiusMd,
@@ -408,8 +419,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           children: [
                             Expanded(
                               child: Divider(
-                                color:
-                                    colorScheme.outline.withValues(alpha: 0.3),
+                                color: colorScheme.outline.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                             ),
                             Padding(
@@ -419,15 +431,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               child: Text(
                                 'or continue with',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurface
-                                      .withValues(alpha: 0.5),
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                             ),
                             Expanded(
                               child: Divider(
-                                color:
-                                    colorScheme.outline.withValues(alpha: 0.3),
+                                color: colorScheme.outline.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                             ),
                           ],
@@ -445,8 +459,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colorScheme.onSurface,
                               side: BorderSide(
-                                color:
-                                    colorScheme.outline.withValues(alpha: 0.3),
+                                color: colorScheme.outline.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
@@ -467,8 +482,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             child: Text(
                               'Continue as Guest',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color:
-                                    colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
                               ),
                             ),
                           ),
@@ -485,8 +501,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   ? 'Already have an account?'
                                   : 'Don\'t have an account?',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color:
-                                    colorScheme.onSurface.withValues(alpha: 0.7),
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                             TextButton(
@@ -551,9 +568,7 @@ class _AuthTextField extends StatelessWidget {
       keyboardType: keyboardType,
       enabled: enabled,
       validator: validator,
-      style: theme.textTheme.bodyLarge?.copyWith(
-        color: colorScheme.onSurface,
-      ),
+      style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/domain/providers/auth_providers.dart';
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/auth/presentation/email_verification_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
@@ -12,17 +13,77 @@ import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/shell/shell_screen.dart';
 import '../../features/stats/presentation/stats_screen.dart';
+import '../../shared/services/storage_service.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Provider for the app router.
+/// Routes that don't require authentication
+const _publicRoutes = [
+  Routes.splash,
+  Routes.onboarding,
+  Routes.auth,
+  Routes.passwordReset,
+];
+
+/// Provider for the app router with auth guards.
 final routerProvider = Provider<GoRouter>((ref) {
+  // Watch auth state to rebuild router when auth changes
+  final authState = ref.watch(authStateProvider);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: Routes.splash,
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      final currentPath = state.matchedLocation;
+      final isPublicRoute = _publicRoutes.contains(currentPath);
+      final isEmailVerificationRoute = currentPath == Routes.emailVerification;
+
+      // Get auth status
+      final user = authState.valueOrNull;
+      final isLoggedIn = user != null;
+
+      // If user is logged in
+      if (isLoggedIn) {
+        // If on auth/onboarding, redirect to home
+        if (currentPath == Routes.auth || currentPath == Routes.onboarding) {
+          // Check if email user needs verification
+          if (!user.isAnonymous && user.email != null && !user.emailVerified) {
+            return Routes.emailVerification;
+          }
+          return Routes.home;
+        }
+
+        // Email verification redirect for unverified email users
+        if (!user.isAnonymous &&
+            user.email != null &&
+            !user.emailVerified &&
+            !isEmailVerificationRoute &&
+            !isPublicRoute) {
+          return Routes.emailVerification;
+        }
+
+        // If verified user on email verification screen, go home
+        if (isEmailVerificationRoute && user.emailVerified) {
+          return Routes.home;
+        }
+      }
+
+      // If user is not logged in and trying to access protected route
+      if (!isLoggedIn && !isPublicRoute && !isEmailVerificationRoute) {
+        // Check if onboarding completed (first launch means not completed)
+        final storage = StorageService.instance;
+        if (storage.isFirstLaunch) {
+          return Routes.onboarding;
+        }
+        return Routes.auth;
+      }
+
+      // No redirect needed
+      return null;
+    },
     routes: [
       // Auth flow routes
       GoRoute(

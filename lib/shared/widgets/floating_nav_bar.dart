@@ -67,9 +67,7 @@ class FloatingNavBar extends StatelessWidget {
     final currentIndex = _getCurrentIndex(context);
 
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.spacingLg,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingLg),
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.spacingSm,
         vertical: AppDimensions.spacingSm,
