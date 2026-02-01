@@ -69,11 +69,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         }
         context.go(Routes.home);
       } else {
-        // Check if it was a user-not-found or invalid-credential error
+        // Check if it was a user-not-found error
+        // NOTE: invalidCredential could mean wrong password OR user not found,
+        // so we only offer signup for explicit userNotFound
         final currentState = ref.read(authNotifierProvider);
         if (currentState is AuthErrorState &&
-            (currentState.error == AuthError.userNotFound ||
-                currentState.error == AuthError.invalidCredential)) {
+            currentState.error == AuthError.userNotFound) {
           // Offer to sign up instead
           if (mounted) {
             _showSignUpOfferDialog();

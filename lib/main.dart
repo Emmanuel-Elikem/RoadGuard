@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/router.dart';
 import 'core/theme/theme.dart';
+import 'error_app.dart';
 import 'firebase_options.dart';
 import 'shared/services/storage_service.dart';
 
@@ -16,19 +17,27 @@ void main() async {
   // It initializes Flutter's binding with the native platform
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Initialize local storage (Hive)
-  // MUST happen before runApp() so storage is ready
-  await StorageService.initialize();
+    // Initialize local storage (Hive)
+    // MUST happen before runApp() so storage is ready
+    await StorageService.initialize();
 
-  // Lock to portrait mode
-  // Most users hold phones vertically while driving
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Lock to portrait mode
+    // Most users hold phones vertically while driving
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  } catch (e) {
+    // If initialization fails, show error screen
+    runApp(ErrorApp(error: e));
+    return;
+  }
 
   runApp(const ProviderScope(child: RoadGuardApp()));
 }

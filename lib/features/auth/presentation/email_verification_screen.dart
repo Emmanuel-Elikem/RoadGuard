@@ -105,7 +105,8 @@ class _EmailVerificationScreenState
   }
 
   Future<void> _sendVerificationEmail() async {
-    if (_resendCooldown > 0) return;
+    // Guard against multiple simultaneous resend attempts
+    if (_isResending || _resendCooldown > 0) return;
 
     setState(() {
       _isResending = true;

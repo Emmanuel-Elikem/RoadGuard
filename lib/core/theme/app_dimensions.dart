@@ -40,10 +40,15 @@ abstract final class AppDimensions {
   static const double bottomNavHeight = 80.0;
   static const double cardMinHeight = 80.0;
 
+  /// Floating navbar height (same as in FloatingNavBar widget)
+  /// Used to calculate safe padding for content below navbar
+  static const double floatingNavBarHeight = 60.0;
+
   /// Bottom padding needed for screens with floating navbar.
-  /// Navbar height (60) + navbar margin (8 bottom from SafeArea) + extra spacing (16)
-  /// This ensures content is never hidden behind the floating navbar.
-  static const double floatingNavBarSafeArea = 84.0;
+  /// Calculated as: navbar height + spacing + extra buffer
+  /// Ensures content is never hidden behind the floating navbar
+  static const double floatingNavBarSafeArea =
+      floatingNavBarHeight + spacingSm + spacingMd; // 60 + 8 + 16 = 84
 
   // === SPEEDOMETER SIZES ===
   static const double speedometerSizeLg = 280.0;
