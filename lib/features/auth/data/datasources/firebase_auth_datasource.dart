@@ -53,30 +53,36 @@ class FirebaseAuthRepository implements AuthRepository {
     _authCompleter = Completer<GoogleSignInAccount?>();
     StreamSubscription<GoogleSignInAuthenticationEvent>? subscription;
 
-    subscription = _googleSignIn.authenticationEvents.listen(
-      (event) {
-        if (event is GoogleSignInAuthenticationEventSignIn) {
-          _authCompleter?.complete(event.user);
+    GoogleSignInAccount? googleUser;
+    try {
+      subscription = _googleSignIn.authenticationEvents.listen(
+        (event) {
+          if (event is GoogleSignInAuthenticationEventSignIn) {
+            _authCompleter?.complete(event.user);
+            subscription?.cancel();
+          } else if (event is GoogleSignInAuthenticationEventSignOut) {
+            _authCompleter?.complete(null);
+            subscription?.cancel();
+          }
+        },
+        onError: (error) {
+          _authCompleter?.completeError(error);
           subscription?.cancel();
-        } else if (event is GoogleSignInAuthenticationEventSignOut) {
-          _authCompleter?.complete(null);
-          subscription?.cancel();
-        }
-      },
-      onError: (error) {
-        _authCompleter?.completeError(error);
-        subscription?.cancel();
-      },
-    );
+        },
+      );
 
-    // Trigger authentication
-    await _googleSignIn.authenticate();
+      // Trigger authentication
+      await _googleSignIn.authenticate();
 
-    // Wait for the result
-    final googleUser = await _authCompleter!.future.timeout(
-      const Duration(minutes: 2),
-      onTimeout: () => null,
-    );
+      // Wait for the result
+      googleUser = await _authCompleter!.future.timeout(
+        const Duration(minutes: 2),
+        onTimeout: () => null,
+      );
+    } finally {
+      // Ensure subscription is always cancelled to prevent memory leaks
+      await subscription?.cancel();
+    }
 
     if (googleUser == null) {
       return (

@@ -89,6 +89,8 @@ class _EmailVerificationScreenState
   /// Performs the actual verification check with race condition protection.
   Future<void> _performVerificationCheck() async {
     if (_isCheckingVerification) return;
+    // Early return if widget disposed to avoid unnecessary API calls
+    if (!mounted) return;
     _isCheckingVerification = true;
 
     try {
@@ -134,6 +136,22 @@ class _EmailVerificationScreenState
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            ),
+          ),
+        );
+      } else {
+        // Show error feedback when email fails to send
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Failed to send verification email. Please try again.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppDimensions.radiusMd),

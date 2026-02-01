@@ -785,6 +785,46 @@ _logger.log(
 
 ---
 
+## 🔥 Firebase Gotchas & Important Notes
+
+### Firebase Console Warnings You May See
+
+#### "Insecure Rules" Warning
+If you see "Your Cloud Firestore database has insecure security rules" in the Firebase console:
+- **What it means:** Your rules allow read/write without authentication
+- **Fix:** Update Firestore rules to require authentication:
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+#### "No Billing Account" for Cloud Functions
+- Cloud Functions require billing to be enabled (Blaze plan)
+- Free tier includes 125K invocations/month
+- For MVP, can use Firestore triggers without Functions
+
+#### Email Action URLs
+- Firebase Auth email links use `firebaseapp.com` domain by default
+- For production, configure custom domain in Firebase Console → Auth → Templates
+
+### Best Practices for This Project
+
+1. **Security Rules:** Always test rules in Firebase Rules Playground before deploying
+2. **Indexes:** Firestore will throw errors for missing indexes - follow the link in the error to create them
+3. **Offline Mode:** Firestore has built-in offline persistence - enable it:
+```dart
+await FirebaseFirestore.instance.enablePersistence();
+```
+4. **Rate Limiting:** Firebase has rate limits - use Circuit Breaker pattern (see above)
+
+---
+
 ## ✅ Backend Implementation Checklist
 
 Before implementing ANY backend/service code:

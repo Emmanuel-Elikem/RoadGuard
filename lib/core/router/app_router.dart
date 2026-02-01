@@ -72,7 +72,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // If user is not logged in and trying to access protected route
-      if (!isLoggedIn && !isPublicRoute && !isEmailVerificationRoute) {
+      // NOTE: Also redirect from email verification screen if logged out
+      if (!isLoggedIn && !isPublicRoute) {
         // Check if onboarding completed (first launch means not completed)
         final storage = StorageService.instance;
         if (storage.isFirstLaunch) {

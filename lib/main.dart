@@ -27,11 +27,13 @@ void main() async {
     // MUST happen before runApp() so storage is ready
     await StorageService.initialize();
 
-    // Lock to portrait mode
-    // Most users hold phones vertically while driving
+    // Allow all orientations - app is for PASSENGERS, not drivers
+    // Passengers may use the phone in any orientation
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
     ]);
   } catch (e) {
     // If initialization fails, show error screen
