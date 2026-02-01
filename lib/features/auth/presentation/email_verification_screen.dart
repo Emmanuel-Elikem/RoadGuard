@@ -102,7 +102,10 @@ class _EmailVerificationScreenState
         context.go(Routes.home);
       }
     } finally {
-      _isCheckingVerification = false;
+      // Only update flag if widget is still mounted
+      if (mounted) {
+        _isCheckingVerification = false;
+      }
     }
   }
 

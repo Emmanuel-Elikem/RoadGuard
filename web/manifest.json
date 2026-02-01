@@ -6,7 +6,7 @@
     "background_color": "#000000",
     "theme_color": "#CDFF00",
     "description": "Road safety app for Ghana - speed tracking, driver rating, vehicle search.",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
