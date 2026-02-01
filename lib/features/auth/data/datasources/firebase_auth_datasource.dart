@@ -46,7 +46,10 @@ class FirebaseAuthRepository implements AuthRepository {
       );
     }
 
-    // Set up a completer to get the authentication result
+    // Clean up any previous completer to prevent memory leaks
+    _authCompleter = null;
+
+    // Set up a new completer to get the authentication result
     _authCompleter = Completer<GoogleSignInAccount?>();
     StreamSubscription<GoogleSignInAuthenticationEvent>? subscription;
 

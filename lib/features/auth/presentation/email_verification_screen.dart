@@ -29,6 +29,7 @@ class _EmailVerificationScreenState
   bool _isResending = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
+  bool _isCheckingVerification = false; // Prevent overlapping async checks
 
   @override
   void initState() {
@@ -78,7 +79,19 @@ class _EmailVerificationScreenState
     // Cancel existing timer if any
     _checkTimer?.cancel();
     // Check every 3 seconds if user has verified
-    _checkTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _checkTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      // Prevent overlapping async checks - if one is still running, skip
+      if (_isCheckingVerification) return;
+      _performVerificationCheck();
+    });
+  }
+
+  /// Performs the actual verification check with race condition protection.
+  Future<void> _performVerificationCheck() async {
+    if (_isCheckingVerification) return;
+    _isCheckingVerification = true;
+
+    try {
       final isVerified = await ref
           .read(authNotifierProvider.notifier)
           .checkEmailVerified();
@@ -86,7 +99,9 @@ class _EmailVerificationScreenState
         _checkTimer?.cancel();
         context.go(Routes.home);
       }
-    });
+    } finally {
+      _isCheckingVerification = false;
+    }
   }
 
   Future<void> _sendVerificationEmail() async {

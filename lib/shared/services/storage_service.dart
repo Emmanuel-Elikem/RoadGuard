@@ -1,6 +1,5 @@
 /// Local storage service using Hive for offline-first data persistence.
-///
-/// TEACHING: Why Hive?
+
 /// Hive is a lightweight key-value database written in pure Dart.
 /// Unlike SharedPreferences, it can store complex objects.
 /// Unlike SQLite, it doesn't require SQL knowledge.

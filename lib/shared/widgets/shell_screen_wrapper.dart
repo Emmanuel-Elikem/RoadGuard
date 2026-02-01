@@ -61,20 +61,19 @@ class ShellScreenWrapper extends StatelessWidget {
           addNavbarPadding ? AppDimensions.floatingNavBarSafeArea : 0,
         );
 
-    Widget content = Padding(padding: effectivePadding, child: child);
-
+    // Build content based on scrollable flag
+    Widget content;
     if (scrollable) {
       content = SingleChildScrollView(padding: effectivePadding, child: child);
-      // Remove outer padding since scroll view handles it
-      content = SingleChildScrollView(padding: effectivePadding, child: child);
+    } else {
+      content = Padding(padding: effectivePadding, child: child);
     }
 
+    // Wrap with SafeArea if needed
     if (useSafeArea) {
       content = SafeArea(
         bottom: false, // Navbar handles bottom safe area
-        child: scrollable
-            ? SingleChildScrollView(padding: effectivePadding, child: child)
-            : Padding(padding: effectivePadding, child: child),
+        child: content,
       );
     }
 
