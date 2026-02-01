@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/auth_screen.dart';
+import '../../features/auth/presentation/email_verification_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
+import '../../features/auth/presentation/password_reset_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
@@ -37,6 +39,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.auth,
         name: RouteNames.auth,
         builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: Routes.passwordReset,
+        name: RouteNames.passwordReset,
+        builder: (context, state) => const PasswordResetScreen(),
+      ),
+      GoRoute(
+        path: Routes.emailVerification,
+        name: RouteNames.emailVerification,
+        builder: (context, state) => const EmailVerificationScreen(),
       ),
 
       // Shell route wraps bottom navigation destinations

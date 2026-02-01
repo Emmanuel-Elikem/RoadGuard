@@ -838,15 +838,248 @@ Changed `(_, __)` to `(context, state)` in test file.
 
 ---
 
+#### M023: Auth Screen Excessive Spacing - Content Below Fold
+**Status:** 🟢 Resolved  
+**Severity:** High (Major UX issue)
+**Date Found:** 2026-01-31
+**Detected By:** User
+
+**Symptom:**
+Sign In and Sign Up buttons were hidden below the fold. User had to scroll down to see "Don't have an account? Sign Up" link. Too much padding between elements.
+
+**Cause:**
+- Used excessive `spacingXl` and `spacingLg` between elements
+- `SingleChildScrollView` with large padding made content extend beyond screen
+- Didn't consider mobile screen real estate
+
+**Prevention:**
+```dart
+// ❌ BAD: Excessive spacing pushes content below fold
+const SizedBox(height: AppDimensions.spacingXl), // 32px
+const SizedBox(height: AppDimensions.spacingLg), // 24px
+
+// ✅ GOOD: Use smaller spacing, LayoutBuilder for responsiveness
+const SizedBox(height: AppDimensions.spacingMd), // 16px
+// Consider using Expanded/Spacer instead of fixed spacing
+// Use LayoutBuilder to adapt to screen height
+```
+
+**UX Rule:**
+- ALL critical actions (submit buttons, auth toggles) MUST be visible without scrolling
+- Use `LayoutBuilder` or `MediaQuery` to adapt to screen size
+- Test on smallest supported screen (320px width, ~568px height)
+
+**Fix:**
+Reduced spacing, used `LayoutBuilder` to make content fit screen height.
+
+**Related Files:**
+- `lib/features/auth/presentation/auth_screen.dart`
+
+---
+
+#### M024: Missing Smart Sign-In to Sign-Up Auto-Flow
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX friction)
+**Date Found:** 2026-01-31
+**Detected By:** User
+
+**Symptom:**
+When user tries to sign in with non-existent email, they get an error. User expected the app to offer automatic sign-up.
+
+**Cause:**
+Did not consider users who may enter credentials on sign-in page expecting to create an account.
+
+**Prevention:**
+```dart
+// ✅ When sign-in fails with "user-not-found" error:
+// 1. Show dialog asking if user wants to create account
+// 2. If yes, automatically sign them up with entered credentials
+// 3. Reduces friction, improves conversion
+```
+
+**UX Rule:**
+- Anticipate user mistakes and offer helpful alternatives
+- Don't just show errors - offer actionable solutions
+- "user-not-found" error is an opportunity, not a dead end
+
+**Fix:**
+Added `_showSignUpOfferDialog()` when sign-in returns `userNotFound` error.
+
+**Related Files:**
+- `lib/features/auth/presentation/auth_screen.dart`
+
+---
+
+#### M025: Theme Toggle Missing Smooth Animation
+**Status:** 🟢 Resolved  
+**Severity:** Low (UX polish)
+**Date Found:** 2026-01-31
+**Detected By:** User
+
+**Symptom:**
+Theme toggle selector doesn't have a sliding highlight indicator. Current implementation just swaps colors without visual motion.
+
+**Cause:**
+Used simple `AnimatedContainer` without a sliding indicator that moves between options.
+
+**Prevention:**
+```dart
+// ✅ For segmented controls, add a sliding indicator:
+// 1. Use Stack with AnimatedPositioned for sliding highlight
+// 2. Add spring animation for natural feel
+// 3. Consider haptic feedback on selection
+```
+
+**UX Rule:**
+- Motion provides feedback and delight
+- Segmented controls should have sliding indicators
+- Use spring animations (not linear) for natural feel
+
+**Fix:**
+Added `_AnimatedThemeSelector` with sliding highlight using `AnimatedPositioned`.
+
+**Related Files:**
+- `lib/features/settings/presentation/settings_screen.dart`
+
+---
+
+#### M026: Google Sign-In Missing Web OAuth Client in google-services.json
+**Status:** 🔴 Active  
+**Severity:** Critical (Feature broken)
+**Date Found:** 2026-01-31
+**Detected By:** User + Self (Agent)
+
+**Symptom:**
+Google Sign-In fails with error. Manual email/password sign-in works fine.
+
+**Cause:**
+The `google-services.json` file has an empty `oauth_client` array. Google Sign-In on Android requires a **web OAuth client** (`client_type: 3`) in the `google-services.json` file.
+
+```json
+// ❌ CURRENT (broken):
+"oauth_client": [],
+
+// ✅ REQUIRED (working):
+"oauth_client": [
+  {
+    "client_id": "574169315182-xxxxxxx.apps.googleusercontent.com",
+    "client_type": 3
+  }
+]
+```
+
+**Root Cause:**
+- SHA-1 fingerprint was added to Firebase Console
+- But `google-services.json` was NOT re-downloaded after enabling Google Sign-In
+- The Web OAuth client is created when you enable Google Sign-In provider in Firebase Auth
+
+**Prevention:**
+1. After enabling Google Sign-In in Firebase Console → Authentication → Sign-in methods
+2. ALWAYS re-download `google-services.json` from Firebase Console
+3. Verify the file contains `oauth_client` with `client_type: 3`
+4. The `serverClientId` is automatically read from this file
+
+**Fix Steps:**
+1. Go to Firebase Console → Project Settings → Your Apps → Android app
+2. Click "Download google-services.json"
+3. Replace `android/app/google-services.json` with the new file
+4. Rebuild the app
+
+**Related Files:**
+- `android/app/google-services.json`
+- `lib/features/auth/data/datasources/firebase_auth_datasource.dart`
+
+---
+
+#### M027: Auth Error Messages Too Generic ("Unknown Error")
+**Status:** 🟢 Resolved  
+**Severity:** High (Poor UX)
+**Date Found:** 2026-01-31
+**Detected By:** User
+
+**Symptom:**
+When sign-in fails (wrong password, wrong email), user sees "An unknown error occurred" instead of specific message.
+
+**Cause:**
+Firebase Auth changed error codes. Now returns `invalid-credential` instead of separate `wrong-password` and `user-not-found` errors for security reasons.
+
+**Prevention:**
+```dart
+// ✅ Map ALL Firebase error codes, including new ones:
+AuthError _mapFirebaseError(FirebaseAuthException e) {
+  return switch (e.code) {
+    'invalid-credential' => AuthError.invalidCredential,
+    'wrong-password' => AuthError.wrongPassword,  // Legacy
+    'user-not-found' => AuthError.userNotFound,   // Legacy
+    // ... other codes
+    _ => AuthError.unknown,
+  };
+}
+```
+
+**UX Rule:**
+- Test error states, not just happy paths
+- Log unknown error codes during development
+- Provide helpful, actionable error messages
+
+**Fix:**
+Added `invalid-credential` mapping to `_mapFirebaseError()` and updated `AuthError` enum with more specific messages.
+
+**Related Files:**
+- `lib/features/auth/data/datasources/firebase_auth_datasource.dart`
+- `lib/features/auth/domain/entities/auth_result.dart`
+
+---
+
+#### M028: Error Snackbar Text Not Visible (Grey on Red)
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Poor UX)
+**Date Found:** 2026-01-31
+**Detected By:** User
+
+**Symptom:**
+Error snackbar shows grey text on red background - text is hard to read.
+
+**Cause:**
+Used theme's default text color instead of explicitly setting white text on error background.
+
+**Prevention:**
+```dart
+// ✅ ALWAYS use white text on error background:
+SnackBar(
+  content: Text(
+    message,
+    style: const TextStyle(
+      color: Colors.white,  // ← Explicit white
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+  backgroundColor: colorScheme.error,
+)
+```
+
+**UX Rule:**
+- Error states need high contrast for readability
+- White text on red/error backgrounds
+- Add action button for dismissal
+
+**Fix:**
+Added explicit `Colors.white` text color and dismiss action to error snackbar.
+
+**Related Files:**
+- `lib/features/auth/presentation/auth_screen.dart`
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
-| 🔴 Critical | 4 | 0 | 0 |
-| 🟠 High | 4 | 0 | 2 |
-| 🟡 Medium | 4 | 0 | 0 |
+| 🔴 Critical | 4 | 1 | 0 |
+| 🟠 High | 4 | 0 | 3 |
+| 🟡 Medium | 4 | 0 | 1 |
 | 🟢 Low | 2 | 0 | 1 |
-| **Total** | **14** | **0** | **3** |
+| **Total** | **14** | **1** | **5** |
 
 ---
 

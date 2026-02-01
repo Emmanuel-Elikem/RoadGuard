@@ -12,6 +12,8 @@ abstract final class Routes {
   static const String splash = '/splash';
   static const String onboarding = '/onboarding';
   static const String auth = '/auth';
+  static const String passwordReset = '/password-reset';
+  static const String emailVerification = '/email-verification';
 
   // Feature routes
   static const String tracking = '/tracking';
@@ -32,6 +34,8 @@ abstract final class RouteNames {
   static const String splash = 'splash';
   static const String onboarding = 'onboarding';
   static const String auth = 'auth';
+  static const String passwordReset = 'passwordReset';
+  static const String emailVerification = 'emailVerification';
   static const String tracking = 'tracking';
   static const String rateDriver = 'rateDriver';
   static const String vehicleDetails = 'vehicleDetails';

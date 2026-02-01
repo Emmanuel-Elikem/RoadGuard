@@ -75,6 +75,9 @@ dependencies:
   # - Works offline (critical for our app)
   # - Supports complex objects with adapters
   hive_flutter: ^1.1.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:

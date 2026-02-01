@@ -67,18 +67,16 @@ class FloatingNavBar extends StatelessWidget {
     final currentIndex = _getCurrentIndex(context);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppDimensions.spacingLg,
-        0,
-        AppDimensions.spacingLg,
-        AppDimensions.spacingLg,
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spacingLg,
       ),
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.spacingSm,
         vertical: AppDimensions.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
+        // Semi-transparent background for floating effect
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
         border: Border.all(
           color: colorScheme.outline.withValues(alpha: 0.2),
@@ -86,9 +84,9 @@ class FloatingNavBar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

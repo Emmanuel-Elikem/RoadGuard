@@ -18,7 +18,12 @@ class SettingsScreen extends ConsumerWidget {
       backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppDimensions.spacingLg),
+          padding: const EdgeInsets.fromLTRB(
+            AppDimensions.spacingLg,
+            AppDimensions.spacingLg,
+            AppDimensions.spacingLg,
+            AppDimensions.floatingNavBarSafeArea,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -160,7 +165,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Modern theme selector with pill-shaped segmented control.
+/// Modern theme selector with animated sliding indicator.
 class _ThemeSelector extends StatelessWidget {
   final AppThemeMode currentTheme;
   final ValueChanged<AppThemeMode> onThemeChanged;
@@ -198,35 +203,10 @@ class _ThemeSelector extends StatelessWidget {
           ),
           const SizedBox(height: AppDimensions.spacingMd),
 
-          // Segmented button with modern pill design
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-            ),
-            child: Row(
-              children: [
-                _ThemeOption(
-                  icon: Icons.brightness_auto,
-                  label: 'System',
-                  isSelected: currentTheme == AppThemeMode.system,
-                  onTap: () => onThemeChanged(AppThemeMode.system),
-                ),
-                _ThemeOption(
-                  icon: Icons.light_mode,
-                  label: 'Light',
-                  isSelected: currentTheme == AppThemeMode.light,
-                  onTap: () => onThemeChanged(AppThemeMode.light),
-                ),
-                _ThemeOption(
-                  icon: Icons.dark_mode,
-                  label: 'Dark',
-                  isSelected: currentTheme == AppThemeMode.dark,
-                  onTap: () => onThemeChanged(AppThemeMode.dark),
-                ),
-              ],
-            ),
+          // Animated segmented control with sliding indicator
+          _AnimatedThemeToggle(
+            currentTheme: currentTheme,
+            onThemeChanged: onThemeChanged,
           ),
 
           const SizedBox(height: AppDimensions.spacingSm),
@@ -236,8 +216,8 @@ class _ThemeSelector extends StatelessWidget {
             currentTheme == AppThemeMode.system
                 ? 'Follows your device settings'
                 : currentTheme == AppThemeMode.light
-                ? 'Always use light theme'
-                : 'Always use dark theme',
+                    ? 'Always use light theme'
+                    : 'Always use dark theme',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.5),
             ),
@@ -248,14 +228,101 @@ class _ThemeSelector extends StatelessWidget {
   }
 }
 
-/// Individual theme option pill.
-class _ThemeOption extends StatelessWidget {
+/// Animated theme toggle with sliding highlight indicator.
+class _AnimatedThemeToggle extends StatelessWidget {
+  final AppThemeMode currentTheme;
+  final ValueChanged<AppThemeMode> onThemeChanged;
+
+  const _AnimatedThemeToggle({
+    required this.currentTheme,
+    required this.onThemeChanged,
+  });
+
+  int get _selectedIndex => switch (currentTheme) {
+        AppThemeMode.system => 0,
+        AppThemeMode.light => 1,
+        AppThemeMode.dark => 2,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = (constraints.maxWidth - 8) / 3; // 8 = padding
+        
+        return Container(
+          height: 44,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+          ),
+          child: Stack(
+            children: [
+              // Sliding highlight indicator
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                left: _selectedIndex * itemWidth,
+                top: 0,
+                bottom: 0,
+                width: itemWidth,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Options row
+              Row(
+                children: [
+                  _ThemeOptionButton(
+                    icon: Icons.brightness_auto,
+                    label: 'System',
+                    isSelected: currentTheme == AppThemeMode.system,
+                    onTap: () => onThemeChanged(AppThemeMode.system),
+                  ),
+                  _ThemeOptionButton(
+                    icon: Icons.light_mode,
+                    label: 'Light',
+                    isSelected: currentTheme == AppThemeMode.light,
+                    onTap: () => onThemeChanged(AppThemeMode.light),
+                  ),
+                  _ThemeOptionButton(
+                    icon: Icons.dark_mode,
+                    label: 'Dark',
+                    isSelected: currentTheme == AppThemeMode.dark,
+                    onTap: () => onThemeChanged(AppThemeMode.dark),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Theme option button (label only, highlight handled by parent).
+class _ThemeOptionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ThemeOption({
+  const _ThemeOptionButton({
     required this.icon,
     required this.label,
     required this.isSelected,
@@ -270,44 +337,33 @@ class _ThemeOption extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppDimensions.spacingSm,
-            vertical: AppDimensions.spacingSm,
-          ),
-          decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
+        behavior: HitTestBehavior.opaque,
+        child: Center(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? colorScheme.onPrimary
-                    : colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
                   color: isSelected
                       ? colorScheme.onPrimary
                       : colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: isSelected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(label),
+                  ],
                 ),
               ),
             ],

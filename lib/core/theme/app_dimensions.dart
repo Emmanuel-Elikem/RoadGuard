@@ -40,6 +40,11 @@ abstract final class AppDimensions {
   static const double bottomNavHeight = 80.0;
   static const double cardMinHeight = 80.0;
 
+  /// Bottom padding needed for screens with floating navbar.
+  /// Navbar height (60) + navbar margin (8 bottom from SafeArea) + extra spacing (16)
+  /// This ensures content is never hidden behind the floating navbar.
+  static const double floatingNavBarSafeArea = 84.0;
+
   // === SPEEDOMETER SIZES ===
   static const double speedometerSizeLg = 280.0;
   static const double speedometerSizeMd = 220.0;

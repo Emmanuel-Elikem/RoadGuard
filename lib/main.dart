@@ -1,18 +1,25 @@
 /// RoadGuard - Your Digital Copilot for Road Safety
 library;
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/router.dart';
 import 'core/theme/theme.dart';
+import 'firebase_options.dart';
 import 'shared/services/storage_service.dart';
 
 void main() async {
   // CRITICAL: This must be called before any async operations
   // It initializes Flutter's binding with the native platform
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Initialize local storage (Hive)
   // MUST happen before runApp() so storage is ready

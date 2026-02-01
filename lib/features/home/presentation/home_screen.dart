@@ -16,7 +16,12 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.spacingLg),
+          padding: const EdgeInsets.fromLTRB(
+            AppDimensions.spacingLg,
+            AppDimensions.spacingLg,
+            AppDimensions.spacingLg,
+            AppDimensions.floatingNavBarSafeArea,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
