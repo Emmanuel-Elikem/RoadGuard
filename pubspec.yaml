@@ -79,6 +79,17 @@ dependencies:
   firebase_auth: ^6.1.4
   google_sign_in: ^7.2.0
 
+  # ==========================================
+  # LOCATION & SENSORS (Week 3)
+  # ==========================================
+  # geolocator: GPS location and speed tracking
+  # WHY: Provides GPS Doppler velocity (more accurate than position delta)
+  geolocator: ^14.0.0
+  
+  # permission_handler: Cross-platform permission management
+  # WHY: Clean API for requesting location permissions
+  permission_handler: ^12.0.0+1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
