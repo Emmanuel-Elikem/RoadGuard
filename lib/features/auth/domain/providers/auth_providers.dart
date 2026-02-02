@@ -183,7 +183,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (isVerified) {
       // Reload to get updated user
       final user = _repo.currentUser;
-      debugPrint('checkEmailVerified: Got user = ${user?.email}, emailVerified = ${user?.emailVerified}');
+      debugPrint(
+        'checkEmailVerified: Got user = ${user?.email}, emailVerified = ${user?.emailVerified}',
+      );
       if (user != null) {
         state = AuthAuthenticated(user);
         debugPrint('checkEmailVerified: Set state to AuthAuthenticated');

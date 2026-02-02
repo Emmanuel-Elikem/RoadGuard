@@ -20,9 +20,12 @@ class FirebaseAuthRepository implements AuthRepository {
   bool _googleSignInInitialized = false;
   Completer<GoogleSignInAccount?>? _authCompleter;
 
-  FirebaseAuthRepository({FirebaseAuth? auth})
+  /// Creates a Firebase auth repository.
+  ///
+  /// Both [auth] and [googleSignIn] are injectable for testing.
+  FirebaseAuthRepository({FirebaseAuth? auth, GoogleSignIn? googleSignIn})
     : _auth = auth ?? FirebaseAuth.instance,
-      _googleSignIn = GoogleSignIn.instance;
+      _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   /// Initialize Google Sign In (must be called before using Google auth).
   Future<void> _ensureGoogleSignInInitialized() async {
@@ -234,13 +237,28 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> sendPasswordResetEmail(String email) async {
+    // Security: Enforce minimum response time to prevent timing attacks
+    // (email enumeration via response time differences)
+    final stopwatch = Stopwatch()..start();
+    const minResponseTime = Duration(milliseconds: 500);
+
+    Future<void> enforceMinDelay() async {
+      final elapsed = stopwatch.elapsed;
+      if (elapsed < minResponseTime) {
+        await Future<void>.delayed(minResponseTime - elapsed);
+      }
+    }
+
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
+      await enforceMinDelay();
       // Return specific result type for password reset (no user authentication occurred)
       return PasswordResetEmailSent(email.trim());
     } on FirebaseAuthException catch (e) {
+      await enforceMinDelay();
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
+      await enforceMinDelay();
       return const AuthFailure(AuthError.unknown);
     }
   }
@@ -290,10 +308,14 @@ class FirebaseAuthRepository implements AuthRepository {
       debugPrint('isEmailVerified: No user, returning false');
       return false;
     }
-    debugPrint('isEmailVerified: Before reload, emailVerified = ${user.emailVerified}');
+    debugPrint(
+      'isEmailVerified: Before reload, emailVerified = ${user.emailVerified}',
+    );
     await user.reload();
     final reloadedUser = _auth.currentUser;
-    debugPrint('isEmailVerified: After reload, emailVerified = ${reloadedUser?.emailVerified}');
+    debugPrint(
+      'isEmailVerified: After reload, emailVerified = ${reloadedUser?.emailVerified}',
+    );
     return reloadedUser?.emailVerified ?? false;
   }
 

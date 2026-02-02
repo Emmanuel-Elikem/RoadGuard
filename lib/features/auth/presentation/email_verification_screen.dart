@@ -29,8 +29,16 @@ class _EmailVerificationScreenState
   bool _isResending = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
-  bool _isCheckingVerification = false;
   bool _isManuallyChecking = false; // For manual "I've verified" button
+
+  // Async lock to prevent concurrent verification checks (race condition fix)
+  Completer<void>? _verificationLock;
+
+  // Polling timeout: stop auto-checking after 5 minutes to save battery
+  static const _maxPollDuration = Duration(minutes: 5);
+  DateTime? _pollStartTime;
+  int _pollAttempts = 0;
+  static const _maxPollAttempts = 100; // ~5 min at 3s intervals
 
   @override
   void initState() {
@@ -69,37 +77,67 @@ class _EmailVerificationScreenState
   }
 
   Future<void> _checkVerificationNow() async {
-    final isVerified = await ref
-        .read(authNotifierProvider.notifier)
-        .checkEmailVerified();
-    if (isVerified && mounted) {
-      _checkTimer?.cancel();
-      // Invalidate authStateProvider to force router to re-check with fresh user data
-      ref.invalidate(authStateProvider);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      if (mounted) {
-        context.go(Routes.home);
+    // Wait for any ongoing check to complete
+    if (_verificationLock != null) {
+      await _verificationLock!.future;
+    }
+
+    // Reset poll tracking when returning from background
+    _pollStartTime = DateTime.now();
+    _pollAttempts = 0;
+
+    // Acquire lock for this check
+    _verificationLock = Completer<void>();
+    try {
+      final isVerified = await ref
+          .read(authNotifierProvider.notifier)
+          .checkEmailVerified();
+      if (isVerified && mounted) {
+        _checkTimer?.cancel();
+        // Invalidate authStateProvider to force router to re-check with fresh user data
+        ref.invalidate(authStateProvider);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          context.go(Routes.home);
+        }
       }
+    } finally {
+      _verificationLock?.complete();
+      _verificationLock = null;
     }
   }
 
   void _startVerificationCheck() {
     // Cancel existing timer if any
     _checkTimer?.cancel();
+    // Initialize polling start time and attempts
+    _pollStartTime ??= DateTime.now();
     // Check every 3 seconds if user has verified
     _checkTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      // Prevent overlapping async checks - if one is still running, skip
-      if (_isCheckingVerification) return;
+      // Prevent overlapping async checks using async lock
+      if (_verificationLock != null) return;
+
+      // Stop polling after max duration/attempts to save battery
+      _pollAttempts++;
+      if (_pollAttempts > _maxPollAttempts ||
+          DateTime.now().difference(_pollStartTime!) > _maxPollDuration) {
+        _checkTimer?.cancel();
+        _checkTimer = null;
+        return;
+      }
+
       _performVerificationCheck();
     });
   }
 
-  /// Performs the actual verification check with race condition protection.
+  /// Performs the actual verification check with async lock for race protection.
   Future<void> _performVerificationCheck() async {
-    if (_isCheckingVerification) return;
     // Early return if widget disposed to avoid unnecessary API calls
     if (!mounted) return;
-    _isCheckingVerification = true;
+
+    // Acquire async lock - prevents concurrent checks
+    if (_verificationLock != null) return;
+    _verificationLock = Completer<void>();
 
     try {
       final isVerified = await ref
@@ -116,10 +154,9 @@ class _EmailVerificationScreenState
         }
       }
     } finally {
-      // Only update flag if widget is still mounted
-      if (mounted) {
-        _isCheckingVerification = false;
-      }
+      // Release async lock
+      _verificationLock?.complete();
+      _verificationLock = null;
     }
   }
 
@@ -211,7 +248,15 @@ class _EmailVerificationScreenState
   Future<void> _handleManualVerificationCheck() async {
     if (_isManuallyChecking) return;
 
+    // Wait for any automatic check to complete first
+    if (_verificationLock != null) {
+      await _verificationLock!.future;
+    }
+
     setState(() => _isManuallyChecking = true);
+
+    // Acquire lock to prevent concurrent auto-checks
+    _verificationLock = Completer<void>();
 
     try {
       final isVerified = await ref
@@ -250,6 +295,9 @@ class _EmailVerificationScreenState
         );
       }
     } finally {
+      // Release lock
+      _verificationLock?.complete();
+      _verificationLock = null;
       if (mounted) {
         setState(() => _isManuallyChecking = false);
       }
