@@ -28,11 +28,18 @@ class FirebaseAuthRepository implements AuthRepository {
       _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   /// Initialize Google Sign In (must be called before using Google auth).
-  Future<void> _ensureGoogleSignInInitialized() async {
-    if (_googleSignInInitialized) return;
+  /// Throws [AuthFailure] if initialization fails.
+  Future<AuthFailure?> _ensureGoogleSignInInitialized() async {
+    if (_googleSignInInitialized) return null;
 
-    await _googleSignIn.initialize();
-    _googleSignInInitialized = true;
+    try {
+      await _googleSignIn.initialize();
+      _googleSignInInitialized = true;
+      return null;
+    } catch (e) {
+      debugPrint('Google Sign-In initialization failed: $e');
+      return const AuthFailure(AuthError.googleSignInFailed);
+    }
   }
 
   /// Common helper for Google authentication flow.
@@ -40,7 +47,18 @@ class FirebaseAuthRepository implements AuthRepository {
   /// This extracts the common logic between signInWithGoogle and linkWithGoogle.
   Future<({OAuthCredential? credential, AuthFailure? failure})>
   _getGoogleCredential() async {
-    await _ensureGoogleSignInInitialized();
+    // Race condition guard: prevent concurrent authentication attempts
+    if (_authCompleter != null && !_authCompleter!.isCompleted) {
+      return (
+        credential: null,
+        failure: const AuthFailure(AuthError.googleSignInFailed),
+      );
+    }
+
+    final initError = await _ensureGoogleSignInInitialized();
+    if (initError != null) {
+      return (credential: null, failure: initError);
+    }
 
     // Check if authenticate is supported (not supported on web)
     if (!_googleSignIn.supportsAuthenticate()) {
@@ -134,9 +152,18 @@ class FirebaseAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    // Input validation (defense in depth - UI also validates)
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty || !_isValidEmail(trimmedEmail)) {
+      return const AuthFailure(AuthError.invalidEmail);
+    }
+    if (password.isEmpty) {
+      return const AuthFailure(AuthError.invalidCredential);
+    }
+
     try {
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
+        email: trimmedEmail,
         password: password,
       );
       return AuthSuccess(_mapUser(credential.user)!);
@@ -169,9 +196,18 @@ class FirebaseAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    // Input validation (defense in depth - UI also validates)
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isEmpty || !_isValidEmail(trimmedEmail)) {
+      return const AuthFailure(AuthError.invalidEmail);
+    }
+    if (password.length < 6) {
+      return const AuthFailure(AuthError.weakPassword);
+    }
+
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
+        email: trimmedEmail,
         password: password,
       );
       return AuthSuccess(_mapUser(credential.user)!);
@@ -237,10 +273,13 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> sendPasswordResetEmail(String email) async {
-    // Security: Enforce minimum response time to prevent timing attacks
-    // (email enumeration via response time differences)
+    // Security: Enforce minimum response time with random jitter to prevent
+    // timing attacks (email enumeration via response time differences)
     final stopwatch = Stopwatch()..start();
-    const minResponseTime = Duration(milliseconds: 500);
+    // Random delay between 800-1200ms for better security
+    final minResponseTime = Duration(
+      milliseconds: 800 + (DateTime.now().millisecond % 400),
+    );
 
     Future<void> enforceMinDelay() async {
       final elapsed = stopwatch.elapsed;
@@ -430,5 +469,11 @@ class FirebaseAuthRepository implements AuthRepository {
       'credential-already-in-use' => AuthError.credentialAlreadyInUse,
       _ => AuthError.unknown,
     };
+  }
+
+  /// Basic email format validation (defense in depth).
+  bool _isValidEmail(String email) {
+    // Simple regex - Firebase will do full validation
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 }

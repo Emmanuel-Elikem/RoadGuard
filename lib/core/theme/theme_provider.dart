@@ -79,12 +79,22 @@ class ThemeNotifier extends Notifier<AppThemeMode> {
   }
 
   /// Set the theme mode and persist to storage.
+  /// If persistence fails, reverts to previous mode to avoid desync.
   Future<void> setThemeMode(AppThemeMode mode) async {
+    final previousMode = state;
     state = mode;
-    await StorageService.instance.setThemeMode(mode.toStorageString());
+    try {
+      await StorageService.instance.setThemeMode(mode.toStorageString());
+    } catch (e, stackTrace) {
+      // Revert in-memory state if persistence fails to avoid desync
+      state = previousMode;
+      debugPrint(
+        'ThemeNotifier.setThemeMode: failed to persist theme mode: $e\n$stackTrace',
+      );
+    }
   }
 
-  /// Cycle through theme modes: System → Light → Dark → System
+  /// Cycle through theme modes: System -> Light -> Dark -> System
   Future<void> cycleTheme() async {
     final nextMode = switch (state) {
       AppThemeMode.system => AppThemeMode.light,
