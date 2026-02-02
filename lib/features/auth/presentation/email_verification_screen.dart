@@ -34,11 +34,13 @@ class _EmailVerificationScreenState
   // Async lock to prevent concurrent verification checks (race condition fix)
   Completer<void>? _verificationLock;
 
-  // Polling timeout: stop auto-checking after 5 minutes to save battery
+  // Exponential backoff polling to save battery:
+  // Starts at 3s, doubles each attempt, caps at 30s, stops after 5 minutes total
   static const _maxPollDuration = Duration(minutes: 5);
+  static const _initialPollInterval = Duration(seconds: 3);
+  static const _maxPollInterval = Duration(seconds: 30);
   DateTime? _pollStartTime;
-  int _pollAttempts = 0;
-  static const _maxPollAttempts = 100; // ~5 min at 3s intervals
+  Duration _currentPollInterval = _initialPollInterval;
 
   @override
   void initState() {
@@ -84,7 +86,7 @@ class _EmailVerificationScreenState
 
     // Reset poll tracking when returning from background
     _pollStartTime = DateTime.now();
-    _pollAttempts = 0;
+    _currentPollInterval = _initialPollInterval;
 
     // Acquire lock for this check
     _verificationLock = Completer<void>();
@@ -110,23 +112,43 @@ class _EmailVerificationScreenState
   void _startVerificationCheck() {
     // Cancel existing timer if any
     _checkTimer?.cancel();
-    // Initialize polling start time and attempts
+    // Initialize polling start time
     _pollStartTime ??= DateTime.now();
-    // Check every 3 seconds if user has verified
-    _checkTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      // Prevent overlapping async checks using async lock
-      if (_verificationLock != null) return;
+    // Schedule next check with current interval
+    _scheduleNextCheck();
+  }
 
-      // Stop polling after max duration/attempts to save battery
-      _pollAttempts++;
-      if (_pollAttempts > _maxPollAttempts ||
-          DateTime.now().difference(_pollStartTime!) > _maxPollDuration) {
-        _checkTimer?.cancel();
-        _checkTimer = null;
+  /// Schedules the next verification check using exponential backoff.
+  /// Interval: 3s → 6s → 12s → 24s → 30s (capped)
+  void _scheduleNextCheck() {
+    // Stop if max duration exceeded
+    if (DateTime.now().difference(_pollStartTime!) > _maxPollDuration) {
+      _checkTimer?.cancel();
+      _checkTimer = null;
+      return;
+    }
+
+    _checkTimer = Timer(_currentPollInterval, () async {
+      // Prevent overlapping async checks
+      if (_verificationLock != null) {
+        _scheduleNextCheck();
         return;
       }
 
-      _performVerificationCheck();
+      await _performVerificationCheck();
+
+      // Increase interval with exponential backoff (cap at max)
+      _currentPollInterval = Duration(
+        milliseconds: (_currentPollInterval.inMilliseconds * 2).clamp(
+          0,
+          _maxPollInterval.inMilliseconds,
+        ),
+      );
+
+      // Schedule next check if still mounted and not verified
+      if (mounted && _checkTimer != null) {
+        _scheduleNextCheck();
+      }
     });
   }
 
