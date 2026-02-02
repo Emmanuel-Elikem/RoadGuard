@@ -48,7 +48,7 @@ abstract final class AppDimensions {
   /// Calculated as: navbar height + spacing + extra buffer
   /// Ensures content is never hidden behind the floating navbar
   static const double floatingNavBarSafeArea =
-      floatingNavBarHeight + spacingSm + spacingMd; // 60 + 8 + 16 = 84
+      floatingNavBarHeight + spacingSm + spacingMd;
 
   // === SPEEDOMETER SIZES ===
   static const double speedometerSizeLg = 280.0;

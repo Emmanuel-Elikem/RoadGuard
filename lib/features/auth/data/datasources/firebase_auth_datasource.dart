@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -276,10 +277,9 @@ class FirebaseAuthRepository implements AuthRepository {
     // Security: Enforce minimum response time with random jitter to prevent
     // timing attacks (email enumeration via response time differences)
     final stopwatch = Stopwatch()..start();
-    // Random delay between 800-1200ms for better security
-    final minResponseTime = Duration(
-      milliseconds: 800 + (DateTime.now().millisecond % 400),
-    );
+    // Cryptographically secure random delay between 800-1200ms
+    final random = Random.secure();
+    final minResponseTime = Duration(milliseconds: 800 + random.nextInt(400));
 
     Future<void> enforceMinDelay() async {
       final elapsed = stopwatch.elapsed;

@@ -137,10 +137,10 @@ class _EmailVerificationScreenState
 
       await _performVerificationCheck();
 
-      // Increase interval with exponential backoff (cap at max)
+      // Increase interval with exponential backoff (3s → 6s → 12s → 24s → 30s cap)
       _currentPollInterval = Duration(
         milliseconds: (_currentPollInterval.inMilliseconds * 2).clamp(
-          0,
+          _initialPollInterval.inMilliseconds,
           _maxPollInterval.inMilliseconds,
         ),
       );
