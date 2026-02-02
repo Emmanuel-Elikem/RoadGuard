@@ -115,7 +115,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
         ),
         content: Text(
-          'No account exists with this email. Would you like to create a new account with these credentials?',
+          'No account exists with this email. Would you like to create a new account?',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -133,21 +133,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
           FilledButton(
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              final router = GoRouter.of(context);
-              navigator.pop();
-              // Sign up with the same credentials
-              final success = await ref
-                  .read(authNotifierProvider.notifier)
-                  .signUpWithEmail(
-                    _emailController.text,
-                    _passwordController.text,
-                  );
-              if (success && mounted) {
-                // New accounts need email verification
-                router.go(Routes.emailVerification);
-              }
+            onPressed: () {
+              Navigator.pop(context);
+              // Switch to sign-up mode with credentials preserved
+              setState(() => _isSignUp = true);
             },
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.primary,
@@ -155,7 +144,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
               ),
             ),
-            child: const Text('Create Account'),
+            child: const Text('Sign Up'),
           ),
         ],
       ),
@@ -192,10 +181,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     // Listen for errors and show snackbar
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next is AuthErrorState) {
-        // Don't show snackbar for user-not-found/invalid-credential (we handle it with dialog)
-        final isHandledWithDialog =
-            next.error == AuthError.userNotFound ||
-            next.error == AuthError.invalidCredential;
+        // Only skip snackbar for user-not-found which has its own dialog
+        // invalidCredential (wrong password) should show regular error snackbar
+        final isHandledWithDialog = next.error == AuthError.userNotFound;
         if (!isHandledWithDialog) {
           // Clear any existing snackbars first
           ScaffoldMessenger.of(context).clearSnackBars();
@@ -203,8 +191,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             SnackBar(
               content: Text(
                 next.message,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: colorScheme.onError,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -217,7 +205,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
               action: SnackBarAction(
                 label: 'OK',
-                textColor: Colors.white,
+                textColor: colorScheme.onError,
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 },
@@ -233,11 +221,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Use available height to fit content without scrolling
+            // Always allow scrolling - content height varies with keyboard
             return SingleChildScrollView(
-              physics: constraints.maxHeight < 600
-                  ? const AlwaysScrollableScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
@@ -248,6 +234,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Form(
                     key: _formKey,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: AppDimensions.spacingMd),

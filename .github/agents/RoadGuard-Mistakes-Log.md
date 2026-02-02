@@ -893,7 +893,7 @@ Did not consider users who may enter credentials on sign-in page expecting to cr
 ```dart
 // ✅ When sign-in fails with "user-not-found" error:
 // 1. Show dialog asking if user wants to create account
-// 2. If yes, automatically sign them up with entered credentials
+// 2. If yes, redirect to sign up screen with credential auto-filled
 // 3. Reduces friction, improves conversion
 ```
 
@@ -1067,6 +1067,71 @@ SnackBar(
 Added explicit `Colors.white` text color and dismiss action to error snackbar.
 
 **Related Files:**
+- `lib/features/auth/presentation/auth_screen.dart`
+
+---
+
+#### M029: Poor Color Contrast - Neon Green Background with White Text
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Accessibility/UX)
+**Date Found:** 2026-02-02
+**Detected By:** User
+
+**Symptom:**
+Success snackbar uses neon green (primary) background with white text - text is barely visible due to poor contrast ratio.
+
+**Cause:**
+Assumed white text works on all colored backgrounds. Neon green (#39FF14) is a bright, high-luminance color that doesn't provide sufficient contrast with white.
+
+**Prevention:**
+```dart
+// ❌ BAD - Hardcoded white on any colored background:
+SnackBar(
+  content: Text('Success!', style: TextStyle(color: Colors.white)),
+  backgroundColor: colorScheme.primary,  // Might be bright color!
+)
+
+// ✅ GOOD - Use theme's semantic color pairs:
+SnackBar(
+  content: Text(
+    'Success!',
+    style: TextStyle(
+      color: colorScheme.onPrimary,  // ← Theme knows the right contrast
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+  backgroundColor: colorScheme.primary,
+)
+
+// ✅ ALTERNATIVE - Use inverseSurface for neutral snackbars:
+SnackBar(
+  content: Text(
+    'Info message',
+    style: TextStyle(color: colorScheme.onInverseSurface),
+  ),
+  backgroundColor: colorScheme.inverseSurface,
+)
+```
+
+**Color Contrast Rules:**
+| Background | Use For Text |
+|------------|-------------|
+| `primary` | `onPrimary` |
+| `secondary` | `onSecondary` |
+| `error` | `onError` |
+| `surface` | `onSurface` |
+| `inverseSurface` | `onInverseSurface` |
+
+**WCAG Guidelines:**
+- Normal text: minimum 4.5:1 contrast ratio
+- Large text (18pt+): minimum 3:1 contrast ratio
+- Use tools like WebAIM Contrast Checker to verify
+
+**Fix:**
+Replaced `Colors.white` with `colorScheme.onPrimary` for snackbars using primary background.
+
+**Related Files:**
+- `lib/features/auth/presentation/email_verification_screen.dart`
 - `lib/features/auth/presentation/auth_screen.dart`
 
 ---

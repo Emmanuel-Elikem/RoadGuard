@@ -50,7 +50,13 @@ class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
       if (next is AuthErrorState) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.message),
+            content: Text(
+              next.message,
+              style: TextStyle(
+                color: colorScheme.onError,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             backgroundColor: colorScheme.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

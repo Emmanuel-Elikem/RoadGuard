@@ -7,6 +7,7 @@ library;
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../domain/entities/entities.dart';
@@ -139,6 +140,23 @@ class FirebaseAuthRepository implements AuthRepository {
     } on FirebaseAuthException catch (e) {
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
+      // Log unexpected error type for debugging
+      debugPrint('Auth error type: ${e.runtimeType}, message: $e');
+      // Try to extract error code from string for common Firebase errors
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('invalid-credential') ||
+          errorString.contains('wrong-password')) {
+        return const AuthFailure(AuthError.invalidCredential);
+      } else if (errorString.contains('user-not-found')) {
+        return const AuthFailure(AuthError.userNotFound);
+      } else if (errorString.contains('too-many-requests') ||
+          errorString.contains('blocked')) {
+        return const AuthFailure(AuthError.tooManyRequests);
+      } else if (errorString.contains('invalid-email')) {
+        return const AuthFailure(AuthError.invalidEmail);
+      } else if (errorString.contains('network')) {
+        return const AuthFailure(AuthError.networkError);
+      }
       return const AuthFailure(AuthError.unknown);
     }
   }
@@ -157,6 +175,21 @@ class FirebaseAuthRepository implements AuthRepository {
     } on FirebaseAuthException catch (e) {
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
+      // Log unexpected error type for debugging
+      debugPrint('Signup error type: ${e.runtimeType}, message: $e');
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('email-already-in-use')) {
+        return const AuthFailure(AuthError.emailAlreadyInUse);
+      } else if (errorString.contains('weak-password')) {
+        return const AuthFailure(AuthError.weakPassword);
+      } else if (errorString.contains('invalid-email')) {
+        return const AuthFailure(AuthError.invalidEmail);
+      } else if (errorString.contains('too-many-requests') ||
+          errorString.contains('blocked')) {
+        return const AuthFailure(AuthError.tooManyRequests);
+      } else if (errorString.contains('network')) {
+        return const AuthFailure(AuthError.networkError);
+      }
       return const AuthFailure(AuthError.unknown);
     }
   }
@@ -216,19 +249,35 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AuthResult> sendEmailVerification() async {
     try {
       final user = _auth.currentUser;
+      debugPrint('sendEmailVerification: currentUser = ${user?.email}');
       if (user == null) {
+        debugPrint('sendEmailVerification: ERROR - No user signed in');
         return const AuthFailure(AuthError.userNotFound);
       }
+      debugPrint(
+        'sendEmailVerification: emailVerified = ${user.emailVerified}',
+      );
       if (user.emailVerified) {
         // Already verified, return success with user
+        debugPrint('sendEmailVerification: Already verified, skipping');
         return AuthSuccess(_mapUser(user)!);
       }
+      debugPrint(
+        'sendEmailVerification: Calling Firebase sendEmailVerification...',
+      );
       await user.sendEmailVerification();
+      debugPrint(
+        'sendEmailVerification: SUCCESS - Email sent to ${user.email}',
+      );
       // Return specific result type for email verification sent
       return const EmailVerificationSent();
     } on FirebaseAuthException catch (e) {
+      debugPrint(
+        'sendEmailVerification: FirebaseAuthException - ${e.code}: ${e.message}',
+      );
       return AuthFailure(_mapFirebaseError(e));
     } catch (e) {
+      debugPrint('sendEmailVerification: Unknown error - $e');
       return const AuthFailure(AuthError.unknown);
     }
   }

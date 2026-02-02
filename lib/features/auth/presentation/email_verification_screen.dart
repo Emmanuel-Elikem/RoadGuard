@@ -29,7 +29,8 @@ class _EmailVerificationScreenState
   bool _isResending = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
-  bool _isCheckingVerification = false; // Prevent overlapping async checks
+  bool _isCheckingVerification = false;
+  bool _isManuallyChecking = false; // For manual "I've verified" button
 
   @override
   void initState() {
@@ -38,8 +39,10 @@ class _EmailVerificationScreenState
     WidgetsBinding.instance.addObserver(this);
     // Start periodic check for email verification
     _startVerificationCheck();
-    // Send verification email on first load
-    _sendVerificationEmail();
+    // Send verification email after frame is built (avoids provider modification during build)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendVerificationEmail();
+    });
   }
 
   @override
@@ -134,9 +137,12 @@ class _EmailVerificationScreenState
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
+            content: Text(
               'Verification email sent! Check your inbox.',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
@@ -150,9 +156,12 @@ class _EmailVerificationScreenState
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
+            content: Text(
               'Failed to send verification email. Please try again.',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onError,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
@@ -184,6 +193,49 @@ class _EmailVerificationScreenState
     await ref.read(authNotifierProvider.notifier).signOut();
     if (mounted) {
       context.go(Routes.auth);
+    }
+  }
+
+  /// Manual verification check when user clicks "I've verified" button
+  Future<void> _handleManualVerificationCheck() async {
+    if (_isManuallyChecking) return;
+
+    setState(() => _isManuallyChecking = true);
+
+    try {
+      final isVerified = await ref
+          .read(authNotifierProvider.notifier)
+          .checkEmailVerified();
+
+      if (!mounted) return;
+
+      if (isVerified) {
+        _checkTimer?.cancel();
+        context.go(Routes.home);
+      } else {
+        // Show feedback that email is not verified yet
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Email not verified yet. Please check your inbox and click the link.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onError,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isManuallyChecking = false);
+      }
     }
   }
 
@@ -301,14 +353,51 @@ class _EmailVerificationScreenState
                     ),
                     const SizedBox(height: AppDimensions.spacingSm),
                     _InstructionRow(
-                      icon: LucideIcons.refreshCw,
-                      text: 'This page will auto-update',
+                      icon: LucideIcons.checkCircle,
+                      text: 'Tap "I\'ve Verified" below',
                     ),
                   ],
                 ),
               ),
 
               const SizedBox(height: AppDimensions.spacingXl),
+
+              // Primary action: "I've Verified My Email" button
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _isManuallyChecking
+                      ? null
+                      : _handleManualVerificationCheck,
+                  icon: _isManuallyChecking
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colorScheme.onPrimary,
+                          ),
+                        )
+                      : const Icon(LucideIcons.checkCircle, size: 20),
+                  label: Text(
+                    _isManuallyChecking
+                        ? 'Checking...'
+                        : 'I\'ve Verified My Email',
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusMd,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AppDimensions.spacingMd),
 
               // Resend button
               SizedBox(
