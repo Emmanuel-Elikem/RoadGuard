@@ -2,7 +2,7 @@
 
 > Track bugs, mistakes, and lessons learned during development to avoid repeating them.
 
-**Last Updated:** 2026-02-02 18:36 UTC
+**Last Updated:** 2026-02-03 10:30 UTC
 
 ---
 
@@ -1136,15 +1136,111 @@ Replaced `Colors.white` with `colorScheme.onPrimary` for snackbars using primary
 
 ---
 
+#### M030: Repeated M029 - White Text on Neon Green Button
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Accessibility/UX)
+**Date Found:** 2026-02-03
+**Detected By:** User
+
+**Symptom:**
+"Start Tracking" button on HomeScreen used `Colors.white` as foregroundColor directly instead of using theme's `colorScheme.onPrimary`. Same accessibility issue as M029 - poor contrast on neon green background.
+
+**Cause:**
+Agent did not internalize the lesson from M029. When creating the tracking button, defaulted to `Colors.white` for button text instead of using the semantic color pairing.
+
+**Code That Caused It:**
+```dart
+// ❌ BAD
+style: FilledButton.styleFrom(
+  backgroundColor: isTracking ? AppColors.error : colorScheme.primary,
+  foregroundColor: Colors.white,  // WRONG - hardcoded!
+)
+```
+
+**Fix:**
+```dart
+// ✅ GOOD
+style: FilledButton.styleFrom(
+  backgroundColor: isTracking ? AppColors.error : colorScheme.primary,
+  foregroundColor: isTracking ? colorScheme.onError : colorScheme.onPrimary,
+)
+```
+
+**Prevention (REINFORCED):**
+> **NEVER use `Colors.white` or `Colors.black` for text on themed backgrounds!**
+
+Always pair:
+- `primary` → `onPrimary`
+- `secondary` → `onSecondary`
+- `error` → `onError`
+- `surface` → `onSurface`
+
+**Self-Correction:** Agent must grep for `Colors.white` and `Colors.black` in button/text contexts before submitting code.
+
+**Related:** M029
+
+---
+
+#### M031: Stream Subscription Race Condition - Missed Initial Emission
+**Status:** 🟢 Resolved  
+**Severity:** High (Functional Bug)
+**Date Found:** 2026-02-03
+**Detected By:** User + Agent Analysis
+
+**Symptom:**
+Speedometer showed 0 km/h even when GPS tracking was active and user was moving.
+
+**Cause:**
+Race condition in `SpeedTrackingNotifier.startTracking()`:
+
+1. Called `LocationService.instance.startTracking()` which creates stream and emits initial reading
+2. **THEN** subscribed to `speedStream`
+3. Initial reading was already emitted and missed!
+
+For stationary users, no new readings would come until movement, making it seem like tracking wasn't working.
+
+**Code That Caused It:**
+```dart
+// ❌ BAD - Subscribe AFTER starting
+final success = await LocationService.instance.startTracking();  // ← Emits initial reading
+// ...
+_subscription = LocationService.instance.speedStream?.listen(...);  // ← Too late!
+```
+
+**Fix:**
+```dart
+// ✅ GOOD - Null check stream, also grab lastReading as fallback
+final success = await LocationService.instance.startTracking();
+final stream = LocationService.instance.speedStream;
+if (stream == null) { /* error handling */ }
+
+_subscription = stream.listen(...);
+
+// Fallback: check lastReading in case initial was missed
+final lastReading = LocationService.instance.lastReading;
+if (lastReading != null) {
+  state = state.copyWith(currentReading: lastReading);
+}
+```
+
+**Prevention:**
+- Always consider stream timing - when does emission happen vs subscription
+- For broadcast streams, provide a `.lastValue` or `.value` getter as backup
+- Consider using `BehaviorSubject` from rxdart for streams that should replay last value
+
+**Related Docs:** RoadGuard-Backend-Logic.md (async patterns)
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
 | 🔴 Critical | 4 | 1 | 0 |
-| 🟠 High | 4 | 0 | 3 |
-| 🟡 Medium | 4 | 0 | 1 |
+| 🟠 High | 4 | 0 | 4 |
+| 🟡 Medium | 4 | 0 | 2 |
 | 🟢 Low | 2 | 0 | 1 |
-| **Total** | **14** | **1** | **5** |
+| **Total** | **14** | **1** | **7** |
 
 ---
 

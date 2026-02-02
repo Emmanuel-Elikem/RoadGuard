@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/services/location_service.dart';
@@ -139,6 +140,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     state = state.copyWith(state: TrackingState.starting);
 
+    // Start tracking first - this creates the stream controller
     final success = await LocationService.instance.startTracking();
 
     if (!success) {
@@ -149,21 +151,50 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       return;
     }
 
+    // Get stream reference
+    final stream = LocationService.instance.speedStream;
+    if (stream == null) {
+      debugPrint('SpeedTrackingNotifier: Stream is null after startTracking!');
+      state = state.copyWith(
+        state: TrackingState.error,
+        errorMessage: 'GPS stream not available',
+      );
+      return;
+    }
+
+    debugPrint('SpeedTrackingNotifier: Subscribing to speed stream');
+
     // Subscribe to speed updates
-    _subscription = LocationService.instance.speedStream?.listen(
+    _subscription = stream.listen(
       (reading) {
+        debugPrint(
+          'SpeedTrackingNotifier: Got reading ${reading.speedKmh.toStringAsFixed(1)} km/h',
+        );
         state = state.copyWith(
           state: TrackingState.tracking,
           currentReading: reading,
         );
       },
       onError: (error) {
+        debugPrint('SpeedTrackingNotifier: Stream error: $error');
         state = state.copyWith(
           state: TrackingState.error,
           errorMessage: error.toString(),
         );
       },
     );
+
+    // Also check for last reading in case we missed the initial emission
+    final lastReading = LocationService.instance.lastReading;
+    if (lastReading != null) {
+      debugPrint(
+        'SpeedTrackingNotifier: Using lastReading ${lastReading.speedKmh.toStringAsFixed(1)} km/h',
+      );
+      state = state.copyWith(
+        state: TrackingState.tracking,
+        currentReading: lastReading,
+      );
+    }
 
     state = state.copyWith(state: TrackingState.tracking);
   }
