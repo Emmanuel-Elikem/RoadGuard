@@ -5,6 +5,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/firebase_auth_datasource.dart';
@@ -176,12 +177,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Check if email is verified and reload user state.
   Future<bool> checkEmailVerified() async {
+    debugPrint('checkEmailVerified: Starting check...');
     final isVerified = await _repo.isEmailVerified();
+    debugPrint('checkEmailVerified: isVerified = $isVerified');
     if (isVerified) {
       // Reload to get updated user
       final user = _repo.currentUser;
+      debugPrint('checkEmailVerified: Got user = ${user?.email}, emailVerified = ${user?.emailVerified}');
       if (user != null) {
         state = AuthAuthenticated(user);
+        debugPrint('checkEmailVerified: Set state to AuthAuthenticated');
       }
     }
     return isVerified;

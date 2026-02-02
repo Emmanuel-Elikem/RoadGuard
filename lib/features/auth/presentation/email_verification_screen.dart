@@ -74,7 +74,12 @@ class _EmailVerificationScreenState
         .checkEmailVerified();
     if (isVerified && mounted) {
       _checkTimer?.cancel();
-      context.go(Routes.home);
+      // Invalidate authStateProvider to force router to re-check with fresh user data
+      ref.invalidate(authStateProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (mounted) {
+        context.go(Routes.home);
+      }
     }
   }
 
@@ -102,7 +107,13 @@ class _EmailVerificationScreenState
           .checkEmailVerified();
       if (isVerified && mounted) {
         _checkTimer?.cancel();
-        context.go(Routes.home);
+        // Invalidate authStateProvider to force router to re-check with fresh user data
+        ref.invalidate(authStateProvider);
+        // Small delay to let the provider refresh
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          context.go(Routes.home);
+        }
       }
     } finally {
       // Only update flag if widget is still mounted
@@ -211,7 +222,13 @@ class _EmailVerificationScreenState
 
       if (isVerified) {
         _checkTimer?.cancel();
-        context.go(Routes.home);
+        // Invalidate authStateProvider to force router to re-check with fresh user data
+        ref.invalidate(authStateProvider);
+        // Small delay to let the provider refresh
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          context.go(Routes.home);
+        }
       } else {
         // Show feedback that email is not verified yet
         ScaffoldMessenger.of(context).clearSnackBars();

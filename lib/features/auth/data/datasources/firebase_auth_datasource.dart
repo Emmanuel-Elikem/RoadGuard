@@ -285,9 +285,16 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<bool> isEmailVerified() async {
     final user = _auth.currentUser;
-    if (user == null) return false;
+    debugPrint('isEmailVerified: user = ${user?.email}');
+    if (user == null) {
+      debugPrint('isEmailVerified: No user, returning false');
+      return false;
+    }
+    debugPrint('isEmailVerified: Before reload, emailVerified = ${user.emailVerified}');
     await user.reload();
-    return _auth.currentUser?.emailVerified ?? false;
+    final reloadedUser = _auth.currentUser;
+    debugPrint('isEmailVerified: After reload, emailVerified = ${reloadedUser?.emailVerified}');
+    return reloadedUser?.emailVerified ?? false;
   }
 
   @override
