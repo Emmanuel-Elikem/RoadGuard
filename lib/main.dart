@@ -1,31 +1,45 @@
 /// RoadGuard - Your Digital Copilot for Road Safety
 library;
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/router/router.dart';
 import 'core/theme/theme.dart';
+import 'error_app.dart';
+import 'firebase_options.dart';
+import 'shared/services/storage_service.dart';
 
-void main() {
+void main() async {
+  // CRITICAL: This must be called before any async operations
+  // It initializes Flutter's binding with the native platform
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock to portrait mode
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  try {
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Configure system UI
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: AppColors.background,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
+    // Initialize local storage (Hive)
+    // MUST happen before runApp() so storage is ready
+    await StorageService.initialize();
+
+    // Allow all orientations - app is for PASSENGERS, not drivers
+    // Passengers may use the phone in any orientation
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  } catch (e) {
+    // If initialization fails, show error screen
+    runApp(ErrorApp(error: e));
+    return;
+  }
 
   runApp(const ProviderScope(child: RoadGuardApp()));
 }
@@ -36,108 +50,51 @@ class RoadGuardApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp(
+    final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
+    // Update system UI based on theme
+    _updateSystemUI(themeMode, context);
+
+    return MaterialApp.router(
       title: 'RoadGuard',
       debugShowCheckedModeBanner: false,
-      theme: createAppTheme(),
-      home: const _PlaceholderHomeScreen(),
+
+      // Light theme - "The Soft Look"
+      theme: createLightTheme(),
+
+      // Dark theme - "The Cockpit"
+      darkTheme: createDarkTheme(),
+
+      // Which theme to use (system/light/dark)
+      themeMode: themeMode,
+
+      routerConfig: router,
     );
   }
-}
 
-/// Temporary placeholder screen - will be replaced with proper routing.
-class _PlaceholderHomeScreen extends StatelessWidget {
-  const _PlaceholderHomeScreen();
+  /// Configure system UI overlay style based on current theme.
+  void _updateSystemUI(ThemeMode themeMode, BuildContext context) {
+    // Determine if we're actually in dark mode
+    final brightness = switch (themeMode) {
+      ThemeMode.dark => Brightness.dark,
+      ThemeMode.light => Brightness.light,
+      ThemeMode.system => MediaQuery.platformBrightnessOf(context),
+    };
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.spacingLg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // App icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryMuted,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                  border: Border.all(color: AppColors.primary, width: 2),
-                ),
-                child: const Icon(
-                  Icons.shield,
-                  size: 64,
-                  color: AppColors.primary,
-                ),
-              ),
+    final isDark = brightness == Brightness.dark;
 
-              const SizedBox(height: AppDimensions.spacingXl),
-
-              Text(
-                'RoadGuard',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-
-              const SizedBox(height: AppDimensions.spacingSm),
-
-              Text(
-                'Your Digital Copilot',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-
-              const SizedBox(height: AppDimensions.spacingXxl),
-
-              // Status indicator
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppDimensions.spacingMd,
-                  vertical: AppDimensions.spacingSm,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-                  border: Border.all(
-                    color: AppColors.success.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AppDimensions.spacingSm),
-                    Text(
-                      'Project Setup Complete',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppDimensions.spacingXl),
-
-              Text(
-                'v0.1.0 • Week 1 Foundation',
-                style: AppTypography.bodySmall,
-              ),
-            ],
-          ),
-        ),
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: isDark
+            ? AppColorsDark.background
+            : AppColorsLight.background,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
     );
   }

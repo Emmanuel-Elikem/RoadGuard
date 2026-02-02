@@ -12,6 +12,8 @@
 - Vehicle history search
 - Offline-first architecture
 
+**⚠️ Target User:** **PASSENGERS** (not drivers) - people riding in taxis, trotros, or other vehicles who want to monitor speed and rate driver behavior. UI should support both portrait and landscape orientations since passengers aren't operating the vehicle.
+
 ---
 
 ## Tech Stack

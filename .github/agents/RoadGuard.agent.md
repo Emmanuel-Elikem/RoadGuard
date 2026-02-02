@@ -53,9 +53,12 @@ tools:
 |-----------|-------|
 | **App Name** | RoadGuard (configurable in `app_config.dart`) |
 | **Purpose** | Road safety app for Ghana - speed tracking, driver rating, vehicle search |
+| **Target User** | **PASSENGERS** (not drivers) - people riding in vehicles who want to monitor safety |
 | **Platform** | Flutter (Android-first, iOS-ready) |
 | **Design** | "Digital Copilot" - Neo-Modern Bento UI |
 | **Architecture** | Clean Architecture + Offline-First |
+
+> **⚠️ IMPORTANT:** This app is designed for **PASSENGERS**, not drivers. The user observes vehicle speed and rates driver behavior while riding in taxis, trotros, or other vehicles. UI should be flexible (portrait + landscape) since passengers aren't operating a vehicle.
 
 ---
 

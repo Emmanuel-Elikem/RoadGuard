@@ -65,6 +65,20 @@ dependencies:
   # Usage: Gap(16) instead of SizedBox(height: 16)
   gap: ^3.0.1
 
+  # ==========================================
+  # LOCAL STORAGE
+  # ==========================================
+  # hive_flutter: Fast, lightweight key-value database
+  # WHY Hive over SharedPreferences/SQLite:
+  # - Much faster than SharedPreferences
+  # - Simpler than SQLite for key-value storage
+  # - Works offline (critical for our app)
+  # - Supports complex objects with adapters
+  hive_flutter: ^1.1.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  google_sign_in: ^7.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
