@@ -126,16 +126,16 @@ class LocationService {
 
   /// GPS settings optimized for vehicle speed tracking.
   static const LocationSettings _locationSettings = LocationSettings(
-    accuracy: LocationAccuracy.bestForNavigation,
+    accuracy: LocationAccuracy.high,
     distanceFilter: 0, // Report all movements
   );
 
-  /// Android-specific settings for better control.
+  /// Android-specific settings for real-time speed tracking.
   static AndroidSettings get _androidSettings => AndroidSettings(
-    accuracy: LocationAccuracy.bestForNavigation,
+    accuracy: LocationAccuracy.high,
     distanceFilter: 0,
-    intervalDuration: const Duration(seconds: 1), // Request 1 Hz updates
-    forceLocationManager: false, // Use FusedLocationProvider
+    intervalDuration: const Duration(milliseconds: 500), // 2 Hz for smoother updates
+    forceLocationManager: false, // Use FusedLocationProvider for best results
     foregroundNotificationConfig: const ForegroundNotificationConfig(
       notificationTitle: 'RoadGuard Tracking',
       notificationText: 'Monitoring your speed for safety',

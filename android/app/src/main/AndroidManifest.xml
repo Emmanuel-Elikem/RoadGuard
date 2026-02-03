@@ -7,6 +7,8 @@
     <!-- Foreground service for continuous tracking -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Wake lock to keep GPS active during tracking -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     
     <application
         android:label="road_guard"
