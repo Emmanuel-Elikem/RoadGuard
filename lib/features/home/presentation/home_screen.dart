@@ -282,23 +282,34 @@ class _TrackingView extends ConsumerWidget {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: colorScheme.onPrimary,
+                      color: isTracking ? colorScheme.onError : colorScheme.onPrimary,
                     ),
                   )
-                : Icon(isTracking ? LucideIcons.square : LucideIcons.play),
+                : Icon(
+                    isTracking ? LucideIcons.square : LucideIcons.play,
+                    color: isTracking
+                        ? colorScheme.onError
+                        : colorScheme.onPrimary,
+                  ),
             label: Text(
               isTracking
                   ? 'Stop Tracking'
                   : trackingState.state == TrackingState.starting
                   ? 'Starting...'
                   : 'Start Tracking',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isTracking
+                    ? colorScheme.onError
+                    : colorScheme.onPrimary,
+              ),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: isTracking
                   ? AppColors.error
                   : colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: isTracking ? colorScheme.onError : colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
               ),

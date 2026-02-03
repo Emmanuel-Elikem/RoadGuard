@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 /// Represents the current state of location permissions.
 enum LocationPermissionState {
@@ -95,7 +95,7 @@ class PermissionService {
     }
 
     // Check current permission status
-    final status = await Permission.location.status;
+    final status = await ph.Permission.location.status;
     debugPrint('PermissionService: Current status = $status');
 
     return _mapPermissionStatus(status);
@@ -120,7 +120,7 @@ class PermissionService {
 
     // Request permission
     debugPrint('PermissionService: Requesting location permission');
-    final status = await Permission.location.request();
+    final status = await ph.Permission.location.request();
     debugPrint('PermissionService: Request result = $status');
 
     return _mapPermissionStatus(status);
@@ -141,7 +141,7 @@ class PermissionService {
 
     // Request "always" permission
     debugPrint('PermissionService: Requesting background location');
-    final status = await Permission.locationAlways.request();
+    final status = await ph.Permission.locationAlways.request();
     debugPrint('PermissionService: Background request result = $status');
 
     // Re-check full state
@@ -151,7 +151,7 @@ class PermissionService {
   /// Open app settings so user can manually enable permissions.
   Future<bool> openAppSettings() async {
     debugPrint('PermissionService: Opening app settings');
-    return await openAppSettings();
+    return await ph.openAppSettings();
   }
 
   /// Open device location settings.
@@ -161,15 +161,15 @@ class PermissionService {
   }
 
   /// Map permission_handler status to our state enum.
-  LocationPermissionState _mapPermissionStatus(PermissionStatus status) {
+  LocationPermissionState _mapPermissionStatus(ph.PermissionStatus status) {
     return switch (status) {
-      PermissionStatus.granted => LocationPermissionState.grantedWhileInUse,
-      PermissionStatus.limited => LocationPermissionState.grantedWhileInUse,
-      PermissionStatus.denied => LocationPermissionState.denied,
-      PermissionStatus.restricted => LocationPermissionState.deniedForever,
-      PermissionStatus.permanentlyDenied =>
+      ph.PermissionStatus.granted => LocationPermissionState.grantedWhileInUse,
+      ph.PermissionStatus.limited => LocationPermissionState.grantedWhileInUse,
+      ph.PermissionStatus.denied => LocationPermissionState.denied,
+      ph.PermissionStatus.restricted => LocationPermissionState.deniedForever,
+      ph.PermissionStatus.permanentlyDenied =>
         LocationPermissionState.deniedForever,
-      PermissionStatus.provisional => LocationPermissionState.grantedWhileInUse,
+      ph.PermissionStatus.provisional => LocationPermissionState.grantedWhileInUse,
     };
   }
 }

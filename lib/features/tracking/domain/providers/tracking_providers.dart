@@ -127,8 +127,11 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
   SpeedTrackingState build() {
     // Clean up when provider is disposed
     ref.onDispose(() {
-      _subscription?.cancel();
-      LocationService.instance.stopTracking();
+      final subscription = _subscription;
+      if (subscription != null) {
+        unawaited(subscription.cancel());
+      }
+      unawaited(LocationService.instance.stopTracking());
     });
 
     return const SpeedTrackingState();
