@@ -194,6 +194,7 @@ class _PermissionRequired extends ConsumerWidget {
                   permission == LocationPermissionState.deniedForever
                       ? LucideIcons.settings
                       : LucideIcons.mapPin,
+                  color: colorScheme.onPrimary,
                 ),
                 label: Text(
                   permission == LocationPermissionState.deniedForever
@@ -201,6 +202,10 @@ class _PermissionRequired extends ConsumerWidget {
                       : permission == LocationPermissionState.serviceDisabled
                       ? 'Enable Location'
                       : 'Grant Permission',
+                  style: TextStyle(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,

@@ -94,7 +94,14 @@ class PermissionService {
       return LocationPermissionState.serviceDisabled;
     }
 
-    // Check current permission status
+    // Check if "always" permission is granted (background tracking)
+    final alwaysStatus = await ph.Permission.locationAlways.status;
+    if (alwaysStatus == ph.PermissionStatus.granted) {
+      debugPrint('PermissionService: Always permission granted');
+      return LocationPermissionState.grantedAlways;
+    }
+
+    // Check current permission status (while in use)
     final status = await ph.Permission.location.status;
     debugPrint('PermissionService: Current status = $status');
 
@@ -169,7 +176,8 @@ class PermissionService {
       ph.PermissionStatus.restricted => LocationPermissionState.deniedForever,
       ph.PermissionStatus.permanentlyDenied =>
         LocationPermissionState.deniedForever,
-      ph.PermissionStatus.provisional => LocationPermissionState.grantedWhileInUse,
+      ph.PermissionStatus.provisional =>
+        LocationPermissionState.grantedWhileInUse,
     };
   }
 }

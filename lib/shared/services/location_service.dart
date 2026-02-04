@@ -134,7 +134,9 @@ class LocationService {
   static AndroidSettings get _androidSettings => AndroidSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 0,
-    intervalDuration: const Duration(milliseconds: 500), // 2 Hz for smoother updates
+    intervalDuration: const Duration(
+      milliseconds: 500,
+    ), // 2 Hz for smoother updates
     forceLocationManager: false, // Use FusedLocationProvider for best results
     foregroundNotificationConfig: const ForegroundNotificationConfig(
       notificationTitle: 'RoadGuard Tracking',

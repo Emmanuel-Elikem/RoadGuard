@@ -51,6 +51,10 @@
 	<string>RoadGuard needs background location access to continue tracking speed during your trip, even when the app is minimized.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>RoadGuard needs background location access to continue tracking speed during your trip.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -114,7 +114,7 @@ class SpeedTrackingState {
     return SpeedTrackingState(
       state: state ?? this.state,
       currentReading: currentReading ?? this.currentReading,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }
