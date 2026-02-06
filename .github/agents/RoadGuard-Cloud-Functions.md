@@ -1,4 +1,4 @@
-# RoadGuard Cloud Functions
+-# RoadGuard Cloud Functions
 
 > **PURPOSE:** Firebase Cloud Functions for server-side operations. Deploy these to Firebase Functions.
 

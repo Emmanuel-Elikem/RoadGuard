@@ -41,17 +41,17 @@ ThemeData createDarkTheme() {
     scaffoldBackgroundColor: AppColorsDark.background,
 
     // === APP BAR ===
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColorsDark.background,
       foregroundColor: AppColorsDark.textPrimary,
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTypography.titleLarge,
-      iconTheme: IconThemeData(
+      iconTheme: const IconThemeData(
         color: AppColorsDark.textPrimary,
         size: AppDimensions.iconMd,
       ),
-      systemOverlayStyle: SystemUiOverlayStyle(
+      systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
@@ -152,7 +152,7 @@ ThemeData createDarkTheme() {
     ),
 
     // === BOTTOM NAVIGATION ===
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColorsDark.surface,
       selectedItemColor: AppColorsDark.primary,
       unselectedItemColor: AppColorsDark.textTertiary,
@@ -218,7 +218,7 @@ ThemeData createDarkTheme() {
     ),
 
     // === TEXT THEME ===
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       displayLarge: AppTypography.displayLarge,
       displayMedium: AppTypography.displayMedium,
       displaySmall: AppTypography.displaySmall,
@@ -269,17 +269,17 @@ ThemeData createLightTheme() {
     scaffoldBackgroundColor: AppColorsLight.background,
 
     // === APP BAR ===
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColorsLight.background,
       foregroundColor: AppColorsLight.textPrimary,
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTypography.titleLargeDark,
-      iconTheme: IconThemeData(
+      iconTheme: const IconThemeData(
         color: AppColorsLight.textPrimary,
         size: AppDimensions.iconMd,
       ),
-      systemOverlayStyle: SystemUiOverlayStyle(
+      systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
@@ -381,7 +381,7 @@ ThemeData createLightTheme() {
     ),
 
     // === BOTTOM NAVIGATION ===
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColorsLight.surface,
       selectedItemColor: AppColorsLight.primary,
       unselectedItemColor: AppColorsLight.textTertiary,
@@ -447,7 +447,7 @@ ThemeData createLightTheme() {
     ),
 
     // === TEXT THEME (with dark colors for light mode) ===
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       displayLarge: AppTypography.displayLargeDark,
       displayMedium: AppTypography.displayMediumDark,
       displaySmall: AppTypography.displaySmallDark,
