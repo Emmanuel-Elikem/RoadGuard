@@ -1,24 +1,29 @@
 /// RoadGuard Typography System - Single source of truth for all text styles.
 ///
 /// Uses Google Fonts for consistent typography across all devices:
-/// - Inter: Primary UI font (clean, modern, highly readable)
+/// - Poppins: Primary UI font (geometric, modern, friendly)
 /// - JetBrains Mono: Monospace for numbers/speedometer
-/// - Poppins: Alternative for softer headlines (optional)
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// Text styles using Inter (UI) and JetBrains Mono (numbers).
+/// Text styles using Poppins (UI) and JetBrains Mono (numbers).
+///
+/// Poppins weights used:
+/// - w900: Black (hero headlines)
+/// - w700: Bold (headlines)
+/// - w600: SemiBold (titles)
+/// - w500: Medium (labels, buttons)
+/// - w400: Regular (body text)
 ///
 /// Default styles use light text (white) for dark mode.
 /// *Dark suffix styles use dark text for light mode.
 abstract final class AppTypography {
   // Font family getters using Google Fonts
-  static String get fontFamily => GoogleFonts.inter().fontFamily!;
+  static String get fontFamily => GoogleFonts.poppins().fontFamily!;
   static String get monoFontFamily => GoogleFonts.jetBrainsMono().fontFamily!;
-  static String get altFontFamily => GoogleFonts.poppins().fontFamily!;
 
   // ============================================================
   // DARK MODE TEXT (Light colored text on dark backgrounds)
@@ -50,7 +55,7 @@ abstract final class AppTypography {
       );
 
   // === HEADLINES (Section headers) ===
-  static TextStyle get headlineLarge => GoogleFonts.inter(
+  static TextStyle get headlineLarge => GoogleFonts.poppins(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
@@ -58,7 +63,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get headlineMedium => GoogleFonts.inter(
+  static TextStyle get headlineMedium => GoogleFonts.poppins(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
@@ -66,7 +71,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get headlineSmall => GoogleFonts.inter(
+  static TextStyle get headlineSmall => GoogleFonts.poppins(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
@@ -75,7 +80,7 @@ abstract final class AppTypography {
       );
 
   // === TITLES (Card/item titles) ===
-  static TextStyle get titleLarge => GoogleFonts.inter(
+  static TextStyle get titleLarge => GoogleFonts.poppins(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -83,7 +88,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get titleMedium => GoogleFonts.inter(
+  static TextStyle get titleMedium => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -91,7 +96,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get titleSmall => GoogleFonts.inter(
+  static TextStyle get titleSmall => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
@@ -100,7 +105,7 @@ abstract final class AppTypography {
       );
 
   // === BODY (Content text) ===
-  static TextStyle get bodyLarge => GoogleFonts.inter(
+  static TextStyle get bodyLarge => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.1,
@@ -108,7 +113,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textSecondary,
       );
 
-  static TextStyle get bodyMedium => GoogleFonts.inter(
+  static TextStyle get bodyMedium => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.1,
@@ -116,7 +121,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textSecondary,
       );
 
-  static TextStyle get bodySmall => GoogleFonts.inter(
+  static TextStyle get bodySmall => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.2,
@@ -125,7 +130,7 @@ abstract final class AppTypography {
       );
 
   // === LABELS (Buttons, chips) ===
-  static TextStyle get labelLarge => GoogleFonts.inter(
+  static TextStyle get labelLarge => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -133,7 +138,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get labelMedium => GoogleFonts.inter(
+  static TextStyle get labelMedium => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -141,7 +146,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get labelSmall => GoogleFonts.inter(
+  static TextStyle get labelSmall => GoogleFonts.poppins(
         fontSize: 10,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -150,7 +155,7 @@ abstract final class AppTypography {
       );
 
   // === SPECIAL ===
-  static TextStyle get speedUnit => GoogleFonts.inter(
+  static TextStyle get speedUnit => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 1,
@@ -166,7 +171,7 @@ abstract final class AppTypography {
         color: AppColorsDark.textPrimary,
       );
 
-  static TextStyle get errorText => GoogleFonts.inter(
+  static TextStyle get errorText => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.2,
@@ -204,7 +209,7 @@ abstract final class AppTypography {
       );
 
   // === HEADLINES ===
-  static TextStyle get headlineLargeDark => GoogleFonts.inter(
+  static TextStyle get headlineLargeDark => GoogleFonts.poppins(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
@@ -212,7 +217,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get headlineMediumDark => GoogleFonts.inter(
+  static TextStyle get headlineMediumDark => GoogleFonts.poppins(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
@@ -220,7 +225,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get headlineSmallDark => GoogleFonts.inter(
+  static TextStyle get headlineSmallDark => GoogleFonts.poppins(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
@@ -229,7 +234,7 @@ abstract final class AppTypography {
       );
 
   // === TITLES ===
-  static TextStyle get titleLargeDark => GoogleFonts.inter(
+  static TextStyle get titleLargeDark => GoogleFonts.poppins(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -237,7 +242,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get titleMediumDark => GoogleFonts.inter(
+  static TextStyle get titleMediumDark => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -245,7 +250,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get titleSmallDark => GoogleFonts.inter(
+  static TextStyle get titleSmallDark => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
@@ -254,7 +259,7 @@ abstract final class AppTypography {
       );
 
   // === BODY ===
-  static TextStyle get bodyLargeDark => GoogleFonts.inter(
+  static TextStyle get bodyLargeDark => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.1,
@@ -262,7 +267,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textSecondary,
       );
 
-  static TextStyle get bodyMediumDark => GoogleFonts.inter(
+  static TextStyle get bodyMediumDark => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.1,
@@ -270,7 +275,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textSecondary,
       );
 
-  static TextStyle get bodySmallDark => GoogleFonts.inter(
+  static TextStyle get bodySmallDark => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.2,
@@ -279,7 +284,7 @@ abstract final class AppTypography {
       );
 
   // === LABELS ===
-  static TextStyle get labelLargeDark => GoogleFonts.inter(
+  static TextStyle get labelLargeDark => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -287,7 +292,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get labelMediumDark => GoogleFonts.inter(
+  static TextStyle get labelMediumDark => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -295,7 +300,7 @@ abstract final class AppTypography {
         color: AppColorsLight.textPrimary,
       );
 
-  static TextStyle get labelSmallDark => GoogleFonts.inter(
+  static TextStyle get labelSmallDark => GoogleFonts.poppins(
         fontSize: 10,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
