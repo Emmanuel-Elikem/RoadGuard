@@ -6,6 +6,11 @@ description: Create PR and request GitHub Copilot review
 
 Follow these steps to create a PR with automated Copilot review.
 
+> **⚠️ ALWAYS analyze Copilot comments before implementing!**  
+> Not all suggestions should be fixed immediately. Categorize as:
+> - ✅ **Implement**: Easy fixes, real bugs, clean code improvements  
+> - ⏸️ **Defer**: Complex changes, MVP-priority items, Phase 3 territory
+
 ## 1. Ensure Branch is Up to Date
 // turbo
 ```bash
