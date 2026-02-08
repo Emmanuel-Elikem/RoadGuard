@@ -97,10 +97,10 @@ class SpeedTrackingState {
     this.errorMessage,
   });
 
-  /// Current speed in km/h (filtered for GPS noise).
+  /// Current speed in km/h (raw from GPS, not filtered).
   double get speedKmh => currentReading?.displaySpeedKmh ?? 0;
 
-  /// Raw speed without filtering (for debugging).
+  /// Raw speed is same as displaySpeedKmh (kept for API compatibility).
   double get rawSpeedKmh => currentReading?.speedKmh ?? 0;
 
   /// Whether we have any GPS data (even poor quality).
@@ -138,6 +138,8 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       if (subscription != null) {
         unawaited(subscription.cancel());
       }
+      // Stop sensor service to prevent battery drain
+      SensorSpeedService.instance.stop();
       unawaited(LocationService.instance.stopTracking());
     });
 

@@ -157,7 +157,7 @@ void main() {
         expect(widget.speedState, SpeedState.unknown);
       });
 
-      test('returns warning at exactly limit - 10', () {
+      test('returns safe at exactly limit - 10', () {
         const widget = SpeedometerWidget(speed: 40, speedLimit: 50);
         expect(widget.speedState, SpeedState.safe);
       });

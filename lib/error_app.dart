@@ -3,6 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_typography.dart';
+
 /// Widget shown when the app fails to initialize (Firebase, Hive, etc).
 /// This prevents the app from crashing completely.
 class ErrorApp extends StatelessWidget {
@@ -12,56 +15,85 @@ class ErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use a simple theme since the app theme might not be initialized
     return MaterialApp(
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          error: AppColors.error,
+        ),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: Brightness.dark,
+          error: AppColors.error,
+        ),
+        useMaterial3: true,
+      ),
       home: Scaffold(
         body: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 24),
-                const Text(
-                  'Initialization Failed',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'RoadGuard could not start due to an initialization error.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.red.withValues(alpha: 0.3),
+            child: Builder(
+              builder: (context) {
+                final colorScheme = Theme.of(context).colorScheme;
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: colorScheme.error,
                     ),
-                  ),
-                  child: Text(
-                    error.toString(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontFamily: 'monospace',
+                    const SizedBox(height: 24),
+                    Text(
+                      'Initialization Failed',
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Restart the app (requires app restart)
-                    // In production, you'd restart the app here
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'RoadGuard could not start due to an initialization error.',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colorScheme.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        error.toString(),
+                        style: AppTypography.bodySmall.copyWith(
+                          fontFamily: 'monospace',
+                          color: colorScheme.onErrorContainer,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // Restart the app (requires app restart)
+                        // In production, you'd restart the app here
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),

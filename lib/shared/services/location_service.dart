@@ -52,7 +52,7 @@ class SpeedReading {
   final double altitude;
   final DateTime timestamp;
 
-  bool get isReliable => accuracy <= 20 && speedMs >= 0 && speedMs <= kMaxReasonableSpeedMs;
+  bool get isReliable => accuracy > 0 && accuracy <= 20 && speedMs >= 0 && speedMs <= kMaxReasonableSpeedMs;
 
   GpsSignalQuality get signalQuality {
     if (accuracy <= 0) return GpsSignalQuality.none;

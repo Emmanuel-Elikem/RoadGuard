@@ -302,20 +302,30 @@ class _SpeedLimitBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    // Color based on state
+    // Color based on state - use theme-aware colors
     final borderColor = switch (state) {
       SpeedState.danger => AppColors.error,
       SpeedState.warning => AppColors.warning,
-      _ => Colors.red.shade700,
+      // Safe/unknown uses error container outline for standard speed limit sign look
+      _ => colorScheme.error,
     };
+
+    // Background: white-ish in light mode, surface in dark mode
+    final backgroundColor = colorScheme.brightness == Brightness.light
+        ? colorScheme.surface
+        : colorScheme.surfaceContainerHighest;
+
+    // Text: dark in light mode, light in dark mode
+    final textColor = colorScheme.onSurface;
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
+        color: backgroundColor,
         border: Border.all(color: borderColor, width: size * 0.1),
         boxShadow: state == SpeedState.danger
             ? [
@@ -331,7 +341,7 @@ class _SpeedLimitBadge extends StatelessWidget {
         child: Text(
           limit.toStringAsFixed(0),
           style: theme.textTheme.titleSmall?.copyWith(
-            color: Colors.black,
+            color: textColor,
             fontWeight: FontWeight.bold,
             fontSize: size * 0.35,
           ),
