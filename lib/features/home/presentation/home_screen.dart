@@ -12,16 +12,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/location_service.dart';
 import '../../../shared/services/permission_service.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
 
 /// Home/Dashboard screen with speed tracking.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // When app resumes from background (e.g., after user enables location in Settings),
+    // refresh permission state to detect any changes
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('HomeScreen: App resumed, refreshing permissions');
+      ref.read(permissionNotifierProvider.notifier).refresh();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final trackingState = ref.watch(speedTrackingProvider);
@@ -190,11 +220,10 @@ class _PermissionRequired extends ConsumerWidget {
               height: 52,
               child: FilledButton.icon(
                 onPressed: () => _handlePermissionAction(ref, permission),
-                icon: Icon(
+              icon: Icon(
                   permission == LocationPermissionState.deniedForever
                       ? LucideIcons.settings
                       : LucideIcons.mapPin,
-                  color: colorScheme.onPrimary,
                 ),
                 label: Text(
                   permission == LocationPermissionState.deniedForever
@@ -202,8 +231,7 @@ class _PermissionRequired extends ConsumerWidget {
                       : permission == LocationPermissionState.serviceDisabled
                       ? 'Enable Location'
                       : 'Grant Permission',
-                  style: TextStyle(
-                    color: colorScheme.onPrimary,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -256,7 +284,9 @@ class _TrackingView extends ConsumerWidget {
             child: SpeedometerWidget(
               speed: trackingState.speedKmh,
               speedLimit: 50, // TODO: Dynamic speed limits (Week 7)
-              hasSignal: trackingState.hasSignal || !isTracking,
+              signalQuality: isTracking 
+                  ? trackingState.signalQuality 
+                  : GpsSignalQuality.none,
               accuracy: trackingState.accuracy,
               size: 280,
             ),
@@ -292,9 +322,6 @@ class _TrackingView extends ConsumerWidget {
                   )
                 : Icon(
                     isTracking ? LucideIcons.square : LucideIcons.play,
-                    color: isTracking
-                        ? colorScheme.onError
-                        : colorScheme.onPrimary,
                   ),
             label: Text(
               isTracking
@@ -302,12 +329,9 @@ class _TrackingView extends ConsumerWidget {
                   : trackingState.state == TrackingState.starting
                   ? 'Starting...'
                   : 'Start Tracking',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isTracking
-                    ? colorScheme.onError
-                    : colorScheme.onPrimary,
               ),
             ),
             style: FilledButton.styleFrom(

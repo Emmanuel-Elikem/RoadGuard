@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/services/location_service.dart';
 import '../../../../shared/services/permission_service.dart';
+import '../../../../shared/services/sensor_speed_service.dart';
 
 // =============================================================================
 // PERMISSION PROVIDERS
@@ -96,12 +97,18 @@ class SpeedTrackingState {
     this.errorMessage,
   });
 
-  /// Current speed in km/h (0 if no reading).
-  double get speedKmh => currentReading?.speedKmh ?? 0;
+  /// Current speed in km/h (filtered for GPS noise).
+  double get speedKmh => currentReading?.displaySpeedKmh ?? 0;
 
-  /// Whether we have a valid GPS signal.
-  bool get hasSignal =>
-      currentReading != null && (currentReading?.isReliable ?? false);
+  /// Raw speed without filtering (for debugging).
+  double get rawSpeedKmh => currentReading?.speedKmh ?? 0;
+
+  /// Whether we have any GPS data (even poor quality).
+  bool get hasSignal => currentReading?.hasGpsData ?? false;
+
+  /// GPS signal quality for UI display.
+  GpsSignalQuality get signalQuality =>
+      currentReading?.signalQuality ?? GpsSignalQuality.none;
 
   /// GPS accuracy in meters.
   double? get accuracy => currentReading?.accuracy;
@@ -167,12 +174,18 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     debugPrint('SpeedTrackingNotifier: Subscribing to speed stream');
 
-    // Subscribe to speed updates
+    // Start sensor fusion for faster updates
+    SensorSpeedService.instance.start();
+
+    // Subscribe to GPS speed updates
     _subscription = stream.listen(
       (reading) {
         debugPrint(
           'SpeedTrackingNotifier: Got reading ${reading.speedKmh.toStringAsFixed(1)} km/h',
         );
+        // Feed GPS to sensor service for calibration
+        SensorSpeedService.instance.updateWithGps(reading);
+        
         state = state.copyWith(
           state: TrackingState.tracking,
           currentReading: reading,
@@ -210,6 +223,9 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     await _subscription?.cancel();
     _subscription = null;
+    
+    // Stop sensor fusion
+    SensorSpeedService.instance.stop();
 
     await LocationService.instance.stopTracking();
 

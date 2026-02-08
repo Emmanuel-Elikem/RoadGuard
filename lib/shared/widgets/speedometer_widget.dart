@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
+import '../services/location_service.dart';
 
 /// Speed state for visual styling.
 enum SpeedState {
@@ -43,8 +44,8 @@ class SpeedometerWidget extends StatelessWidget {
   /// Size of the speedometer (width and height).
   final double size;
 
-  /// Whether GPS signal is available.
-  final bool hasSignal;
+  /// GPS signal quality for display.
+  final GpsSignalQuality signalQuality;
 
   /// GPS accuracy in meters (for display).
   final double? accuracy;
@@ -55,9 +56,12 @@ class SpeedometerWidget extends StatelessWidget {
     this.speedLimit,
     this.maxSpeed = 180,
     this.size = 280,
-    this.hasSignal = true,
+    this.signalQuality = GpsSignalQuality.none,
     this.accuracy,
   });
+
+  /// Whether we have usable GPS signal.
+  bool get hasSignal => signalQuality.isUsable;
 
   /// Determine speed state based on limit.
   SpeedState get speedState {
@@ -154,8 +158,9 @@ class SpeedometerWidget extends StatelessWidget {
                   size: size * 0.18,
                 ),
 
-              // No signal indicator
-              if (!hasSignal) ...[
+              // Signal quality indicator
+              if (signalQuality != GpsSignalQuality.excellent && 
+                  signalQuality != GpsSignalQuality.good) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -163,13 +168,17 @@ class SpeedometerWidget extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: colorScheme.errorContainer,
+                    color: signalQuality == GpsSignalQuality.none
+                        ? colorScheme.errorContainer
+                        : colorScheme.tertiaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'NO GPS',
+                    signalQuality.label,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onErrorContainer,
+                      color: signalQuality == GpsSignalQuality.none
+                          ? colorScheme.onErrorContainer
+                          : colorScheme.onTertiaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

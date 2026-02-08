@@ -1232,6 +1232,213 @@ if (lastReading != null) {
 
 ---
 
+#### M032: Missing Testing & Verification Protocol Before Moving On
+**Status:** 🔴 Active  
+**Severity:** Critical (Process Failure)  
+**Date Found:** 2026-02-06  
+**Detected By:** User
+
+**Symptom:**
+Agent completed Week 3 implementation but:
+1. Did not run all tests before moving on
+2. Did not consider Ghana-specific edge cases
+3. Did not create comprehensive verification plan
+4. Did not confirm features work end-to-end with user
+
+**Cause:**
+Agent prioritized code completion over verification. Failed to follow systematic testing protocol after each feature implementation.
+
+**Prevention - MANDATORY TESTING PROTOCOL:**
+
+> **🚨 CRITICAL: This protocol is NON-NEGOTIABLE. Agent MUST follow after EVERY feature.**
+
+**1. After Writing ANY Function:**
+```dart
+// ASK YOURSELF:
+// - What happens if input is null/empty?
+// - What happens if network fails mid-operation?
+// - What happens on old/slow Android devices?
+// - Does this work in Accra traffic? In Kumasi? In rural areas?
+// - What if user has poor GPS signal (buildings, tunnels)?
+// - What if battery saver is killing the app?
+```
+
+**2. Ghana-Specific Edge Cases to ALWAYS Consider:**
+
+| Scenario | Why It Matters | Test Approach |
+|----------|---------------|---------------|
+| Poor GPS in trotro | Dense traffic, tall buildings | Test with accuracy > 50m |
+| Heavy rain | Weather affects GPS | Test with simulated poor accuracy |
+| Rough roads | Speed jitter from potholes | Test rapid small speed changes |
+| Power outages | Phone battery critical | Test with low battery mode |
+| Slow phones | Many users have budget phones | Test with throttled CPU |
+| No internet | Common in rural Ghana | Test full offline mode |
+| Multiple languages | Twi, Ga, Ewe speakers | Test non-English text |
+| Dusty plates | Hard to read with OCR | Test degraded image quality |
+
+**3. Required Test Coverage Per Feature:**
+
+- [ ] Unit tests for all business logic
+- [ ] Widget tests for UI components
+- [ ] Integration test for feature flow
+- [ ] Manual test on physical device
+- [ ] Edge case tests for Ghana scenarios
+
+**4. Before Moving to Next Week/Feature:**
+
+- [ ] All tests pass (`flutter test`)
+- [ ] Analysis passes (`flutter analyze`)
+- [ ] Manual testing on device complete
+- [ ] Edge cases documented and tested
+- [ ] User confirmation that feature works
+
+**Fix Steps (For Week 3):**
+1. Run all existing tests
+2. Add missing Ghana edge case tests
+3. Manual test on physical device
+4. Document any issues found
+5. Get user confirmation before Week 4
+
+**Related Docs:** 
+- RoadGuard-MVP-Plan.md
+- GEMINI.md (Post-Task Checklist)
+
+---
+
+#### M033: No Automated Test Run Before Declaring Feature Complete
+**Status:** 🔴 Active  
+**Severity:** High (Quality Issue)  
+**Date Found:** 2026-02-06  
+**Detected By:** User
+
+**Symptom:**
+Features marked as "done" without verifying tests pass. Could ship broken code.
+
+**Cause:**
+Agent didn't run `flutter test` as part of standard workflow.
+
+**Prevention:**
+```bash
+# ✅ ALWAYS run before marking feature complete:
+flutter analyze && flutter test
+
+# ❌ NEVER mark complete without seeing:
+# "All tests passed!"
+```
+
+**Fix:**
+Add test run as mandatory step in Post-Task Checklist.
+
+**Related:** M032
+
+---
+
+#### M034: Permission State Not Updating When App Resumes from Settings
+**Status:** 🟢 Resolved  
+**Severity:** High (UX Issue)  
+**Date Found:** 2026-02-06  
+**Detected By:** User
+
+**Symptom:**
+When users return from Settings after enabling location services or granting permissions, the UI still shows "Enable Location" or "Open Settings" buttons instead of the speedometer.
+
+**Cause:**
+`HomeScreen` was a `ConsumerWidget` with no app lifecycle detection. The `permissionNotifierProvider` only refreshes when explicitly called - not when the app resumes from background.
+
+**Prevention:**
+```dart
+// ✅ CORRECT: Add WidgetsBindingObserver to detect app resume
+class _HomeScreenState extends ConsumerState<HomeScreen> 
+    with WidgetsBindingObserver {
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh permissions when app comes back to foreground
+      ref.read(permissionNotifierProvider.notifier).refresh();
+    }
+  }
+}
+```
+
+**Fix:**
+Converted `HomeScreen` from `ConsumerWidget` to `ConsumerStatefulWidget` with `WidgetsBindingObserver` mixin. Now automatically refreshes permission state when app resumes from background.
+
+**Related Files:**
+- `lib/features/home/presentation/home_screen.dart`
+
+---
+
+#### M035: GPS Drift Showing as Speed When Stationary
+**Status:** 🟢 Resolved  
+**Severity:** High (UX Issue)  
+**Date Found:** 2026-02-06  
+**Detected By:** User
+
+**Symptom:**
+Phone stationary on table shows speed fluctuations (0.2 - 19.7 km/h) and "NO GPS" badge despite receiving readings.
+
+**Cause:**
+1. `hasSignal` relied on `isReliable` (accuracy ≤ 20m). Indoor GPS (40-150m accuracy) triggered "NO GPS".
+2. No speed threshold for poor accuracy readings, so natural GPS drift (~5m) was calculated as movement.
+
+**Prevention:**
+1. Separate 'Signal Presence' (has any data) from 'Signal Reliability' (is good data).
+2. Implement accuracy-based speed thresholds:
+   - Good GPS (≤20m): Trust all speeds
+   - Poor GPS (>30m): Ignore speeds < 5 km/h (drift)
+
+**Fix:**
+- Added `GpsSignalQuality` enum (Excellent, Good, Poor, Weak).
+- Added `displaySpeedKmh` to filter noise.
+- Updated UI to show "POOR GPS" instead of "NO GPS" when signal exists but is weak.
+
+**Related Files:**
+- `lib/shared/services/location_service.dart`
+- `lib/shared/widgets/speedometer_widget.dart`
+
+---
+
+#### M036: Background Service Class Missing @pragma Entry Point
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Service Crash)  
+**Date Found:** 2026-02-08  
+**Detected By:** User/Logs
+
+**Symptom:**
+GPS not working, notification stuck on "Initializing", no location icon, app shows "NO GPS" and 0 km/h. Error in logs:
+```
+E/DartVM: ERROR: To access 'BackgroundTrackingService' from native code, it must be annotated.
+```
+
+**Cause:**
+Only the `onStart` method had `@pragma('vm:entry-point')`, but the **class itself** also needs it when running in a background isolate. The Dart AOT compiler tree-shook the class.
+
+**Prevention:**
+When creating background service classes that run in separate isolates, ALWAYS add `@pragma('vm:entry-point')` to BOTH:
+1. The class declaration
+2. The static entry point methods
+
+**Fix:**
+Added `@pragma('vm:entry-point')` at line 10 before `class BackgroundTrackingService`.
+
+**Related Files:**
+- `lib/shared/services/background_tracking_service.dart`
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

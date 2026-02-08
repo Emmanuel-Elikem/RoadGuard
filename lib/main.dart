@@ -10,6 +10,7 @@ import 'core/router/router.dart';
 import 'core/theme/theme.dart';
 import 'error_app.dart';
 import 'firebase_options.dart';
+import 'shared/services/location_service.dart';
 import 'shared/services/storage_service.dart';
 
 void main() async {
@@ -26,6 +27,10 @@ void main() async {
     // Initialize local storage (Hive)
     // MUST happen before runApp() so storage is ready
     await StorageService.initialize();
+
+    // Initialize Background Location Service
+    // This configures the plugin so it's ready to start when requested
+    await LocationService.instance.initialize();
 
     // Allow all orientations - app is for PASSENGERS, not drivers
     // Passengers may use the phone in any orientation
