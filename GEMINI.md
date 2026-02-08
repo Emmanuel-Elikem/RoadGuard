@@ -128,3 +128,33 @@ Use these workflows for common tasks:
 - `/pull-request` - Create PR with Copilot review
 - `/test` - Run all tests
 - `/debug` - Debug app issues
+
+---
+
+## 🤖 Copilot Review Rules (ALWAYS FOLLOW)
+
+### After Fixing Copilot Comments:
+> **⚠️ ALWAYS re-request Copilot review after pushing fixes!**  
+> Copilot often finds additional issues on subsequent reviews.
+
+1. Push fixes
+2. Request Copilot review again
+3. Repeat until no more comments
+
+### Async Workflow (Continue While Reviewing):
+1. Merge PR when core functionality works
+2. Create new branch for next week
+3. If Copilot reviews merged code, create small fix PRs
+4. Keep new branch rebased on main
+
+---
+
+## 📌 Future Considerations
+
+Track deferred decisions in GitHub Issues with `[FUTURE]` prefix.
+
+| Issue | Description | When to Revisit |
+|-------|-------------|-----------------|
+| [#5](https://github.com/Emmanuel-Elikem/RoadGuard/issues/5) | Phase 3: Sensor Fusion UI | After vehicle testing |
+
+> **Check these issues before major releases or when related features change!**
