@@ -6,11 +6,14 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import 'location_service.dart';
 
-/// Service that uses phone sensors (accelerometer, gyroscope) to provide
-/// faster speed updates, fused with GPS for accuracy.
+/// Service that uses phone accelerometer to provide faster speed updates,
+/// fused with GPS for accuracy.
 ///
 /// GPS updates every 1-10 seconds, but sensors update 60+ times per second.
 /// This service detects acceleration changes instantly and uses GPS to calibrate.
+///
+/// Note: Currently uses accelerometer only. Gyroscope/orientation could be added
+/// in the future for more accurate direction detection (see Issue #5).
 class SensorSpeedService {
   SensorSpeedService._();
   static final SensorSpeedService instance = SensorSpeedService._();
@@ -33,6 +36,11 @@ class SensorSpeedService {
   static const double _processNoise = 0.1; // Speed change noise
   static const double _gravityThreshold = 0.5; // Ignore small accelerations
   static const Duration _gpsTimeout = Duration(seconds: 15);
+  
+  // Fusion tuning constants (easy to adjust)
+  static const double _poorGpsBlendFactor = 0.3; // 30% GPS, 70% sensor when GPS is poor
+  static const double _noAccelDecayFactor = 0.99; // Decay speed when no acceleration
+  static const Duration _gpsFreshnessThreshold = Duration(seconds: 5);
 
   bool _isRunning = false;
   bool get isRunning => _isRunning;
@@ -89,8 +97,8 @@ class SensorSpeedService {
       _estimateError = gpsReading.accuracy / 10.0; // Lower accuracy = higher error
     } else {
       // Blend GPS with current estimate when GPS is poor
-      final blend = 0.3; // 30% GPS, 70% sensor estimate
-      _estimatedSpeed = (_estimatedSpeed * (1 - blend)) + (_lastGpsSpeedMs * blend);
+      _estimatedSpeed = (_estimatedSpeed * (1 - _poorGpsBlendFactor)) + 
+                        (_lastGpsSpeedMs * _poorGpsBlendFactor);
     }
     
     _emitReading();
@@ -126,7 +134,7 @@ class SensorSpeedService {
       }
     } else {
       // Small acceleration - apply friction/decay
-      _currentSpeedMs *= 0.99;
+      _currentSpeedMs *= _noAccelDecayFactor;
     }
     
     // Clamp to reasonable values
@@ -159,7 +167,7 @@ class SensorSpeedService {
     if (_speedController == null || _speedController!.isClosed) return;
     
     final gpsAge = DateTime.now().difference(_lastGpsTime);
-    final source = gpsAge < const Duration(seconds: 5) 
+    final source = gpsAge < _gpsFreshnessThreshold 
         ? SpeedSource.gpsFused 
         : SpeedSource.sensorOnly;
     

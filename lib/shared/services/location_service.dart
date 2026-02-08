@@ -163,18 +163,22 @@ class LocationService {
       // Close existing if any to prevent leaks
       await _speedController?.close();
       _speedController = StreamController<SpeedReading>.broadcast();
+      
+      // 3. Set tracking flag BEFORE starting service
+      // This prevents dropping early GPS updates (race condition fix)
+      _isTracking = true;
 
-      // 3. Start the Background Service
+      // 4. Start the Background Service
       final isRunning = await _service.isRunning();
       if (!isRunning) {
         final started = await _service.startService();
         if (!started) {
              debugPrint('LocationService: Failed to start background service');
+             _isTracking = false; // Reset on failure
              return false;
         }
       }
 
-      _isTracking = true;
       debugPrint('LocationService: Background Tracking started');
       return true;
     } catch (e) {
