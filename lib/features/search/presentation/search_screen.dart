@@ -78,8 +78,8 @@ class SearchScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Container(
-                      width: 100,
-                      height: 100,
+                      width: AppDimensions.emptyStateIconContainer,
+                      height: AppDimensions.emptyStateIconContainer,
                       decoration: BoxDecoration(
                         color: colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(

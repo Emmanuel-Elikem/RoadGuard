@@ -28,7 +28,7 @@ class StatsScreen extends StatelessWidget {
               Text('Statistics', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppDimensions.spacingXs),
               Text(
-                'Your driving history & insights',
+                'Your trip history & insights',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),

@@ -195,6 +195,9 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       },
       onError: (error) {
         debugPrint('SpeedTrackingNotifier: Stream error: $error');
+        // Stop services to prevent battery drain
+        SensorSpeedService.instance.stop();
+        LocationService.instance.stopTracking();
         state = state.copyWith(
           state: TrackingState.error,
           errorMessage: error.toString(),

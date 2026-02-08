@@ -96,8 +96,8 @@ class _SplashScreenState extends State<SplashScreen>
             children: [
               // App icon with theme-aware styling
               Container(
-                width: 120,
-                height: 120,
+                width: AppDimensions.splashLogoContainer,
+                height: AppDimensions.splashLogoContainer,
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
@@ -176,9 +176,11 @@ class _LoadingIndicatorState extends State<_LoadingIndicator>
               1.0,
             );
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: 8,
-              height: 8,
+              margin: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.loadingDotSpacing,
+              ),
+              width: AppDimensions.loadingDotSize,
+              height: AppDimensions.loadingDotSize,
               decoration: BoxDecoration(
                 color: widget.color.withValues(alpha: opacity),
                 shape: BoxShape.circle,

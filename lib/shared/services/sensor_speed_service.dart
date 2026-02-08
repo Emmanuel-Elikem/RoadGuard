@@ -48,15 +48,20 @@ class SensorSpeedService {
 
   /// Start listening to sensor data.
   /// Call this when GPS tracking starts.
-  void start() {
+  Future<void> start() async {
     if (_isRunning) return;
 
-    _speedController?.close();
+    // Await existing controller close to prevent race conditions
+    await _speedController?.close();
     _speedController = StreamController<SensorSpeedReading>.broadcast();
     
+    // Reset all state including GPS state (fix stale data bug)
     _currentSpeedMs = 0.0;
     _estimatedSpeed = 0.0;
+    _lastGpsSpeedMs = 0.0;
+    _lastGpsTime = DateTime.fromMillisecondsSinceEpoch(0); // Mark as no GPS yet
     _lastSensorTime = DateTime.now();
+    _estimateError = 10.0; // Reset uncertainty
     _isRunning = true;
 
     // Use UserAccelerometerEvent which removes gravity
@@ -71,10 +76,10 @@ class SensorSpeedService {
   }
 
   /// Stop listening to sensor data.
-  void stop() {
-    _accelSubscription?.cancel();
+  Future<void> stop() async {
+    await _accelSubscription?.cancel();
     _accelSubscription = null;
-    _speedController?.close();
+    await _speedController?.close();
     _speedController = null;
     _isRunning = false;
     _currentSpeedMs = 0.0;
@@ -94,7 +99,8 @@ class SensorSpeedService {
     if (gpsReading.isReliable) {
       // Weight GPS heavily when reliable
       _estimatedSpeed = _lastGpsSpeedMs;
-      _estimateError = gpsReading.accuracy / 10.0; // Lower accuracy = higher error
+      // Higher accuracy value = higher error (accuracy is in meters)
+      _estimateError = gpsReading.accuracy / 10.0;
     } else {
       // Blend GPS with current estimate when GPS is poor
       _estimatedSpeed = (_estimatedSpeed * (1 - _poorGpsBlendFactor)) + 

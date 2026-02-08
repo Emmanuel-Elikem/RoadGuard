@@ -32,11 +32,10 @@ void main() async {
     // This configures the plugin so it's ready to start when requested
     await LocationService.instance.initialize();
 
-    // Allow all orientations - app is for PASSENGERS, not drivers
-    // Passengers may use the phone in any orientation
+    // Allow orientations that iOS Info.plist supports - app is for PASSENGERS, not drivers
+    // Note: portraitDown removed as iOS iPhone doesn't support upside-down orientation
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);

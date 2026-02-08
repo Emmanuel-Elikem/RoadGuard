@@ -61,6 +61,12 @@ abstract final class AppDimensions {
   static const double avatarMd = 48.0;
   static const double avatarLg = 64.0;
 
+  // === EMPTY STATE / SPLASH SIZES ===
+  static const double emptyStateIconContainer = 100.0; // Empty state icon bg
+  static const double splashLogoContainer = 120.0; // Splash screen logo bg
+  static const double loadingDotSize = 8.0; // Loading animation dots
+  static const double loadingDotSpacing = 4.0; // Space between loading dots
+
   // === MISC ===
   static const double ratingStarSize = 28.0;
   static const double numberPlateWidth = 200.0;
