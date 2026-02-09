@@ -11,7 +11,16 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
+import '../../features/trip/domain/models/rating_model.dart';
+import '../../features/trip/domain/models/trip_model.dart';
+
+/// Provider for accessing the storage service
+final storageServiceProvider = Provider<StorageService>((ref) {
+  return StorageService.instance;
+});
 
 /// Service for managing local storage using Hive.
 ///
@@ -34,10 +43,14 @@ class StorageService {
   // Box names as constants to prevent typos
   static const String _settingsBox = 'settings';
   static const String _userBox = 'user';
+  static const String _tripsBox = 'trips';
 
   // Boxes (opened during initialization)
   late Box<dynamic> _settings;
   late Box<dynamic> _user;
+  late Box<TripModel> _trips;
+
+  Box<TripModel> get tripsBox => _trips;
 
   /// Initialize Hive and open all boxes.
   ///
@@ -46,6 +59,10 @@ class StorageService {
     // Initialize Hive with Flutter support (handles path resolution)
     await Hive.initFlutter();
 
+    // Register Adapters
+    Hive.registerAdapter(RatingModelAdapter());
+    Hive.registerAdapter(TripModelAdapter());
+
     // Create instance
     _instance = StorageService._();
 
@@ -53,6 +70,7 @@ class StorageService {
     // Box names are like table names - keep them lowercase
     _instance!._settings = await Hive.openBox(_settingsBox);
     _instance!._user = await Hive.openBox(_userBox);
+    _instance!._trips = await Hive.openBox<TripModel>(_tripsBox);
 
     debugPrint('StorageService initialized');
   }
@@ -131,6 +149,7 @@ class StorageService {
   Future<void> clearAll() async {
     await _settings.clear();
     await _user.clear();
+    await _trips.clear();
   }
 
   /// Close all boxes (call on app dispose).

@@ -14,6 +14,8 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/shell/shell_screen.dart';
 import '../../features/stats/presentation/stats_screen.dart';
 import '../../shared/services/storage_service.dart';
+import '../../features/trip/domain/models/trip_model.dart';
+import '../../features/trip/presentation/screens/rating_screen.dart';
 import 'routes.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -143,6 +145,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: SettingsScreen()),
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.tripSummary,
+        name: RouteNames.tripSummary,
+        builder: (context, state) {
+          final trip = state.extra as TripModel;
+          return RatingScreen(trip: trip);
+        },
       ),
     ],
   );

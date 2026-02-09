@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
@@ -116,8 +118,8 @@ class SpeedReading {
 ///
 /// Wraps the flutter_background_service package and provides a stream of simplified [SpeedReading]s.
 class LocationService {
-  LocationService._();
-  static final LocationService instance = LocationService._();
+  LocationService();
+  static final LocationService instance = LocationService();
 
   final _service = FlutterBackgroundService();
 
@@ -241,3 +243,8 @@ class LocationService {
     _lastReading = null;
   }
 }
+
+/// Provider for accessing the location service
+final locationServiceProvider = Provider<LocationService>((ref) {
+  return LocationService.instance;
+});

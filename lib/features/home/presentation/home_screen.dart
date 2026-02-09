@@ -9,14 +9,19 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/location_service.dart';
 import '../../../shared/services/permission_service.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
+import '../../trip/application/trip_service.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
+
+
 
 /// Home/Dashboard screen with speed tracking.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -52,12 +57,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
+  Future<void> _onStopTracking() async {
+      // Stop trip
+      await ref.read(tripControllerProvider.notifier).stopTrip();
+      
+      // Get completed trip
+      final trip = ref.read(tripControllerProvider.notifier).currentTrip;
+      
+      if (trip != null && mounted) {
+          // Navigate to summary
+          context.push(Routes.tripSummary, extra: trip);
+      }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trackingState = ref.watch(speedTrackingProvider);
+    final trackingState = ref.watch(speedTrackingProvider); // Location updates for speedometer
     final permissionState = ref.watch(permissionNotifierProvider);
+    final tripState = ref.watch(tripControllerProvider); // Trip recording state
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -73,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               // Header
               _Header(
-                isTracking: trackingState.state == TrackingState.tracking,
+                isTracking: tripState == TripState.recording,
               ),
 
               const SizedBox(height: AppDimensions.spacingXl),
@@ -92,7 +111,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (!permission.canTrack) {
                       return _PermissionRequired(permission: permission);
                     }
-                    return _TrackingView(trackingState: trackingState);
+                    return _TrackingView(
+                        trackingState: trackingState,
+                        tripState: tripState,
+                        onStop: _onStopTracking,
+                    );
                   },
                 ),
               ),
@@ -179,8 +202,8 @@ class _PermissionRequired extends ConsumerWidget {
           children: [
             // Icon
             Container(
-              width: 120,
-              height: 120,
+              width: AppDimensions.iconContainerLg,
+              height: AppDimensions.iconContainerLg,
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer,
                 shape: BoxShape.circle,
@@ -189,7 +212,7 @@ class _PermissionRequired extends ConsumerWidget {
                 permission == LocationPermissionState.serviceDisabled
                     ? LucideIcons.mapPinOff
                     : LucideIcons.mapPin,
-                size: 56,
+                size: AppDimensions.iconXxl,
                 color: colorScheme.onPrimaryContainer,
               ),
             ),
@@ -219,7 +242,7 @@ class _PermissionRequired extends ConsumerWidget {
             // Action button
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: AppDimensions.buttonHeightLg,
               child: FilledButton.icon(
                 onPressed: () => _handlePermissionAction(ref, permission),
                 icon: Icon(
@@ -267,14 +290,20 @@ class _PermissionRequired extends ConsumerWidget {
 /// Main tracking view with speedometer.
 class _TrackingView extends ConsumerWidget {
   final SpeedTrackingState trackingState;
+  final TripState tripState;
+  final VoidCallback onStop;
 
-  const _TrackingView({required this.trackingState});
+  const _TrackingView({
+      required this.trackingState,
+      required this.tripState,
+      required this.onStop,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isTracking = trackingState.state == TrackingState.tracking;
+    final isTracking = tripState == TripState.recording;
 
     return Column(
       children: [
@@ -302,14 +331,19 @@ class _TrackingView extends ConsumerWidget {
         // Start/Stop button
         SizedBox(
           width: double.infinity,
-          height: 56,
+          height: AppDimensions.buttonHeightLg,
           child: FilledButton.icon(
             onPressed:
                 trackingState.state == TrackingState.starting ||
                     trackingState.state == TrackingState.stopping
                 ? null
-                : () =>
-                      ref.read(speedTrackingProvider.notifier).toggleTracking(),
+                : () {
+                    if (isTracking) {
+                      onStop();
+                    } else {
+                      ref.read(tripControllerProvider.notifier).startTrip();
+                    }
+                  },
             icon:
                 trackingState.state == TrackingState.starting ||
                     trackingState.state == TrackingState.stopping
@@ -383,8 +417,8 @@ class _SafetyTipCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: AppDimensions.iconContainerSm,
+            height: AppDimensions.iconContainerSm,
             decoration: BoxDecoration(
               color: AppColors.info.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(AppDimensions.radiusSm),

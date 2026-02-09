@@ -18,6 +18,7 @@ abstract final class Routes {
   // Feature routes
   static const String tracking = '/tracking';
   static const String rateDriver = '/rate-driver';
+  static const String tripSummary = '/trip-summary';
   static const String vehicleDetails = '/vehicle/:plateNumber';
 
   // Helper for vehicle details with plate number
@@ -38,5 +39,6 @@ abstract final class RouteNames {
   static const String emailVerification = 'emailVerification';
   static const String tracking = 'tracking';
   static const String rateDriver = 'rateDriver';
+  static const String tripSummary = 'tripSummary';
   static const String vehicleDetails = 'vehicleDetails';
 }
