@@ -159,7 +159,7 @@ class SpeedometerWidget extends StatelessWidget {
                 ),
 
               // Signal quality indicator
-              if (signalQuality != GpsSignalQuality.excellent && 
+              if (signalQuality != GpsSignalQuality.excellent &&
                   signalQuality != GpsSignalQuality.good) ...[
                 const SizedBox(height: 8),
                 Container(

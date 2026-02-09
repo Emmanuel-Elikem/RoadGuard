@@ -26,20 +26,22 @@ class SensorSpeedService {
   double _lastGpsSpeedMs = 0.0;
   DateTime _lastGpsTime = DateTime.now();
   DateTime _lastSensorTime = DateTime.now();
-  
+
   // Kalman filter state for smoothing
   double _estimatedSpeed = 0.0;
   double _estimateError = 10.0; // Initial uncertainty
-  
+
   // Constants for tuning
   static const double _measurementNoise = 0.5; // Accelerometer noise
   static const double _processNoise = 0.1; // Speed change noise
   static const double _gravityThreshold = 0.5; // Ignore small accelerations
   static const Duration _gpsTimeout = Duration(seconds: 15);
-  
+
   // Fusion tuning constants (easy to adjust)
-  static const double _poorGpsBlendFactor = 0.3; // 30% GPS, 70% sensor when GPS is poor
-  static const double _noAccelDecayFactor = 0.99; // Decay speed when no acceleration
+  static const double _poorGpsBlendFactor =
+      0.3; // 30% GPS, 70% sensor when GPS is poor
+  static const double _noAccelDecayFactor =
+      0.99; // Decay speed when no acceleration
   static const Duration _gpsFreshnessThreshold = Duration(seconds: 5);
 
   bool _isRunning = false;
@@ -54,7 +56,7 @@ class SensorSpeedService {
     // Await existing controller close to prevent race conditions
     await _speedController?.close();
     _speedController = StreamController<SensorSpeedReading>.broadcast();
-    
+
     // Reset all state including GPS state (fix stale data bug)
     _currentSpeedMs = 0.0;
     _estimatedSpeed = 0.0;
@@ -66,11 +68,15 @@ class SensorSpeedService {
 
     // Use UserAccelerometerEvent which removes gravity
     // This gives us linear acceleration (actual movement)
-    _accelSubscription = userAccelerometerEventStream(
-      samplingPeriod: const Duration(milliseconds: 50), // 20 Hz
-    ).listen(_handleAcceleration, onError: (e) {
-      debugPrint('SensorSpeedService: Accelerometer error: $e');
-    });
+    _accelSubscription =
+        userAccelerometerEventStream(
+          samplingPeriod: const Duration(milliseconds: 50), // 20 Hz
+        ).listen(
+          _handleAcceleration,
+          onError: (e) {
+            debugPrint('SensorSpeedService: Accelerometer error: $e');
+          },
+        );
 
     debugPrint('SensorSpeedService: Started');
   }
@@ -91,10 +97,10 @@ class SensorSpeedService {
   /// Call this whenever a new GPS position is received.
   void updateWithGps(SpeedReading gpsReading) {
     if (!_isRunning) return;
-    
+
     _lastGpsSpeedMs = gpsReading.speedMs;
     _lastGpsTime = gpsReading.timestamp;
-    
+
     // Reset Kalman filter to GPS value if GPS is reliable
     if (gpsReading.isReliable) {
       // Weight GPS heavily when reliable
@@ -103,10 +109,11 @@ class SensorSpeedService {
       _estimateError = gpsReading.accuracy / 10.0;
     } else {
       // Blend GPS with current estimate when GPS is poor
-      _estimatedSpeed = (_estimatedSpeed * (1 - _poorGpsBlendFactor)) + 
-                        (_lastGpsSpeedMs * _poorGpsBlendFactor);
+      _estimatedSpeed =
+          (_estimatedSpeed * (1 - _poorGpsBlendFactor)) +
+          (_lastGpsSpeedMs * _poorGpsBlendFactor);
     }
-    
+
     _emitReading();
   }
 
@@ -114,7 +121,7 @@ class SensorSpeedService {
     final now = DateTime.now();
     final dt = now.difference(_lastSensorTime).inMilliseconds / 1000.0;
     if (dt <= 0) return;
-    
+
     _lastSensorTime = now;
 
     // Calculate magnitude of acceleration (ignoring direction for speed)
@@ -128,11 +135,11 @@ class SensorSpeedService {
       // Integrate acceleration to get velocity change
       // This is approximate - real sensor fusion uses more complex math
       final deltaV = accelMagnitude * dt;
-      
+
       // Determine if accelerating or decelerating based on forward axis
       // For simplicity, use z-axis as rough forward direction
       final isDecelerating = event.z < -_gravityThreshold;
-      
+
       if (isDecelerating) {
         _currentSpeedMs = max(0, _currentSpeedMs - deltaV);
       } else {
@@ -142,25 +149,26 @@ class SensorSpeedService {
       // Small acceleration - apply friction/decay
       _currentSpeedMs *= _noAccelDecayFactor;
     }
-    
+
     // Clamp to reasonable values
     _currentSpeedMs = _currentSpeedMs.clamp(0.0, kMaxReasonableSpeedMs);
 
     // Kalman filter update
     _kalmanUpdate(_currentSpeedMs);
-    
+
     _emitReading();
   }
 
   void _kalmanUpdate(double measurement) {
     // Prediction step
     final predictedError = _estimateError + _processNoise;
-    
+
     // Update step
     final kalmanGain = predictedError / (predictedError + _measurementNoise);
-    _estimatedSpeed = _estimatedSpeed + kalmanGain * (measurement - _estimatedSpeed);
+    _estimatedSpeed =
+        _estimatedSpeed + kalmanGain * (measurement - _estimatedSpeed);
     _estimateError = (1 - kalmanGain) * predictedError;
-    
+
     // If GPS is stale, rely more on sensors
     final gpsAge = DateTime.now().difference(_lastGpsTime);
     if (gpsAge > _gpsTimeout) {
@@ -171,19 +179,25 @@ class SensorSpeedService {
 
   void _emitReading() {
     if (_speedController == null || _speedController!.isClosed) return;
-    
+
     final gpsAge = DateTime.now().difference(_lastGpsTime);
-    final source = gpsAge < _gpsFreshnessThreshold 
-        ? SpeedSource.gpsFused 
+    final source = gpsAge < _gpsFreshnessThreshold
+        ? SpeedSource.gpsFused
         : SpeedSource.sensorOnly;
-    
-    _speedController!.add(SensorSpeedReading(
-      speedMs: _estimatedSpeed.clamp(0.0, kMaxReasonableSpeedMs),
-      speedKmh: (_estimatedSpeed * 3.6).clamp(0.0, kMaxReasonableSpeedMs * 3.6),
-      source: source,
-      confidence: 1.0 / (1.0 + _estimateError), // Higher error = lower confidence
-      timestamp: DateTime.now(),
-    ));
+
+    _speedController!.add(
+      SensorSpeedReading(
+        speedMs: _estimatedSpeed.clamp(0.0, kMaxReasonableSpeedMs),
+        speedKmh: (_estimatedSpeed * 3.6).clamp(
+          0.0,
+          kMaxReasonableSpeedMs * 3.6,
+        ),
+        source: source,
+        confidence:
+            1.0 / (1.0 + _estimateError), // Higher error = lower confidence
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 }
 
@@ -204,14 +218,15 @@ class SensorSpeedReading {
   });
 
   @override
-  String toString() => 'SensorSpeed(${speedKmh.toStringAsFixed(1)} km/h, $source, conf: ${(confidence * 100).toStringAsFixed(0)}%)';
+  String toString() =>
+      'SensorSpeed(${speedKmh.toStringAsFixed(1)} km/h, $source, conf: ${(confidence * 100).toStringAsFixed(0)}%)';
 }
 
 /// Source of the speed reading.
 enum SpeedSource {
   /// Speed is primarily from GPS with sensor smoothing.
   gpsFused,
-  
+
   /// Speed is primarily from sensors (GPS is stale).
   sensorOnly,
 }

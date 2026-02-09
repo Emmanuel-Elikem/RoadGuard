@@ -187,7 +187,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
         );
         // Feed GPS to sensor service for calibration
         SensorSpeedService.instance.updateWithGps(reading);
-        
+
         state = state.copyWith(
           state: TrackingState.tracking,
           currentReading: reading,
@@ -228,7 +228,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     await _subscription?.cancel();
     _subscription = null;
-    
+
     // Stop sensor fusion
     SensorSpeedService.instance.stop();
 

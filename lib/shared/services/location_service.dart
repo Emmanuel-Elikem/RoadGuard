@@ -1,6 +1,4 @@
-
 import 'dart:async';
-
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -18,13 +16,7 @@ const double kPoorGpsSpeedThreshold = 5.0;
 const double kGoodGpsSpeedThreshold = 2.0;
 
 /// GPS signal quality based on accuracy.
-enum GpsSignalQuality {
-  excellent,
-  good,
-  poor,
-  veryPoor,
-  none,
-}
+enum GpsSignalQuality { excellent, good, poor, veryPoor, none }
 
 extension GpsSignalQualityX on GpsSignalQuality {
   String get label => switch (this) {
@@ -34,7 +26,7 @@ extension GpsSignalQualityX on GpsSignalQuality {
     GpsSignalQuality.veryPoor => 'WEAK GPS',
     GpsSignalQuality.none => 'NO GPS',
   };
-  
+
   bool get isUsable => this != GpsSignalQuality.none;
 }
 
@@ -52,7 +44,11 @@ class SpeedReading {
   final double altitude;
   final DateTime timestamp;
 
-  bool get isReliable => accuracy > 0 && accuracy <= 20 && speedMs >= 0 && speedMs <= kMaxReasonableSpeedMs;
+  bool get isReliable =>
+      accuracy > 0 &&
+      accuracy <= 20 &&
+      speedMs >= 0 &&
+      speedMs <= kMaxReasonableSpeedMs;
 
   GpsSignalQuality get signalQuality {
     if (accuracy <= 0) return GpsSignalQuality.none;
@@ -71,7 +67,9 @@ class SpeedReading {
   /// Indicates if the current reading is likely GPS noise (low speed + poor accuracy).
   /// UI can use this to show a subtle indicator but still display the actual speed.
   bool get isLikelyNoise {
-    final threshold = accuracy > 30 ? kPoorGpsSpeedThreshold : kGoodGpsSpeedThreshold;
+    final threshold = accuracy > 30
+        ? kPoorGpsSpeedThreshold
+        : kGoodGpsSpeedThreshold;
     return speedKmh < threshold && speedKmh > 0;
   }
 
@@ -120,7 +118,7 @@ class SpeedReading {
 class LocationService {
   LocationService._();
   static final LocationService instance = LocationService._();
-  
+
   final _service = FlutterBackgroundService();
 
   // Stream controller to bridge Background Service events to our existing UI code
@@ -137,7 +135,7 @@ class LocationService {
   /// Should be called at app startup.
   Future<void> initialize() async {
     await BackgroundTrackingService().initializeService();
-    
+
     // Listen to updates globally to keep state in sync if methods are called from different places
     _service.on('update').listen((data) {
       if (_isTracking && data != null) {
@@ -163,7 +161,7 @@ class LocationService {
       // Close existing if any to prevent leaks
       await _speedController?.close();
       _speedController = StreamController<SpeedReading>.broadcast();
-      
+
       // 3. Set tracking flag BEFORE starting service
       // This prevents dropping early GPS updates (race condition fix)
       _isTracking = true;
@@ -173,9 +171,9 @@ class LocationService {
       if (!isRunning) {
         final started = await _service.startService();
         if (!started) {
-             debugPrint('LocationService: Failed to start background service');
-             _isTracking = false; // Reset on failure
-             return false;
+          debugPrint('LocationService: Failed to start background service');
+          _isTracking = false; // Reset on failure
+          return false;
         }
       }
 
@@ -190,8 +188,8 @@ class LocationService {
 
   void _handleBackgroundUpdate(Map<String, dynamic> data) {
     try {
-        // Reconstruct SpeedReading from JSON data
-       final reading = SpeedReading(
+      // Reconstruct SpeedReading from JSON data
+      final reading = SpeedReading(
         speedMs: (data['speed'] as num).toDouble(),
         accuracy: (data['accuracy'] as num).toDouble(),
         altitude: (data['altitude'] as num).toDouble(),
@@ -202,19 +200,19 @@ class LocationService {
       );
 
       _lastReading = reading;
-      
+
       // Emit to UI listeners
       if (_speedController != null && !_speedController!.isClosed) {
         _speedController!.add(reading);
       }
     } catch (e) {
-        debugPrint('LocationService: Error parsing background data: $e');
+      debugPrint('LocationService: Error parsing background data: $e');
     }
   }
 
   /// Stop tracking and kill the background service.
   Future<void> stopTracking() async {
-     // Don't check _isTracking here, force stop just in case
+    // Don't check _isTracking here, force stop just in case
     _service.invoke('stopService');
     await _cleanup();
     debugPrint('LocationService: Tracking stopped');
@@ -225,7 +223,9 @@ class LocationService {
   Future<SpeedReading?> getCurrentPosition() async {
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       return SpeedReading.fromPosition(position);
     } catch (e) {

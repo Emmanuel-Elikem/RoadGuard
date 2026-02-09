@@ -25,7 +25,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -41,7 +42,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     // When app resumes from background (e.g., after user enables location in Settings),
     // refresh permission state to detect any changes
     if (state == AppLifecycleState.resumed) {
@@ -220,7 +221,7 @@ class _PermissionRequired extends ConsumerWidget {
               height: 52,
               child: FilledButton.icon(
                 onPressed: () => _handlePermissionAction(ref, permission),
-              icon: Icon(
+                icon: Icon(
                   permission == LocationPermissionState.deniedForever
                       ? LucideIcons.settings
                       : LucideIcons.mapPin,
@@ -231,9 +232,7 @@ class _PermissionRequired extends ConsumerWidget {
                       : permission == LocationPermissionState.serviceDisabled
                       ? 'Enable Location'
                       : 'Grant Permission',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
@@ -284,8 +283,8 @@ class _TrackingView extends ConsumerWidget {
             child: SpeedometerWidget(
               speed: trackingState.speedKmh,
               speedLimit: 50, // TODO: Dynamic speed limits (Week 7)
-              signalQuality: isTracking 
-                  ? trackingState.signalQuality 
+              signalQuality: isTracking
+                  ? trackingState.signalQuality
                   : GpsSignalQuality.none,
               accuracy: trackingState.accuracy,
               size: 280,
@@ -317,28 +316,27 @@ class _TrackingView extends ConsumerWidget {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: isTracking ? colorScheme.onError : colorScheme.onPrimary,
+                      color: isTracking
+                          ? colorScheme.onError
+                          : colorScheme.onPrimary,
                     ),
                   )
-                : Icon(
-                    isTracking ? LucideIcons.square : LucideIcons.play,
-                  ),
+                : Icon(isTracking ? LucideIcons.square : LucideIcons.play),
             label: Text(
               isTracking
                   ? 'Stop Tracking'
                   : trackingState.state == TrackingState.starting
                   ? 'Starting...'
                   : 'Start Tracking',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: isTracking
                   ? AppColors.error
                   : colorScheme.primary,
-              foregroundColor: isTracking ? colorScheme.onError : colorScheme.onPrimary,
+              foregroundColor: isTracking
+                  ? colorScheme.onError
+                  : colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
               ),

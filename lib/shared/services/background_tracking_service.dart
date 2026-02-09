@@ -28,9 +28,10 @@ class BackgroundTrackingService {
         FlutterLocalNotificationsPlugin();
 
     await flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>()
-            ?.createNotificationChannel(channel);
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(channel);
 
     await service.configure(
       androidConfiguration: AndroidConfiguration(
@@ -77,36 +78,36 @@ class BackgroundTrackingService {
     // Settings for high accuracy
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 0, 
+      distanceFilter: 0,
     );
-    
+
     // Stream position updates
     Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
-        final speedKmh = (position.speed * 3.6).abs();
-        
+        // Normalize speed once - position.speed can be negative if unavailable
+        final normalizedSpeedMs = position.speed < 0 ? 0.0 : position.speed;
+        final speedKmh = normalizedSpeedMs * 3.6;
+
         // Update notification with speed and accuracy
         if (service is AndroidServiceInstance) {
-           service.setForegroundNotificationInfo(
+          service.setForegroundNotificationInfo(
             title: "RoadGuard Tracking",
-            content: "Speed: ${speedKmh.toStringAsFixed(0)} km/h | ±${position.accuracy.toStringAsFixed(0)}m",
+            content:
+                "Speed: ${speedKmh.toStringAsFixed(0)} km/h | ±${position.accuracy.toStringAsFixed(0)}m",
           );
         }
 
-        // Send data to UI
-        service.invoke(
-          'update',
-          {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'speed': position.speed,
-            'accuracy': position.accuracy,
-            'altitude': position.altitude,
-            'heading': position.heading,
-            'time': position.timestamp.toIso8601String(),
-            'speed_accuracy': position.speedAccuracy,
-          },
-        );
+        // Send data to UI (use normalized speed)
+        service.invoke('update', {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'speed': normalizedSpeedMs,
+          'accuracy': position.accuracy,
+          'altitude': position.altitude,
+          'heading': position.heading,
+          'time': position.timestamp.toIso8601String(),
+          'speed_accuracy': position.speedAccuracy,
+        });
       },
       onError: (e) {
         debugPrint('BackgroundTrackingService: GPS error: $e');

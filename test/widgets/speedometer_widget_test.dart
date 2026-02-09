@@ -75,39 +75,39 @@ void main() {
 
     group('GPS signal quality', () {
       testWidgets('shows NO GPS when signalQuality is none', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.none,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.none),
+        );
         expect(find.text('NO GPS'), findsOneWidget);
       });
 
       testWidgets('shows POOR GPS for poor signal', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.poor,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.poor),
+        );
         expect(find.text('POOR GPS'), findsOneWidget);
       });
 
       testWidgets('shows WEAK GPS for very poor signal', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.veryPoor,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.veryPoor),
+        );
         expect(find.text('WEAK GPS'), findsOneWidget);
       });
 
       testWidgets('hides signal badge for good quality', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.good,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.good),
+        );
         expect(find.text('NO GPS'), findsNothing);
         expect(find.text('POOR GPS'), findsNothing);
         expect(find.text('WEAK GPS'), findsNothing);
       });
 
       testWidgets('hides signal badge for excellent quality', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.excellent,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.excellent),
+        );
         expect(find.text('NO GPS'), findsNothing);
         expect(find.text('POOR GPS'), findsNothing);
       });
@@ -115,10 +115,9 @@ void main() {
 
     group('accuracy display', () {
       testWidgets('shows accuracy when provided', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.good,
-          accuracy: 5,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.good, accuracy: 5),
+        );
         expect(find.text('±5m'), findsOneWidget);
       });
 
@@ -128,10 +127,9 @@ void main() {
       });
 
       testWidgets('hides accuracy when no signal', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(
-          signalQuality: GpsSignalQuality.none,
-          accuracy: 5,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(signalQuality: GpsSignalQuality.none, accuracy: 5),
+        );
         expect(find.textContaining('±'), findsNothing);
       });
     });
@@ -176,10 +174,12 @@ void main() {
     group('progress clamping', () {
       testWidgets('handles speed > maxSpeed without overflow', (tester) async {
         // Should not throw any errors
-        await tester.pumpWidget(buildSpeedometer(
-          speed: 200, // > 180 maxSpeed
-          maxSpeed: 180,
-        ));
+        await tester.pumpWidget(
+          buildSpeedometer(
+            speed: 200, // > 180 maxSpeed
+            maxSpeed: 180,
+          ),
+        );
         expect(find.text('200'), findsOneWidget);
         // Widget should render without issues
       });
