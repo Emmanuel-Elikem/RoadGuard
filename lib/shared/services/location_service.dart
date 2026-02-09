@@ -172,6 +172,7 @@ class LocationService {
         final started = await _service.startService();
         if (!started) {
           debugPrint('LocationService: Failed to start background service');
+          await _cleanup();
           _isTracking = false; // Reset on failure
           return false;
         }

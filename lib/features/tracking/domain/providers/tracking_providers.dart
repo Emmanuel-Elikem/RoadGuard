@@ -37,23 +37,36 @@ class PermissionNotifier extends AsyncNotifier<LocationPermissionState> {
   /// Request location permission from user.
   Future<void> requestPermission() async {
     state = const AsyncLoading();
-    final result = await PermissionService.instance.requestLocationPermission();
-    state = AsyncData(result);
+    try {
+      final result =
+          await PermissionService.instance.requestLocationPermission();
+      state = AsyncData(result);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   /// Request background (always) location permission.
   Future<void> requestBackgroundPermission() async {
     state = const AsyncLoading();
-    final result = await PermissionService.instance
-        .requestBackgroundPermission();
-    state = AsyncData(result);
+    try {
+      final result =
+          await PermissionService.instance.requestBackgroundPermission();
+      state = AsyncData(result);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   /// Refresh permission state (e.g., after returning from settings).
   Future<void> refresh() async {
     state = const AsyncLoading();
-    final result = await PermissionService.instance.checkLocationPermission();
-    state = AsyncData(result);
+    try {
+      final result = await PermissionService.instance.checkLocationPermission();
+      state = AsyncData(result);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 }
 
@@ -139,7 +152,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
         unawaited(subscription.cancel());
       }
       // Stop sensor service to prevent battery drain
-      SensorSpeedService.instance.stop();
+      unawaited(SensorSpeedService.instance.stop());
       unawaited(LocationService.instance.stopTracking());
     });
 
@@ -177,7 +190,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
     debugPrint('SpeedTrackingNotifier: Subscribing to speed stream');
 
     // Start sensor fusion for faster updates
-    SensorSpeedService.instance.start();
+    await SensorSpeedService.instance.start();
 
     // Subscribe to GPS speed updates
     _subscription = stream.listen(

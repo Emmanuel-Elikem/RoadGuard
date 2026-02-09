@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/location_service.dart';
 import '../../../shared/services/permission_service.dart';
@@ -282,12 +283,13 @@ class _TrackingView extends ConsumerWidget {
           child: Center(
             child: SpeedometerWidget(
               speed: trackingState.speedKmh,
-              speedLimit: 50, // TODO: Dynamic speed limits (Week 7)
+              // TODO: Dynamic speed limits (Week 7)
+              speedLimit: AppConstants.defaultSpeedLimit,
               signalQuality: isTracking
                   ? trackingState.signalQuality
                   : GpsSignalQuality.none,
               accuracy: trackingState.accuracy,
-              size: 280,
+              size: AppDimensions.speedometerSize,
             ),
           ),
         ),
@@ -328,7 +330,13 @@ class _TrackingView extends ConsumerWidget {
                   : trackingState.state == TrackingState.starting
                   ? 'Starting...'
                   : 'Start Tracking',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isTracking
+                    ? colorScheme.onError
+                    : colorScheme.onPrimary,
+              ),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: isTracking

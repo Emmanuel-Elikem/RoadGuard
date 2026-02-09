@@ -9,7 +9,6 @@
 library;
 
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
@@ -84,8 +83,8 @@ class SpeedometerWidget extends StatelessWidget {
       SpeedState.unknown => colorScheme.primary,
     };
 
-    // Progress percentage (0.0 to 1.0)
-    final progress = (speed / maxSpeed).clamp(0.0, 1.0);
+    // Progress percentage (0.0 to 1.0), guard against invalid maxSpeed
+    final progress = maxSpeed > 0 ? (speed / maxSpeed).clamp(0.0, 1.0) : 0.0;
 
     return SizedBox(
       width: size,
@@ -223,8 +222,10 @@ class _SpeedometerRing extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
+      // Use Tween with only 'end' to animate from current value
+      // Providing 'begin' would force restart from 0 on every update
       child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: progress),
+        tween: Tween<double>(end: progress),
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         builder: (context, value, child) {

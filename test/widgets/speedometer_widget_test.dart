@@ -70,6 +70,7 @@ void main() {
         await tester.pumpWidget(buildSpeedometer(speedLimit: null));
         // Only speed value should show, no limit
         expect(find.text('0'), findsOneWidget);
+        expect(find.text('50'), findsNothing);
       });
     });
 

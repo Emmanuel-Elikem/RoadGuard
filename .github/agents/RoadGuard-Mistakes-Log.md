@@ -1434,8 +1434,431 @@ When creating background service classes that run in separate isolates, ALWAYS a
 **Fix:**
 Added `@pragma('vm:entry-point')` at line 10 before `class BackgroundTrackingService`.
 
-**Related Files:**
-- `lib/shared/services/background_tracking_service.dart`
+---
+
+#### M049: Missing Import for FontFeature
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Build Failure)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Compilation fails because `FontFeature` is used without `import 'dart:ui'`.
+
+**Cause:**
+Forgot to add the import when adding tabular figures support.
+
+**Prevention:**
+Always check imports when using classes from `dart:ui`, `dart:math`, etc.
+
+**Fix:**
+Added `import 'dart:ui';` to `speedometer_widget.dart`.
+
+---
+
+#### M050: Hardcoded Colors in TextTheme
+**Status:** 🟢 Resolved  
+**Severity:** High (UI Bug)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Button text is white on white in some themes because `TextTheme` style has hardcoded color.
+
+**Cause:**
+`AppTypography` defined with fixed colors (e.g., white for dark mode), which overrides `ButtonStyle` foreground color.
+
+**Prevention:**
+Keep `TextTheme` styles color-neutral. Apply colors via `ColorScheme` or `ButtonStyle`.
+
+**Fix:**
+Removed hardcoded colors from `AppTypography` or overridden in `TextTheme`.
+
+---
+
+#### M051: Hardcoded Values in UI Widget
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Speedometer used `speedLimit: 50` and `size: 280` hardcoded.
+
+**Cause:**
+Prototyping values left in code.
+
+**Prevention:**
+Use constants or configuration providers for all limits and sizes.
+
+**Fix:**
+Replaced with `AppConstants.defaultSpeedLimit` and `AppDimensions` or layout builder.
+
+---
+
+#### M052: Service Cleanup Missing on Start Failure
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Resource Leak)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+If `startTracking` fails, `_speedController` remains open.
+
+**Cause:**
+Early return on failure didn't call `_cleanup()` or close controller.
+
+**Prevention:**
+Always cleanup resources in failure paths of async initialization methods.
+
+**Fix:**
+Called `_cleanup()` before returning false.
+
+---
+
+#### M053: Division by Zero in Progress Calculation
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Crash Risk)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+`progress = speed / maxSpeed` can result in NaN/Infinity if `maxSpeed` is 0.
+
+**Cause:**
+Missing defensive check for `maxSpeed > 0`.
+
+**Prevention:**
+Always guard division operations, especially in drawing/layout logic.
+
+**Fix:**
+Added `maxSpeed > 0 ? ... : 0.0`.
+
+---
+
+#### M054: Unnecessary Re-creation of Tween
+**Status:** 🟢 Resolved  
+**Severity:** Low (Performance)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Animation restarts from 0 on every build.
+
+**Cause:**
+Using `Tween(begin: 0, end: progress)` resets the "begin" value every time.
+
+**Prevention:**
+For smooth transitions, use `Tween(end: target)` or implied animations.
+
+**Fix:**
+Changed to `Tween(end: progress)` (or relies on builder to handle continuity).
+
+---
+
+#### M055: Unawaited Async Method Calls
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Race Condition)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+`start()` and `stop()` called without `await` or `unawaited()`.
+
+**Cause:**
+Ignoring Future return types in void callbacks or fire-and-forget scenarios.
+
+**Prevention:**
+Always `await` futures or explicitly use `unawaited()` to document intent.
+
+**Fix:**
+Added `await` to `start()` and `stop()` calls.
+
+---
+
+#### M056: Missing Try-Catch in Async Providers
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Error Handling)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+If permission request throws, notifier stuck in `AsyncLoading`.
+
+**Cause:**
+Directly awaiting async calls without error handling wrapper.
+
+**Prevention:**
+Wrap all async provider calls in `try-catch` or `AsyncValue.guard`.
+
+**Fix:**
+Added `try-catch` blocks to permission methods.
+
+---
+
+#### M057: Weak Test Assertions
+**Status:** 🟢 Resolved  
+**Severity:** Low (Testing)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Test for "hidden speed limit" only checked if speed was shown (always true).
+
+**Cause:**
+Incomplete test logic.
+
+**Prevention:**
+Test for the NEGATIVE case (expect `findsNothing`) when verifying hiding logic.
+
+**Fix:**
+Added expectation that speed limit text is NOT found.
+
+---
+
+#### M058: Started Service but Ignored Stream
+**Status:** 🟡 Deferred (Phase 3)  
+**Severity:** Low (Architecture)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+`SensorSpeedService` running but UI only listens to GPS stream.
+
+**Cause:**
+Intentional MVP decision to use GPS for UI and sensors for background calibration only.
+
+**Prevention:**
+Document unused streams clearly or don't start them until needed.
+
+**Fix:**
+Deferred to Phase 3 (Issue #5).
+
+---
+
+## 📊 Issue Statistics
+
+| Severity | Pre-Populated | Active | Resolved |
+|----------|---------------|--------|----------|
+
+
+#### M037: Stream Error Handler Not Cleaning Up Services
+**Status:** 🟢 Resolved  
+**Severity:** High (Battery Drain)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+If GPS stream errors, services continue running in background draining battery.
+
+**Cause:**
+The `onError` callback for GPS stream didn't call `SensorSpeedService.stop()` or `LocationService.stopTracking()`.
+
+**Prevention:**
+ALWAYS clean up background services in stream error handlers.
+
+**Fix:**
+Added cleanup in `tracking_providers.dart` onError callback.
+
+---
+
+#### M038: State Not Reset on Service Start
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Accuracy)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+After stopping and restarting tracking, stale GPS data affects speed source classification.
+
+**Cause:**
+`SensorSpeedService.start()` didn't reset `_lastGpsTime` or `_lastGpsSpeedMs`.
+
+**Prevention:**
+ALWAYS reset all state variables when starting a service, not just on stop.
+
+**Fix:**
+Reset `_lastGpsTime = DateTime.fromMillisecondsSinceEpoch(0)` in start().
+
+---
+
+#### M039: Async Method Not Awaiting Stream Controller Close
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Race Condition)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Potential race condition if start() called quickly after stop().
+
+**Cause:**
+`stop()` was not async and didn't await `_speedController?.close()`.
+
+**Prevention:**
+ALWAYS make methods that close streams async and await the close.
+
+**Fix:**
+Made `start()` and `stop()` async, added await for controller close.
+
+---
+
+#### M040: Inverted Doc Comment
+**Status:** 🟢 Resolved  
+**Severity:** Low (Documentation)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Doc comment said "lower accuracy = higher error" but code did opposite.
+
+**Cause:**
+Copy-paste error or misunderstanding of GPS accuracy values.
+
+**Prevention:**
+Review doc comments after writing code to ensure they match implementation.
+
+**Fix:**
+Corrected comment to "Higher accuracy value = higher error".
+
+---
+
+#### M041: Hardcoded Dimensions Not Using Design System
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Magic numbers like 100, 120, 8 scattered in splash_screen.dart and search_screen.dart.
+
+**Cause:**
+Developer expedience - adding quick fixes without checking design system.
+
+**Prevention:**
+ALWAYS use AppDimensions for sizes. Add new constants if needed.
+
+**Fix:**
+Added `emptyStateIconContainer`, `splashLogoContainer`, `loadingDotSize`, `loadingDotSpacing` to AppDimensions.
+
+---
+
+#### M042: Copy Text Misaligned with App Purpose
+**Status:** 🟢 Resolved  
+**Severity:** Low (UX)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Stats screen said "Your driving history" but app is for PASSENGERS.
+
+**Cause:**
+Copied text from other apps without considering RoadGuard's passenger focus.
+
+**Prevention:**
+Always review copy text for passenger-centric language. Never use "driving" - use "trip" instead.
+
+**Fix:**
+Changed to "Your trip history & insights".
+
+---
+
+#### M043: iOS Orientation Mismatch with Flutter Code
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Platform Warning)  
+**Date Found:** 2026-02-08  
+**Detected By:** Copilot Review
+
+**Symptom:**
+iOS might show warnings about unsupported orientation.
+
+**Cause:**
+`main.dart` enabled `DeviceOrientation.portraitDown` but iOS Info.plist doesn't support upside-down on iPhone.
+
+**Prevention:**
+Keep Flutter orientation code in sync with platform-specific config files.
+
+**Fix:**
+Removed `portraitDown` from main.dart (iPhone doesn't support it anyway).
+
+---
+
+#### M044: Android Label Using Package Name
+**Status:** 🟢 Resolved  
+**Severity:** Low (UX)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+App shows "road_guard" on Android home screen instead of "RoadGuard".
+
+**Cause:**
+AndroidManifest.xml used default package-style name with underscore.
+
+**Prevention:**
+Always set proper user-facing `android:label` in manifest.
+
+**Fix:**
+Changed to `android:label="RoadGuard"`.
+
+---
+
+#### M045: Raw Speed Value Can Be Negative
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Accuracy)  
+**Date Found:** 2026-02-09  
+**Detected By:** Copilot Review
+
+**Symptom:**
+Negative speed values could appear in UI if GPS returns -1 (unavailable).
+
+**Cause:**
+Using `position.speed` directly without normalization.
+
+**Prevention:**
+ALWAYS normalize speed with `max(0, speed)` before use.
+
+**Fix:**
+Added `normalizedSpeedMs = position.speed < 0 ? 0.0 : position.speed` in background_tracking_service.dart.
+
+---
+
+#### M046: Dart Format Not Run Before Push
+**Status:** 🟢 Resolved  
+**Severity:** Medium (CI Failure)  
+**Date Found:** 2026-02-09  
+**Detected By:** CI
+
+**Symptom:**
+CI fails on `dart format --set-exit-if-changed`.
+
+**Cause:**
+Forgetting to run `dart format .` before committing.
+
+**Prevention:**
+ALWAYS run `dart format .` before pushing. Consider git pre-commit hook.
+
+**Fix:**
+Ran `dart format .` on 7 files.
+
+---
+
+#### M047: PR Created Targeting Wrong Base Branch
+**Status:** 🟢 Resolved  
+**Severity:** High (Git Workflow)  
+**Date Found:** 2026-02-09  
+**Detected By:** User
+
+**Symptom:**
+PR #4 targeted `main` instead of `develop`, creating duplicate PR confusion.
+
+**Cause:**
+Agent (me) didn't follow the documented workflow which specifies `develop` as base.
+
+**Prevention:**
+ALWAYS use `develop` as base branch for feature PRs, never `main`. Check workflow docs before creating PR.
+
+**Fix:**
+Closed PR #4, using PR #3 which correctly targets develop.
 
 ---
 

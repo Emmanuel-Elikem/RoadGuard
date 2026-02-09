@@ -66,6 +66,7 @@ abstract final class AppDimensions {
   static const double splashLogoContainer = 120.0; // Splash screen logo bg
   static const double loadingDotSize = 8.0; // Loading animation dots
   static const double loadingDotSpacing = 4.0; // Space between loading dots
+  static const double speedometerSize = 280.0; // Main speedometer widget size
 
   // === MISC ===
   static const double ratingStarSize = 28.0;
