@@ -9,7 +9,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:road_guard/shared/services/location_service.dart';
 import 'package:road_guard/shared/widgets/speedometer_widget.dart';
 import 'package:road_guard/core/theme/theme.dart';
 
@@ -18,7 +17,7 @@ void main() {
     double speed = 0,
     double? speedLimit = 50,
     double maxSpeed = 180,
-    GpsSignalQuality signalQuality = GpsSignalQuality.good,
+    bool hasSignal = true,
     double? accuracy,
   }) {
     return MaterialApp(
@@ -29,7 +28,7 @@ void main() {
             speed: speed,
             speedLimit: speedLimit,
             maxSpeed: maxSpeed,
-            signalQuality: signalQuality,
+            hasSignal: hasSignal,
             accuracy: accuracy,
           ),
         ),
@@ -75,49 +74,25 @@ void main() {
     });
 
     group('GPS signal quality', () {
-      testWidgets('shows NO GPS when signalQuality is none', (tester) async {
+      testWidgets('shows NO GPS when hasSignal is false', (tester) async {
         await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.none),
+          buildSpeedometer(hasSignal: false),
         );
         expect(find.text('NO GPS'), findsOneWidget);
       });
 
-      testWidgets('shows POOR GPS for poor signal', (tester) async {
+      testWidgets('hides signal badge when hasSignal is true', (tester) async {
         await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.poor),
-        );
-        expect(find.text('POOR GPS'), findsOneWidget);
-      });
-
-      testWidgets('shows WEAK GPS for very poor signal', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.veryPoor),
-        );
-        expect(find.text('WEAK GPS'), findsOneWidget);
-      });
-
-      testWidgets('hides signal badge for good quality', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.good),
+          buildSpeedometer(hasSignal: true),
         );
         expect(find.text('NO GPS'), findsNothing);
-        expect(find.text('POOR GPS'), findsNothing);
-        expect(find.text('WEAK GPS'), findsNothing);
-      });
-
-      testWidgets('hides signal badge for excellent quality', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.excellent),
-        );
-        expect(find.text('NO GPS'), findsNothing);
-        expect(find.text('POOR GPS'), findsNothing);
       });
     });
 
     group('accuracy display', () {
       testWidgets('shows accuracy when provided', (tester) async {
         await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.good, accuracy: 5),
+          buildSpeedometer(hasSignal: true, accuracy: 5),
         );
         expect(find.text('±5m'), findsOneWidget);
       });
@@ -129,7 +104,7 @@ void main() {
 
       testWidgets('hides accuracy when no signal', (tester) async {
         await tester.pumpWidget(
-          buildSpeedometer(signalQuality: GpsSignalQuality.none, accuracy: 5),
+          buildSpeedometer(hasSignal: false, accuracy: 5),
         );
         expect(find.textContaining('±'), findsNothing);
       });

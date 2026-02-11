@@ -17,6 +17,7 @@ enum TripState { idle, recording, paused }
 @Riverpod(keepAlive: true)
 class TripController extends _$TripController {
   Timer? _timer;
+  StreamSubscription<SpeedReading>? _locationSubscription;
   DateTime? _startTime;
   TripModel? _currentTrip;
   List<SpeedReading> _routePoints = [];
@@ -25,7 +26,10 @@ class TripController extends _$TripController {
   
   @override
   TripState build() {
-    // Check if there's an active trip in storage (crash recovery - for future)
+    ref.onDispose(() {
+      _locationSubscription?.cancel();
+      _timer?.cancel();
+    });
     return TripState.idle;
   }
 
@@ -42,45 +46,52 @@ class TripController extends _$TripController {
     _startTime = DateTime.now();
     _currentTrip = TripModel(
       id: const Uuid().v4(),
-      userId: ref.read(storageServiceProvider).userId ?? 'guest', // robust fallback
+      userId: ref.read(storageServiceProvider).userId ?? 'guest',
       startTime: _startTime!,
     );
     _routePoints = [];
     _maxSpeed = 0.0;
     _totalDistance = 0.0;
+
+    // Set state BEFORE subscribing so _onLocationUpdate doesn't drop events
+    state = TripState.recording;
     
-    // Start listening to location updates
+    // Subscribe to location updates from the shared broadcast stream
+    _locationSubscription?.cancel();
     final locationService = ref.read(locationServiceProvider);
-    locationService.speedStream?.listen(_onLocationUpdate);
+    final stream = locationService.speedStream;
+    if (stream != null) {
+      _locationSubscription = stream.listen(_onLocationUpdate);
+      debugPrint('TripController: Subscribed to location stream');
+    } else {
+      debugPrint('TripController: WARNING - speed stream is null!');
+    }
 
     _startTimer();
-    state = TripState.recording;
   }
 
   Future<void> stopTrip() async {
     if (state == TripState.idle) return;
 
     _stopTimer();
+    await _locationSubscription?.cancel();
+    _locationSubscription = null;
     
-    // Finalize trip data
     final endTime = DateTime.now();
-    
-    // Calculate final stats
-    // Average speed could be calculated from total distance / duration
-    // or from the average of all speed points. Distance/Duration is safer.
     final durationSeconds = endTime.difference(_startTime!).inSeconds;
     final avgSpeed = durationSeconds > 0 ? _totalDistance / durationSeconds : 0.0;
 
+    debugPrint('TripController: Stopping trip - '
+        'points=${_routePoints.length}, '
+        'distance=${(_totalDistance / 1000).toStringAsFixed(3)} km, '
+        'maxSpeed=${(_maxSpeed * 3.6).toStringAsFixed(1)} km/h');
+
     _currentTrip = _currentTrip!.copyWith(
       endTime: endTime,
-      distance: _totalDistance / 1000.0, // km
-      maxSpeed: _maxSpeed, // m/s
-      avgSpeed: avgSpeed, // m/s
+      distance: _totalDistance / 1000.0,
+      maxSpeed: _maxSpeed,
+      avgSpeed: avgSpeed,
     );
-
-    // We don't save yet - we wait for user to rate/confirm in Summary Screen
-    // But we could save a "draft" or "pending" trip here if we wanted crash recovery.
-    // For MVP, we pass this trip to the summary screen.
     
     state = TripState.idle;
   }
@@ -92,15 +103,14 @@ class TripController extends _$TripController {
   void _onLocationUpdate(SpeedReading reading) {
     if (state != TripState.recording) return;
 
-    // Filter poor accuracy
-    if (reading.accuracy > 50) return; // Ignore points with > 50m inaccuracy (Ghana edge case)
+    // Filter poor accuracy (relaxed for Ghana conditions)
+    if (reading.accuracy > 100) return;
 
-    // Update Max Speed
     if (reading.speedMs > _maxSpeed) {
       _maxSpeed = reading.speedMs;
     }
 
-    // Calculate distance
+    // Calculate distance from previous point
     if (_routePoints.isNotEmpty) {
       final lastPoint = _routePoints.last;
       final distance = Geolocator.distanceBetween(
@@ -109,10 +119,15 @@ class TripController extends _$TripController {
         reading.latitude,
         reading.longitude,
       );
-      _totalDistance += distance;
+      // Filter GPS jitter: ignore tiny movements < 2m
+      if (distance > 2.0) {
+        _totalDistance += distance;
+      }
     }
 
     _routePoints.add(reading);
+    debugPrint('TripController: point #${_routePoints.length}, '
+        'dist=${(_totalDistance / 1000).toStringAsFixed(3)} km');
   }
 
   void _startTimer() {

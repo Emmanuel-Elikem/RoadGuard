@@ -60,6 +60,9 @@ class BackgroundTrackingService {
   static void onStart(ServiceInstance service) async {
     // Only available for flutter 3.0.0 and later
     DartPluginRegistrant.ensureInitialized();
+    
+    debugPrint('BackgroundTrackingService: Service started in separate isolate');
+    service.invoke('log', {'message': 'Service started'});
 
     // Listen for stop event from UI
     service.on('stopService').listen((event) {
@@ -77,13 +80,19 @@ class BackgroundTrackingService {
 
     // Settings for high accuracy
     const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
+      accuracy: LocationAccuracy.high,
       distanceFilter: 0,
     );
 
     // Stream position updates
+    debugPrint('BackgroundTrackingService: Starting Geolocator stream...');
+    service.invoke('log', {'message': 'Starting GPS stream...'});
     Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
+        debugPrint('BackgroundService: Location update ${position.latitude},${position.longitude} spd:${position.speed}');
+        service.invoke('log', {'message': 'Location: ${position.latitude},${position.longitude}'});
+        
+        // Normalize speed once - position.speed can be negative if unavailable
         // Normalize speed once - position.speed can be negative if unavailable
         final normalizedSpeedMs = position.speed < 0 ? 0.0 : position.speed;
         final speedKmh = normalizedSpeedMs * 3.6;
@@ -110,7 +119,8 @@ class BackgroundTrackingService {
         });
       },
       onError: (e) {
-        debugPrint('BackgroundTrackingService: GPS error: $e');
+        debugPrint('BackgroundTrackingService: GPS stream error: $e');
+        service.invoke('log', {'message': 'GPS Error: $e'});
         if (service is AndroidServiceInstance) {
           service.setForegroundNotificationInfo(
             title: "RoadGuard Error",

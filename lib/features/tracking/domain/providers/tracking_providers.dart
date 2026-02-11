@@ -13,7 +13,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/services/location_service.dart';
 import '../../../../shared/services/permission_service.dart';
-import '../../../../shared/services/sensor_speed_service.dart';
 
 // =============================================================================
 // PERMISSION PROVIDERS
@@ -37,36 +36,23 @@ class PermissionNotifier extends AsyncNotifier<LocationPermissionState> {
   /// Request location permission from user.
   Future<void> requestPermission() async {
     state = const AsyncLoading();
-    try {
-      final result =
-          await PermissionService.instance.requestLocationPermission();
-      state = AsyncData(result);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+    final result = await PermissionService.instance.requestLocationPermission();
+    state = AsyncData(result);
   }
 
   /// Request background (always) location permission.
   Future<void> requestBackgroundPermission() async {
     state = const AsyncLoading();
-    try {
-      final result =
-          await PermissionService.instance.requestBackgroundPermission();
-      state = AsyncData(result);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+    final result = await PermissionService.instance
+        .requestBackgroundPermission();
+    state = AsyncData(result);
   }
 
   /// Refresh permission state (e.g., after returning from settings).
   Future<void> refresh() async {
     state = const AsyncLoading();
-    try {
-      final result = await PermissionService.instance.checkLocationPermission();
-      state = AsyncData(result);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+    final result = await PermissionService.instance.checkLocationPermission();
+    state = AsyncData(result);
   }
 }
 
@@ -110,18 +96,12 @@ class SpeedTrackingState {
     this.errorMessage,
   });
 
-  /// Current speed in km/h (raw from GPS, not filtered).
-  double get speedKmh => currentReading?.displaySpeedKmh ?? 0;
+  /// Current speed in km/h (0 if no reading).
+  double get speedKmh => currentReading?.speedKmh ?? 0;
 
-  /// Raw speed is same as displaySpeedKmh (kept for API compatibility).
-  double get rawSpeedKmh => currentReading?.speedKmh ?? 0;
-
-  /// Whether we have any GPS data (even poor quality).
-  bool get hasSignal => currentReading?.hasGpsData ?? false;
-
-  /// GPS signal quality for UI display.
-  GpsSignalQuality get signalQuality =>
-      currentReading?.signalQuality ?? GpsSignalQuality.none;
+  /// Whether we have a valid GPS signal.
+  bool get hasSignal =>
+      currentReading != null && (currentReading?.isReliable ?? false);
 
   /// GPS accuracy in meters.
   double? get accuracy => currentReading?.accuracy;
@@ -151,8 +131,6 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       if (subscription != null) {
         unawaited(subscription.cancel());
       }
-      // Stop sensor service to prevent battery drain
-      unawaited(SensorSpeedService.instance.stop());
       unawaited(LocationService.instance.stopTracking());
     });
 
@@ -189,18 +167,12 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     debugPrint('SpeedTrackingNotifier: Subscribing to speed stream');
 
-    // Start sensor fusion for faster updates
-    await SensorSpeedService.instance.start();
-
-    // Subscribe to GPS speed updates
+    // Subscribe to speed updates
     _subscription = stream.listen(
       (reading) {
         debugPrint(
           'SpeedTrackingNotifier: Got reading ${reading.speedKmh.toStringAsFixed(1)} km/h',
         );
-        // Feed GPS to sensor service for calibration
-        SensorSpeedService.instance.updateWithGps(reading);
-
         state = state.copyWith(
           state: TrackingState.tracking,
           currentReading: reading,
@@ -208,9 +180,6 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       },
       onError: (error) {
         debugPrint('SpeedTrackingNotifier: Stream error: $error');
-        // Stop services to prevent battery drain
-        SensorSpeedService.instance.stop();
-        LocationService.instance.stopTracking();
         state = state.copyWith(
           state: TrackingState.error,
           errorMessage: error.toString(),
@@ -241,9 +210,6 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
 
     await _subscription?.cancel();
     _subscription = null;
-
-    // Stop sensor fusion
-    SensorSpeedService.instance.stop();
 
     await LocationService.instance.stopTracking();
 

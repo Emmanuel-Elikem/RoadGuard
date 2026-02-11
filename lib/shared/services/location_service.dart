@@ -144,6 +144,26 @@ class LocationService {
         _handleBackgroundUpdate(Map<String, dynamic>.from(data));
       }
     });
+
+    // Listen for debug logs from background service
+    _service.on('log').listen((data) {
+      if (data != null) {
+        final msg = 'BG: ${data['message']}';
+        debugPrint(msg);
+        _logCallback?.call(msg);
+      }
+    });
+  }
+
+  // Callback to send logs to UI provider
+  void Function(String)? _logCallback;
+  void setLogCallback(void Function(String) callback) {
+    _logCallback = callback;
+  }
+
+  void _log(String message) {
+    debugPrint(message);
+    _logCallback?.call(message);
   }
 
   /// Start persistent background tracking.
@@ -168,10 +188,12 @@ class LocationService {
       // This prevents dropping early GPS updates (race condition fix)
       _isTracking = true;
 
-      // 4. Start the Background Service
       final isRunning = await _service.isRunning();
+      debugPrint('LocationService: Service running status: $isRunning');
       if (!isRunning) {
+        debugPrint('LocationService: Attempting to start service...');
         final started = await _service.startService();
+        debugPrint('LocationService: startService() returned: $started');
         if (!started) {
           debugPrint('LocationService: Failed to start background service');
           await _cleanup();
@@ -180,10 +202,10 @@ class LocationService {
         }
       }
 
-      debugPrint('LocationService: Background Tracking started');
+      debugPrint('LocationService: Background Tracking started successfully');
       return true;
     } catch (e) {
-      debugPrint('LocationService: Error starting tracking: $e');
+      _log('Error starting tracking: $e');
       await _cleanup();
       return false;
     }
@@ -203,6 +225,9 @@ class LocationService {
       );
 
       _lastReading = reading;
+      
+      // Log occassionally if needed, but not every update to avoid spam
+      // _log('Update: ${reading.speedKmh.toStringAsFixed(1)} km/h');
 
       // Emit to UI listeners
       if (_speedController != null && !_speedController!.isClosed) {

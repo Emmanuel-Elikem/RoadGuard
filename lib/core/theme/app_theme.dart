@@ -174,8 +174,11 @@ ThemeData createDarkTheme() {
 
     // === SNACKBAR ===
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: AppColorsDark.cardBackground,
-      contentTextStyle: AppTypography.bodyMedium,
+      backgroundColor: AppColorsDark.surfaceVariant,
+      contentTextStyle: AppTypography.bodyMedium.copyWith(
+        color: AppColorsDark.textPrimary,
+      ),
+      actionTextColor: AppColorsDark.primary,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
       ),

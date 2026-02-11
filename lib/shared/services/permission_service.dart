@@ -56,17 +56,17 @@ extension LocationPermissionStateX on LocationPermissionState {
   String get description {
     return switch (this) {
       LocationPermissionState.unknown =>
-        'RoadGuard needs location access to monitor your trip\'s speed and help keep passengers safe.',
+        'RoadGuard needs location access to track your speed and ensure safe travels.',
       LocationPermissionState.serviceDisabled =>
-        'Please enable Location Services in your device settings to monitor vehicle speed during your trips.',
+        'Please enable Location Services in your device settings to use speed tracking.',
       LocationPermissionState.denied =>
-        'Location permission is required to monitor your trip\'s speed. Tap to grant access.',
+        'Location permission is required for speed tracking. Tap to grant access.',
       LocationPermissionState.deniedForever =>
-        'Location permission was blocked. Please enable it in Settings > Apps > RoadGuard > Permissions to monitor your trip\'s speed.',
+        'Location permission was blocked. Please enable it in Settings > Apps > RoadGuard > Permissions.',
       LocationPermissionState.grantedWhileInUse =>
-        'Vehicle speed monitoring works while the app is open. For background monitoring, grant "Always" permission.',
+        'Speed tracking works while the app is open. For background tracking, grant "Always" permission.',
       LocationPermissionState.grantedAlways =>
-        'Full location access granted. Vehicle speed can be monitored in both foreground and background.',
+        'Full location access granted. Speed tracking works in foreground and background.',
     };
   }
 }

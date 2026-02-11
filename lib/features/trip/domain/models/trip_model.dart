@@ -36,6 +36,9 @@ class TripModel extends HiveObject {
   @HiveField(9)
   final bool isSynced;
 
+  @HiveField(10)
+  final String? plateNumber;
+
   TripModel({
     this.id = '',
     this.userId = '',
@@ -47,6 +50,7 @@ class TripModel extends HiveObject {
     this.rating,
     this.notes,
     this.isSynced = false,
+    this.plateNumber,
   }) : startTime = startTime ?? DateTime.now();
 
   TripModel copyWith({
@@ -60,6 +64,7 @@ class TripModel extends HiveObject {
     RatingModel? rating,
     String? notes,
     bool? isSynced,
+    String? plateNumber,
   }) {
     return TripModel(
       id: id ?? this.id,
@@ -72,6 +77,7 @@ class TripModel extends HiveObject {
       rating: rating ?? this.rating,
       notes: notes ?? this.notes,
       isSynced: isSynced ?? this.isSynced,
+      plateNumber: plateNumber ?? this.plateNumber,
     );
   }
 }

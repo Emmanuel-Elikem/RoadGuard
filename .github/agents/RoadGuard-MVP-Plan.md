@@ -402,9 +402,9 @@ Week 10: ░░░░░░░░░░ 0%
 ### Milestone Status
 | Milestone | Status | Notes |
 |-----------|--------|-------|
-| M1 - Auth & Nav | ⬜ Not Started | |
-| M2 - Speed Tracking | ⬜ Not Started | |
-| M3 - OCR & Ratings | ⬜ Not Started | |
+| M1 - Auth & Nav | ✅ Complete | Email/password, Google, Guest auth, go_router shell routes |
+| M2 - Speed Tracking | ✅ Complete | GPS tracking, speedometer widget, background service |
+| M3 - OCR & Ratings | 🟡 Partial | Rating screen exists, OCR not yet implemented |
 | M4 - Maps & Routes | ⬜ Not Started | |
 | M5 - Cloud Sync | ⬜ Not Started | |
 | M6 - Beta Release | ⬜ Not Started | |
@@ -422,6 +422,8 @@ Week 10: ░░░░░░░░░░ 0%
 | Maps (Offline) | flutter_map + OSM | Free, cacheable |
 | OCR | Google ML Kit | On-device, free, accurate |
 | Navigation | go_router | Declarative, deep linking |
+| Theme Mode | Dark only | Simpler UX, "cockpit" identity, reduced maintenance |
+| Typography | Poppins + JetBrains Mono | google_fonts package, Mono for speed numbers |
 
 ---
 
