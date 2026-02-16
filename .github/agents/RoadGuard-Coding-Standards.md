@@ -818,6 +818,9 @@ Before committing ANY code:
 - [ ] No TODO comments without ticket numbers
 - [ ] No print() statements (use debugPrint)
 - [ ] No hardcoded strings/colors/dimensions
+- [ ] All user-facing text follows [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md)
+- [ ] No technical jargon in UI (GPS, sync, tracking, permission, etc.)
+- [ ] No raw error objects exposed to users (`$e`, `error.toString()`)
 
 ## Architecture
 - [ ] Follows SOLID principles

@@ -85,12 +85,17 @@ The app should feel like a trusted companion that:
 
 ### Language & Communication
 
+> **📚 Full reference: [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md)** — Complete translation table for ALL user-facing text.
+
 | Guideline | Example |
-|-----------|---------|
+|-----------|----------|
 | Simple English | "Sign in" not "Authenticate" |
 | Action-oriented | "Save your trip" not "Trip data persisted" |
 | Positive framing | "Check your email" not "Email not verified" |
 | Local context | Use Ghana plate format (GR-1234-20) |
+| No tech jargon | "Location" not "GPS", "Speed check" not "Tracking" |
+| Friendly warnings | "Overspeeding! Slow down" not "Speed limit exceeded by 12 km/h" |
+| Plain errors | "Something went wrong. Try again" not raw error objects |
 
 ### Common User Mistakes to Prevent
 
@@ -429,25 +434,57 @@ Guest user → All routes (prompted to upgrade for certain actions)
 
 ## 🚗 Speed Tracking UX (Week 3+)
 
+> **Target user: PASSENGERS** — not driving, monitoring speed while riding in taxis/trotros.
+
 ### Display Requirements
-- **Large speedometer** - Readable while driving (glanceable)
+- **Large speedometer** - Readable at a glance, passenger-friendly
+- **Odometer roll animation** - Per-digit slide animation for premium feel
 - **Color coding** - Green (safe), Yellow (warning), Red (danger)
-- **Audio alerts** - Optional voice warnings for speed
-- **Minimal interaction** - Start/stop only, no typing while driving
+- **"Overspeeding!" alert** - Haptic + toast when exceeding limit (default 50 km/h)
+- **Minimal interaction** - "Start" / "Stop" only, no complex UI during ride
+
+### GPS Signal Feedback
+> Replaces old "NO GPS" / "±12m" technical indicators.
+
+A slide-in **GPS Status Banner** (Signal Strip) shows signal quality in plain language:
+
+| Signal State | User Message | Banner Color |
+|-------------|-------------|-------------|
+| Acquiring | "Finding your location..." | Blue |
+| Weak | "Weak signal — speed may vary" | Amber |
+| Poor | "Poor signal — speed not reliable" | Red |
+| Lost | "Signal lost. Move to open area" | Red (pulsing) |
+| Good | Banner hidden (no interruption) | - |
+
+**UX Rules:**
+- Banner slides in from top, pushes content down
+- Only shows when signal is NOT good (don't clutter good state)
+- Acquiring shows on first start for up to 30 seconds
+- Auto-hides when signal improves
+- Uses plain, non-technical language
+
+### Speed Architecture
+> **GPS Doppler velocity ONLY** — accelerometer was removed (Feb 2026).
+> Passengers hold phones in unpredictable orientations, making sensor fusion unreliable.
+> See [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) for full rationale.
 
 ### Edge Cases to Handle
 | Scenario | UX |
 |----------|-----|
-| GPS not available | Show "Acquiring GPS..." with retry |
-| GPS inaccurate (tunnels) | Show last known speed with "?" indicator |
-| App backgrounded | Continue tracking with notification |
-| Low battery | Warn user, suggest reducing GPS frequency |
-| No location permission | Clear explanation of why needed |
+| GPS acquiring | Signal Strip: "Finding your location..." |
+| Weak GPS (buildings) | Signal Strip: "Weak signal — speed may vary" |
+| GPS lost (tunnel/indoors) | Signal Strip: "Signal lost. Move to open area" |
+| App backgrounded | Continue checking speed with notification |
+| Low battery | Warn user, suggest stopping speed check |
+| No location permission | "We need location access to check your speed" |
+| Speed > limit | "Overspeeding! Slow down" toast + haptic |
+| Trip not saved properly | "We found a trip that wasn’t finished. Continue?" |
 
 ### Ghana-Specific Speed Considerations
 - Default speed limit: 50 km/h (urban), 100 km/h (highway)
-- "Sleeping policemen" (speed bumps) - Consider adding alerts
-- Common speeding areas - Could pre-warn based on location
+- "Sleeping policemen" (speed bumps) — Consider adding alerts
+- Common speeding areas — Could pre-warn based on location
+- Text must be simple English (no jargon, see UX Copy Guide)
 
 ---
 
@@ -527,13 +564,18 @@ Guest user → All routes (prompted to upgrade for certain actions)
 ✅ GOOD:
 - "Check your internet connection"
 - "This email is already registered. Sign in instead?"
-- "Please allow location access to track your speed"
+- "We need location access to check your speed"
+- "Couldn't read the number. Try again or type it in"
 
 ❌ BAD:
 - "Error 403: Forbidden"
-- "null is not a function"
-- "Something went wrong"
+- "GPS_ACCURACY_LOW: accuracy=25.3m"
+- "FirebaseException: $e"
+- "Something went wrong" (too vague, say what went wrong)
+- "Permission denied" (say what permission and why)
 ```
+
+> **📚 See [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md)** for the complete translation table of all user-facing strings.
 
 ### Retry Logic
 ```dart
@@ -639,5 +681,5 @@ When same data modified offline and online:
 
 ---
 
-**Last Updated:** Week 2 (Complete UX Guide)
+**Last Updated:** Week 4 (GPS-only architecture, UX language overhaul)
 **Status:** Living Document - Update with each feature

@@ -1,6 +1,12 @@
 # RoadGuard Speed Tracking & Algorithms
 
-> **PURPOSE:** Technical documentation for speed tracking, sensor fusion, and all computational algorithms. This is the "how it actually works" document.
+> **PURPOSE:** Technical documentation for GPS-based speed tracking and all computational algorithms. This is the "how it actually works" document.
+>
+> **IMPORTANT DECISION (Feb 2026):** After real-device testing, the team decided to use **GPS-only** for speed tracking. Accelerometer/sensor fusion was removed because:
+> - Passengers hold phones in unpredictable orientations → accelerometer gives wildly inaccurate values
+> - GPS Doppler velocity is accurate to ±0.1 m/s — more than sufficient
+> - Sensor fusion added complexity without real benefit for the passenger use case
+> - Kalman filter tuning was impractical without a fixed phone mount
 
 ---
 
@@ -10,49 +16,52 @@
 
 We need to display the user's speed accurately and smoothly. The challenges:
 
-| Problem | Impact |
-|---------|--------|
-| GPS is slow (1 Hz update) | Speedometer feels laggy |
-| GPS is inaccurate (±3m position) | Speed jumps around |
-| GPS fails indoors/tunnels | No speed at all |
-| Pure accelerometer drifts | Completely wrong after 60s |
-| Users expect car-like accuracy | High expectations |
+| Problem | Impact | Solution |
+|---------|--------|----------|
+| GPS is slow (1 Hz update) | Speedometer feels laggy | Smooth interpolation in UI |
+| GPS can be inaccurate (±3m position) | Speed jumps around | Use Doppler velocity (not position delta) |
+| GPS fails indoors/tunnels | No speed at all | Show status banner, display last known speed |
+| GPS cold start takes time | User sees 0 for a while | Show "Getting your location..." banner |
+| Users expect instant results | Frustration | Clear status communication |
 
-### The Solution: Sensor Fusion
-
-We combine multiple sensors to get the best of each:
+### The Solution: GPS-Only with Smart Status Feedback
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SPEED TRACKING SYSTEM                        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐       │
-│  │    GPS      │     │ Accelerometer│    │  Gyroscope  │       │
-│  │             │     │             │     │             │       │
-│  │ • Position  │     │ • Accel X,Y,Z│    │ • Rotation  │       │
-│  │ • Velocity  │     │ • 100 Hz    │     │ • Tilt      │       │
-│  │ • 1 Hz      │     │             │     │             │       │
-│  └──────┬──────┘     └──────┬──────┘     └──────┬──────┘       │
-│         │                   │                   │               │
-│         │                   │                   │               │
-│         ▼                   ▼                   ▼               │
 │  ┌──────────────────────────────────────────────────────┐      │
-│  │                  KALMAN FILTER                        │      │
+│  │                    GPS RECEIVER                       │      │
 │  │                                                       │      │
-│  │  GPS (accurate but slow) ──┐                         │      │
-│  │                            ├──► Optimal Estimate     │      │
-│  │  IMU (fast but drifty) ────┘                         │      │
+│  │  • Doppler Velocity (primary speed source)           │      │
+│  │  • Position (for distance calculation)               │      │
+│  │  • Accuracy (for signal quality assessment)          │      │
+│  │  • 1 Hz updates (Android: up to 5 Hz with FLP)      │      │
 │  │                                                       │      │
-│  └──────────────────────────────────────────────────────┘      │
-│                            │                                    │
-│                            ▼                                    │
+│  └──────────────────────┬───────────────────────────────┘      │
+│                         │                                       │
+│                         ▼                                       │
 │  ┌──────────────────────────────────────────────────────┐      │
-│  │               SMOOTHED SPEED OUTPUT                   │      │
+│  │              GPS SIGNAL QUALITY CHECK                 │      │
 │  │                                                       │      │
-│  │  • Updates at 10 Hz (smooth UI)                      │      │
-│  │  • Accurate when GPS available                       │      │
-│  │  • Reasonable for ~60s without GPS                   │      │
+│  │  • Accuracy < 10m    → "Good signal" (green)         │      │
+│  │  • Accuracy 10-25m   → "Weak signal" (amber)        │      │
+│  │  • Accuracy > 25m    → "Poor signal" (red)           │      │
+│  │  • No fix / timeout  → "No location" (red)          │      │
+│  │                                                       │      │
+│  │  Update GPS Status Banner accordingly                │      │
+│  │                                                       │      │
+│  └──────────────────────┬───────────────────────────────┘      │
+│                         │                                       │
+│                         ▼                                       │
+│  ┌──────────────────────────────────────────────────────┐      │
+│  │              SPEED SMOOTHING & OUTPUT                  │      │
+│  │                                                       │      │
+│  │  • Clamp negative speeds to 0                        │      │
+│  │  • Apply EMA (Exponential Moving Average) smoothing  │      │
+│  │  • Jitter filter: ignore speed < 2 km/h when "still" │      │
+│  │  • Output to UI with digit-slide animation           │      │
 │  │                                                       │      │
 │  └──────────────────────────────────────────────────────┘      │
 │                                                                 │
@@ -61,38 +70,34 @@ We combine multiple sensors to get the best of each:
 
 ---
 
-## 📍 GPS Speed Calculation
+## 📍 GPS Speed: The Primary (And Only) Speed Source
 
-### Method 1: GPS Doppler Velocity (Preferred)
+### Method 1: GPS Doppler Velocity (Primary)
 
 GPS chips calculate speed directly from Doppler shift of satellite signals. This is **more accurate** than calculating from position changes.
 
 ```dart
-// geolocator provides this directly
 Position position = await Geolocator.getCurrentPosition();
 double gpsSpeed = position.speed;  // meters per second
 double speedKmh = gpsSpeed * 3.6;  // convert to km/h
 ```
 
-**Accuracy:** ±0.1 m/s (±0.36 km/h) in good conditions
+**Accuracy:** ±0.1 m/s (±0.36 km/h) in good conditions — excellent for our needs.
 
-### Method 2: Position Delta (Fallback)
+### Method 2: Position Delta (Fallback only if Doppler unavailable)
 
-If Doppler velocity is unavailable, calculate from position changes:
+If Doppler velocity returns 0 or is unavailable, calculate from position changes:
 
 ```dart
 double calculateSpeedFromPositions(Position p1, Position p2) {
-  // Distance using Haversine formula (geolocator does this)
   final distanceMeters = Geolocator.distanceBetween(
     p1.latitude, p1.longitude,
     p2.latitude, p2.longitude,
   );
   
-  // Time difference
   final timeDiffMs = p2.timestamp!.difference(p1.timestamp!).inMilliseconds;
   final timeDiffSec = timeDiffMs / 1000.0;
   
-  // Speed = distance / time
   if (timeDiffSec <= 0) return 0;
   
   final speedMs = distanceMeters / timeDiffSec;
@@ -100,17 +105,16 @@ double calculateSpeedFromPositions(Position p1, Position p2) {
 }
 ```
 
-**Accuracy:** ±3 m/s (±10 km/h) - GPS position error amplifies!
+**Accuracy:** ±3 m/s (±10 km/h) — much worse, only use as fallback.
 
 ### GPS Configuration
 
 ```dart
 const LocationSettings gpsSettings = LocationSettings(
-  accuracy: LocationAccuracy.bestForNavigation,  // Highest accuracy
+  accuracy: LocationAccuracy.bestForNavigation,
   distanceFilter: 0,  // Report all movements (we filter ourselves)
 );
 
-// Or for Android with more control:
 const AndroidSettings androidSettings = AndroidSettings(
   accuracy: LocationAccuracy.bestForNavigation,
   distanceFilter: 0,
@@ -119,182 +123,114 @@ const AndroidSettings androidSettings = AndroidSettings(
 );
 ```
 
----
+### Speed Smoothing (EMA Filter)
 
-## 📱 Accelerometer Dead Reckoning
-
-### The Theory
-
-Physics: **v = v₀ + a × t**
-
-If we know the acceleration, we can estimate velocity change.
-
-### The Problem: Drift
-
-Phone accelerometers are noisy. Even a tiny constant error compounds:
-
-```
-Error of 0.01 m/s² over 60 seconds:
-v_error = 0.01 × 60 = 0.6 m/s error
-position_error = 0.5 × 0.01 × 60² = 18 meters!
-
-Real phone drift is often 10x worse → 180m error in 60s
-```
-
-### Accelerometer Processing
+Since GPS updates at 1 Hz, speed can appear "jumpy". Apply a simple Exponential Moving Average:
 
 ```dart
-class AccelerometerProcessor {
-  // Gravity removal (phone measures gravity + movement)
-  Vector3 _gravityEstimate = Vector3(0, 0, 9.81);
+class SpeedSmoother {
+  double _smoothedSpeed = 0;
+  final double _alpha = 0.4; // Smoothing factor (0.0-1.0), higher = more responsive
   
-  // High-pass filter to remove gravity
-  static const double _alpha = 0.8;
-  
-  Vector3 removeGravity(AccelerometerEvent event) {
-    // Low-pass filter to estimate gravity
-    _gravityEstimate = Vector3(
-      _alpha * _gravityEstimate.x + (1 - _alpha) * event.x,
-      _alpha * _gravityEstimate.y + (1 - _alpha) * event.y,
-      _alpha * _gravityEstimate.z + (1 - _alpha) * event.z,
-    );
+  double smooth(double rawSpeed) {
+    if (rawSpeed < 0) rawSpeed = 0; // Clamp negatives
     
-    // Subtract gravity to get linear acceleration
-    return Vector3(
-      event.x - _gravityEstimate.x,
-      event.y - _gravityEstimate.y,
-      event.z - _gravityEstimate.z,
-    );
-  }
-  
-  // Convert phone coordinates to world coordinates
-  // (requires gyroscope for orientation)
-  Vector3 toWorldCoordinates(Vector3 phoneAccel, Quaternion orientation) {
-    return orientation.rotateVector(phoneAccel);
-  }
-}
-```
-
-### When to Use Accelerometer
-
-```dart
-enum SpeedSource {
-  gps,           // Primary - GPS Doppler velocity
-  gpsDelta,      // Fallback 1 - Position change
-  imuFused,      // Fallback 2 - Kalman-fused IMU
-  imuOnly,       // Last resort - Pure accelerometer (max 60s)
-}
-
-SpeedSource _determineSource(Position? gps, Duration gpsAge) {
-  if (gps != null && gpsAge < Duration(seconds: 3)) {
-    return gps.speedAccuracy < 1.0 
-      ? SpeedSource.gps 
-      : SpeedSource.gpsDelta;
-  }
-  
-  if (gpsAge < Duration(seconds: 30)) {
-    return SpeedSource.imuFused;  // Kalman filter bridges the gap
-  }
-  
-  if (gpsAge < Duration(seconds: 60)) {
-    return SpeedSource.imuOnly;  // Risky but better than nothing
-  }
-  
-  // GPS lost for too long - speed becomes unreliable
-  return SpeedSource.imuOnly; // Show warning to user
-}
-```
-
----
-
-## 🧮 Kalman Filter: The Magic
-
-### What Is It?
-
-A Kalman Filter is an algorithm that **optimally combines** noisy measurements to estimate the true state.
-
-For us: Combine slow-but-accurate GPS with fast-but-drifty accelerometer.
-
-### Simplified 1D Kalman Filter for Speed
-
-```dart
-class SpeedKalmanFilter {
-  // State estimate
-  double _speedEstimate = 0;      // Our best guess of speed
-  double _errorEstimate = 1;      // How uncertain we are
-  
-  // Process noise (how much the true speed can change per update)
-  final double _processNoise = 0.5;  // m/s² - tuned for driving
-  
-  // Measurement noise (how noisy our sensors are)
-  final double _gpsMeasurementNoise = 0.5;   // GPS is pretty good
-  final double _imuMeasurementNoise = 2.0;   // IMU drifts a lot
-  
-  double update({
-    double? gpsMeasurement,
-    double? imuPrediction,
-    required Duration dt,
-  }) {
-    final dtSec = dt.inMilliseconds / 1000.0;
-    
-    // ====== PREDICTION STEP ======
-    // Our prediction is: speed stays roughly the same
-    final predictedSpeed = _speedEstimate;
-    final predictedError = _errorEstimate + _processNoise * dtSec;
-    
-    // ====== UPDATE STEP ======
-    if (gpsMeasurement != null) {
-      // We have GPS! Trust it more.
-      final kalmanGain = predictedError / 
-          (predictedError + _gpsMeasurementNoise);
-      
-      _speedEstimate = predictedSpeed + 
-          kalmanGain * (gpsMeasurement - predictedSpeed);
-      _errorEstimate = (1 - kalmanGain) * predictedError;
-      
-    } else if (imuPrediction != null) {
-      // No GPS, use IMU with less trust
-      final kalmanGain = predictedError / 
-          (predictedError + _imuMeasurementNoise);
-      
-      _speedEstimate = predictedSpeed + 
-          kalmanGain * (imuPrediction - predictedSpeed);
-      _errorEstimate = (1 - kalmanGain) * predictedError;
-      
-    } else {
-      // No measurements at all - just use prediction
-      _speedEstimate = predictedSpeed;
-      _errorEstimate = predictedError;
+    // Jitter filter: if speed is very low and we were stationary, stay at 0
+    if (rawSpeed < 2.0 && _smoothedSpeed < 2.0) {
+      _smoothedSpeed = 0;
+      return 0;
     }
     
-    return _speedEstimate;
+    _smoothedSpeed = _alpha * rawSpeed + (1 - _alpha) * _smoothedSpeed;
+    return _smoothedSpeed;
   }
   
-  // Reset when starting a new trip
   void reset() {
-    _speedEstimate = 0;
-    _errorEstimate = 1;
+    _smoothedSpeed = 0;
   }
-  
-  // Get confidence level (0-1)
-  double get confidence => 1 / (1 + _errorEstimate);
 }
 ```
 
-### Visual: Kalman Filter in Action
+---
+
+## 📡 GPS Signal Status & User Feedback
+
+### Why This Matters
+
+GPS takes time to get a "fix" (especially cold start). Users need to know WHY the speed isn't showing, without technical jargon.
+
+### Signal Quality Classification
+
+```dart
+enum GpsSignalQuality {
+  acquiring,   // No fix yet, waiting for satellites
+  good,        // Accuracy < 10m — reliable speed
+  weak,        // Accuracy 10-25m — speed may fluctuate  
+  poor,        // Accuracy > 25m — speed unreliable
+  lost,        // No update for > 10 seconds
+}
+
+GpsSignalQuality classifySignal(Position? position, Duration? timeSinceLastUpdate) {
+  if (position == null) return GpsSignalQuality.acquiring;
+  
+  if (timeSinceLastUpdate != null && timeSinceLastUpdate > Duration(seconds: 10)) {
+    return GpsSignalQuality.lost;
+  }
+  
+  final accuracy = position.accuracy;
+  if (accuracy < 10) return GpsSignalQuality.good;
+  if (accuracy < 25) return GpsSignalQuality.weak;
+  return GpsSignalQuality.poor;
+}
+```
+
+### Status Banner Messages (Plain Language — see UX Copy Guide)
+
+| Quality | Banner Visible? | Message | Color |
+|---------|----------------|---------|-------|
+| `acquiring` | Yes | "Getting your location..." | Amber (pulsing dot) |
+| `good` | No (auto-hide) | — | — |
+| `weak` | Yes | "Location signal is weak" | Amber |
+| `poor` | Yes | "Location signal is poor — speed may be wrong" | Red |
+| `lost` | Yes | "Location lost — check your surroundings" | Red |
+
+### Banner Animation Specification
 
 ```
-Time:     0s      1s      2s      3s      4s      5s
-         ─────────────────────────────────────────────
-GPS:      50 ─────────── 52 ───────── [LOST] ────────
-                 ╲                     
-Accel:    ── 51 ── 50 ── 53 ── 55 ── 54 ── 52 ──
-                   ╲       ╲       ╲
-Kalman:   50 ── 50.5 ── 52 ── 53.5 ── 54 ── 53 ──
-                             ↑
-                    GPS lost, IMU takes over
-                    (with increasing uncertainty)
+┌──────────────────────────────────────────┐
+│ 🟡 Getting your location...              │  ← Slides in from top
+└──────────────────────────────────────────┘
+     ↑
+     300ms easeOutCubic slide + fade
+     Auto-dismisses when GPS quality = "good"
+     250ms easeIn slide out
 ```
+
+```dart
+/// Banner behavior rules:
+/// 1. Show IMMEDIATELY when tracking starts (acquiring state)
+/// 2. Auto-hide when signal becomes "good" (accuracy < 10m)
+/// 3. Re-appear if signal degrades during tracking
+/// 4. Non-blocking — user can see speedometer underneath
+/// 5. Slim height (~40px) — just enough for icon + message
+/// 6. Do NOT show "km/h", "±Xm", "GPS" or any technical jargon
+```
+
+---
+
+## ❌ DEPRECATED: Accelerometer & Sensor Fusion
+
+> **Removed in Feb 2026 after real-device testing.**
+>
+> **Why it was removed:**
+> - RoadGuard is for **passengers**, not drivers. Passengers hold phones loosely in hands, pockets, bags — orientation is unpredictable
+> - Accelerometer requires gravity removal, which needs stable orientation → fails for passengers
+> - Even with Kalman filter, accelerometer drift made speeds jump wildly on start
+> - GPS Doppler velocity alone is accurate enough (±0.36 km/h)
+> - Complexity wasn't worth it — simpler = more reliable
+>
+> **If needed in future:** Consider only for OBD-II integration (v2.0) where vehicle ECU provides exact speed.
+> The `sensors_plus` package can be kept for future features (e.g., bump detection, crash detection) but NOT for speed calculation.
 
 ---
 
@@ -612,16 +548,17 @@ export const onRatingCreated = functions.firestore
 
 ---
 
-## ⚡ Speed Alert Logic
+## ⚡ Speed Alert Logic (Overspeeding Alerts)
+
+> **UX NOTE:** Never say "Speed limit exceeded" — say "Overspeeding!" See [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) for all copy rules.
 
 ### Alert Thresholds
 
 ```dart
 class SpeedAlertConfig {
-  static const double defaultLimitKmh = 80.0;
-  static const double warningBuffer = 5.0;  // Warn at limit - 5
+  static const double defaultLimitKmh = 50.0; // Ghana urban default
+  static const double warningBuffer = 5.0;    // Warn at limit - 5
   
-  // User can customize
   double userSpeedLimit;
   bool alertsEnabled;
   bool hapticEnabled;
@@ -630,11 +567,11 @@ class SpeedAlertConfig {
     if (!alertsEnabled) return SpeedAlertLevel.none;
     
     if (currentSpeed >= userSpeedLimit) {
-      return SpeedAlertLevel.danger;
+      return SpeedAlertLevel.danger;  // "Overspeeding!"
     }
     
     if (currentSpeed >= userSpeedLimit - warningBuffer) {
-      return SpeedAlertLevel.warning;
+      return SpeedAlertLevel.warning;  // "Almost at limit"
     }
     
     return SpeedAlertLevel.none;
@@ -644,12 +581,17 @@ class SpeedAlertConfig {
 enum SpeedAlertLevel { none, warning, danger }
 ```
 
-### Alert UI Behavior
+### Alert UI Behavior (User-Facing Messages)
+
+| Level | Toast/SnackBar Message | Color | Haptic |
+|-------|----------------------|-------|--------|
+| `warning` | "Almost at your speed limit" | Amber | Light |
+| `danger` | "Overspeeding! Slow down" | Red | Heavy |
+| Back to normal | (auto-dismiss) | — | — |
 
 ```dart
 class SpeedAlertController {
   SpeedAlertLevel _currentLevel = SpeedAlertLevel.none;
-  DateTime? _lastHaptic;
   
   void onSpeedUpdate(double speed, SpeedAlertConfig config) {
     final newLevel = config.getAlertLevel(speed);
@@ -667,36 +609,24 @@ class SpeedAlertController {
   ) {
     switch (newLevel) {
       case SpeedAlertLevel.warning:
-        // Change speedometer color to orange
-        // Light haptic
+        // Show amber toast: "Almost at your speed limit"
         if (config.hapticEnabled) {
           HapticFeedback.lightImpact();
         }
         break;
         
       case SpeedAlertLevel.danger:
-        // Change speedometer color to red
-        // Pulse animation
-        // Heavy haptic
+        // Show red toast: "Overspeeding! Slow down"
+        // Speedometer ring turns red + pulse animation
         if (config.hapticEnabled) {
           HapticFeedback.heavyImpact();
         }
-        // Log for trip summary
-        _logSpeedAlert(newLevel);
         break;
         
       case SpeedAlertLevel.none:
-        // Return to normal colors
+        // Auto-dismiss any active toast
         break;
     }
-  }
-  
-  void _logSpeedAlert(SpeedAlertLevel level) {
-    // Record for trip statistics
-    _tripRecorder.addEvent(TripEvent.speedAlert(
-      timestamp: DateTime.now(),
-      level: level,
-    ));
   }
 }
 ```
@@ -771,9 +701,9 @@ class StationaryDetector {
   }
   
   void onStationary() {
-    // Reduce GPS polling
-    // Pause accelerometer processing
+    // Reduce GPS polling frequency
     // Save battery
+    // Show "Vehicle appears stopped" status (optional)
   }
 }
 ```
@@ -784,63 +714,46 @@ class StationaryDetector {
 
 Before implementing speed tracking:
 
-- [ ] Kalman filter parameters tuned for driving scenarios
-- [ ] GPS timeout handling (what happens after 30s without fix?)
-- [ ] Accelerometer gravity removal tested
-- [ ] Distance calculation uses Haversine
-- [ ] Speed smoothing prevents UI jitter
-- [ ] Battery optimization adapts to conditions
+- [ ] GPS-only speed source (no accelerometer for speed)
+- [ ] GPS Doppler velocity as primary speed source
+- [ ] Position delta as fallback when Doppler unavailable
+- [ ] EMA speed smoothing to prevent UI jitter
+- [ ] Jitter filter: ignore < 2 km/h when stationary
+- [ ] GPS signal quality classification (good/weak/poor/lost)
+- [ ] GPS status banner shows plain-language messages
+- [ ] Banner auto-shows on tracking start, auto-hides when signal good
+- [ ] Banner re-appears if signal degrades during trip
+- [ ] Distance calculation uses Haversine with jitter filter
+- [ ] Speed alerts use plain language ("Overspeeding!")
+- [ ] Battery optimization adapts GPS frequency to conditions
 - [ ] Stationary detection prevents false movement
-- [ ] Speed alerts respect user-configured limits
 - [ ] All calculations handle null/error cases
 - [ ] Unit tests for edge cases (0 speed, max speed, GPS loss)
 
 ---
 
-## 🔮 Future: OBD-II Integration
+## 🔮 Future Enhancements (v2.0+)
 
-For "Pro" users who want dashboard-accurate speed:
+### OBD-II Integration
+For "Pro" users who want dashboard-accurate speed via Bluetooth OBD-II adapter.
 
-```dart
-// Using obd2_plugin or similar
-class OBD2SpeedSource {
-  BluetoothDevice? _obdDevice;
-  
-  Stream<double> get speedStream async* {
-    if (_obdDevice == null) {
-      throw OBDNotConnectedException();
-    }
-    
-    // OBD-II PID for vehicle speed: 0x0D
-    while (true) {
-      final response = await _obdDevice!.sendCommand('010D');
-      final speed = _parseSpeedResponse(response);
-      yield speed; // km/h directly from car's ECU
-      await Future.delayed(Duration(milliseconds: 200)); // 5 Hz
-    }
-  }
-  
-  double _parseSpeedResponse(String response) {
-    // Response format: "41 0D XX" where XX is speed in hex
-    final parts = response.split(' ');
-    if (parts.length >= 3 && parts[0] == '41' && parts[1] == '0D') {
-      return int.parse(parts[2], radix: 16).toDouble();
-    }
-    throw InvalidOBDResponse(response);
-  }
-}
-```
+### Peer Speed Sharing (Researched, Parked)
+> **Concept:** If multiple passengers in the same vehicle are using RoadGuard, and one passenger's GPS fails, they could "tap into" a nearby user's GPS data (within 5-10m radius).
+>
+> **Why parked for v2.0:**
+> - High complexity (needs Bluetooth/WiFi P2P or Nearby Connections API)
+> - If GPS is failing, proximity detection is also unreliable
+> - Privacy concerns with broadcasting location to strangers
+> - Narrow use case (both users need app, one needs to have good GPS)
+> - Edge cases with multiple users on a trotro (20+ potential peers)
+>
+> **Best approach if revisited:** Google's Nearby Connections API (works without internet, Android-only)
+>
+> **Alternative:** Cloud-based proximity matching via Firebase, but defeats purpose if user's network is also down
 
-**Benefits:**
-- Works in tunnels (no GPS needed)
-- Matches dashboard exactly
-- Very fast updates (5-10 Hz)
-
-**Limitations:**
-- Requires Bluetooth OBD-II adapter ($5-20)
-- Android only (iOS Bluetooth restrictions)
-- Only for the driver (not passengers)
+### Crash/Accident Detection
+Using accelerometer (not for speed) to detect sudden deceleration events that could indicate an accident.
 
 ---
 
-**Remember:** Speed tracking is the CORE feature. It must be accurate, smooth, and battery-efficient. Test thoroughly in real driving conditions.
+**Remember:** GPS-only speed tracking is the CORE feature. It must be accurate, smooth, and battery-efficient. Test thoroughly in real driving conditions. Always communicate GPS status to the user in plain, non-technical language.

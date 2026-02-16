@@ -18,11 +18,13 @@ tools:
 ### Core Guidelines
 - [RoadGuard-Coding-Standards.md](RoadGuard-Coding-Standards.md) - SOLID, DRY, testing, performance optimization
 - [RoadGuard-Design-System.md](RoadGuard-Design-System.md) - UI/UX patterns, colors, typography, motion
+- [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) - **ALL user-facing text rules, word swap table, translation table**
+- [RoadGuard-UX-Guide.md](RoadGuard-UX-Guide.md) - User flows, error patterns, Ghana-specific UX
 - [RoadGuard-Mistakes-Log.md](RoadGuard-Mistakes-Log.md) - Known issues, prevention patterns, **AUTO-LOG YOUR MISTAKES HERE**
 
 ### Architecture & Logic
 - [RoadGuard-Backend-Logic.md](RoadGuard-Backend-Logic.md) - Error handling, retry logic, sync queue, circuit breaker
-- [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) - Speed tracking, Kalman filter, plate validation, distance calculation
+- [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) - Speed tracking, GPS-only architecture, signal quality, distance calculation
 - [RoadGuard-Database-Schema.md](RoadGuard-Database-Schema.md) - Hive models, Firebase structure, relationships
 - [RoadGuard-Cloud-Functions.md](RoadGuard-Cloud-Functions.md) - Firebase functions, triggers, deployment
 
@@ -44,6 +46,7 @@ tools:
 2. ✅ Reference [RoadGuard-Design-System.md](RoadGuard-Design-System.md) for UI work
 3. ✅ Follow [RoadGuard-Coding-Standards.md](RoadGuard-Coding-Standards.md) for ALL code
 4. ✅ Check [RoadGuard-Backend-Logic.md](RoadGuard-Backend-Logic.md) for error handling patterns
+5. ✅ Check [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) for ANY user-facing text
 
 ---
 

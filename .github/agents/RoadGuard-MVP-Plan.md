@@ -138,7 +138,7 @@ Week 10    │ Polish & Beta Release
 ---
 
 ### Week 4: Speed Tracking - Part 2
-**Goal:** Full trip tracking with history
+**Goal:** Full trip tracking with history, GPS status feedback, premium UI polish
 
 #### Tasks
 - [ ] **W4.1** Implement trip recording
@@ -147,30 +147,48 @@ Week 10    │ Polish & Beta Release
   - [ ] Record speed points during trip
   - [ ] Calculate trip statistics
   
-- [ ] **W4.2** Add accelerometer fusion
-  - [ ] Install `sensors_plus`
-  - [ ] Create `AccelerometerService`
-  - [ ] Implement Kalman filter smoothing
-  - [ ] Fuse GPS + accelerometer data
+- [x] ~~**W4.2** Add accelerometer fusion~~ **REMOVED (Feb 2026)**
+  > Accelerometer removed after real-device testing. Passengers hold phones in 
+  > unpredictable orientations → inaccurate readings. GPS-only is more accurate 
+  > and simpler. See [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md).
   
-- [ ] **W4.3** Home screen - Tracking state
-  - [ ] Recording indicator
-  - [ ] Live stats display (top/avg/distance)
-  - [ ] "Stop Tracking" button
-  - [ ] Speed alert warning
+- [ ] **W4.2** GPS Status Banner ("Signal Strip")
+  - [ ] Create `GpsSignalQuality` enum (acquiring/good/weak/poor/lost)
+  - [ ] Build `GpsStatusBanner` widget with slide animation
+  - [ ] Show on tracking start, auto-hide when signal good
+  - [ ] Re-show if signal degrades during trip
+  - [ ] Plain language messages (see UX Copy Guide)
   
-- [ ] **W4.4** Trip summary screen
+- [ ] **W4.3** Speedometer Digit Animation ("Odometer Roll")
+  - [ ] Create `AnimatedDigit` widget with slide up/fade transition
+  - [ ] Per-digit independent animation (only changed digits animate)
+  - [ ] 200ms duration, easeOutCubic curve
+  - [ ] Multi-digit cascade with 50ms stagger
+  
+- [ ] **W4.4** Home screen - Tracking state
+  - [ ] LIVE indicator (not "REC")
+  - [ ] Live stats display (fastest/average/distance)
+  - [ ] "Stop" button (not "Stop Tracking")
+  - [ ] Overspeeding toast notification
+  
+- [ ] **W4.5** Trip summary screen
   - [ ] Display trip statistics
   - [ ] Placeholder for map
-  - [ ] "Save Trip" action
+  - [ ] "Save" action
   - [ ] Prompt to rate driver
   
-- [ ] **W4.5** Save trips to Hive
-  - [ ] Store completed trips locally
+- [ ] **W4.6** Save trips locally
+  - [ ] Store completed trips in Hive
   - [ ] List trips in Stats tab
   - [ ] Trip detail view
+  
+- [ ] **W4.7** UX Language Audit
+  - [ ] Replace all technical jargon with plain language
+  - [ ] Follow [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md)
+  - [ ] Remove internal dev text from UI ("MVP Beta", "Week 8", etc.)
+  - [ ] Test all user-facing strings for clarity
 
-**Deliverable:** ✅ **MILESTONE 2** - Complete trip can be recorded and saved
+**Deliverable:** ✅ **MILESTONE 2** - Complete trip can be recorded and saved, with polished GPS feedback and premium digit animation
 
 ---
 
@@ -398,6 +416,37 @@ Week 8:  ░░░░░░░░░░ 0%
 Week 9:  ░░░░░░░░░░ 0%
 Week 10: ░░░░░░░░░░ 0%
 ```
+
+---
+
+## 🔮 v2.0 Future Features (Post-MVP)
+
+> Features researched but parked for after MVP release.
+
+### Peer Speed Sharing
+**Concept:** Multiple passengers in the same vehicle sharing GPS data, so if one person's GPS fails, they can use a nearby user's data.
+
+**Status:** Researched, parked. See [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) for full analysis.
+
+**Why parked:**
+- High complexity (P2P communication, proximity detection)
+- Privacy concerns with broadcasting location
+- If GPS is failing, proximity detection also fails
+- Narrow use case for MVP
+
+**Best approach if revisited:** Google Nearby Connections API (no internet needed)
+
+### OBD-II Integration
+**Concept:** Bluetooth OBD-II adapter for dashboard-accurate speed.
+
+### Crash/Accident Detection
+**Concept:** Accelerometer-based sudden deceleration detection.
+
+### Multi-Language Support
+**Concept:** Twi, Ga, Ewe translations for broader Ghana reach.
+
+### Voice Alerts
+**Concept:** Audio speed warnings for when phone is in pocket/bag.
 
 ### Milestone Status
 | Milestone | Status | Notes |

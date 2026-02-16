@@ -74,6 +74,7 @@ For detailed specifications, see `.github/agents/`:
 - `RoadGuard.agent.md` - Main agent with all linked docs
 - `RoadGuard-Coding-Standards.md` - SOLID, DRY, testing rules
 - `RoadGuard-Design-System.md` - UI patterns, colors, motion
+- `RoadGuard-UX-Copy-Guide.md` - ALL user-facing text rules (no jargon!)
 - `RoadGuard-Backend-Logic.md` - Error handling, sync queue
 - `RoadGuard-Mistakes-Log.md` - Known issues (auto-log mistakes here!)
 

@@ -55,8 +55,13 @@ geocoding: ^3.0.0                 # Address lookup
 
 ### Sensors
 ```yaml
-sensors_plus: ^7.0.0              # Accelerometer, gyroscope
+sensors_plus: ^7.0.0              # NOT used for speed tracking (GPS-only)
+                                   # Kept for future: bump/crash detection (v2.0)
 ```
+
+> **⚠️ Architecture Note (Feb 2026):** Speed tracking uses GPS Doppler velocity ONLY.
+> Accelerometer was removed because passengers hold phones in unpredictable
+> orientations, making gravity separation unreliable. See [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md).
 
 ### Permissions
 ```yaml
@@ -199,7 +204,7 @@ dependencies:
   # Location & Sensors
   geolocator: ^14.0.2
   geocoding: ^3.0.0
-  sensors_plus: ^7.0.0
+  sensors_plus: ^7.0.0            # Future: crash detection (v2.0), NOT speed
   permission_handler: ^12.0.1
   
   # Maps
@@ -320,21 +325,21 @@ end
 ```xml
 <!-- Location permission descriptions -->
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>RoadGuard needs your location to track your speed and routes.</string>
+<string>RoadGuard needs your location to check your speed while riding.</string>
 
 <key>NSLocationAlwaysUsageDescription</key>
-<string>RoadGuard needs background location to continue tracking during your trip.</string>
+<string>RoadGuard needs location access to keep checking speed even when the app is in the background.</string>
 
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>RoadGuard needs your location to track your speed and routes, even in the background.</string>
+<string>RoadGuard needs your location to check speed, even when the app is in the background.</string>
 
 <!-- Camera permission -->
 <key>NSCameraUsageDescription</key>
-<string>RoadGuard needs camera access to scan number plates.</string>
+<string>RoadGuard needs camera access to scan car numbers.</string>
 
 <!-- Photo library (for image_picker) -->
 <key>NSPhotoLibraryUsageDescription</key>
-<string>RoadGuard needs photo library access to select images of number plates.</string>
+<string>RoadGuard needs photo access to select images of car numbers.</string>
 ```
 
 ---

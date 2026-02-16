@@ -332,21 +332,94 @@ Container(
 ```
 
 **Specifications:**
-- Outer ring: Circular progress indicator
+- Outer ring: Circular progress indicator (270° arc)
 - Ring color: Gradient from `secondary` to `primary`
 - Ring width: 8px
 - Center number: `displayLarge` mono font
 - Unit label: `bodyMedium` below number
-- Alert state (80km/h): Ring turns `error`, pulses
+- Alert state: Ring turns `error`, pulses
+- **NO accuracy dots or "GPS" labels on the speedometer** — signal quality is shown via the GPS Status Banner instead
 
-**Animation:**
+**Speed Digit Animation ("Odometer Roll"):**
+- Each digit animates **independently** (e.g., 85→86, only the "5→6" rolls)
+- Old digit slides **up** and fades out
+- New digit slides **in from below** and fades in
+- Duration: **200ms** per digit change
+- Curve: `easeOutCubic`
+- Stagger: If multiple digits change (e.g., 99→100), cascade left-to-right with 50ms delay
+- At very first GPS reading (0→actual speed), use a faster "count up" animation (100ms per step)
+
+```dart
+/// Digit animation specification:
+/// 
+/// Transition: Old digit → New digit
+/// ┌───────┐    ┌───────┐    ┌───────┐
+/// │   5   │ →  │  5↑   │ →  │   6   │
+/// └───────┘    │  6↑   │    └───────┘
+///              └───────┘
+/// 
+/// Properties:
+///   - SlideTransition: Offset(0, 0) → Offset(0, -1) for old digit
+///   - SlideTransition: Offset(0, 1) → Offset(0, 0) for new digit
+///   - FadeTransition: 1.0 → 0.0 for old, 0.0 → 1.0 for new
+///   - Duration: 200ms
+///   - Curve: easeOutCubic
+```
+
+**Ring Animation:**
 - Ring fills smoothly as speed increases
-- Number counts up/down with slight bounce
 - Alert: Ring pulses (1s cycle), border glows red
 
 ---
 
-### 5. Input Fields
+### 5. GPS Status Banner ("Signal Strip")
+
+> **New component (Feb 2026)** — replaces old speedometer GPS dots/accuracy text.
+
+```
+┌──────────────────────────────────────────┐
+│ 🟡 Getting your location...              │
+└──────────────────────────────────────────┘
+```
+
+**Purpose:** Communicates GPS signal quality to the user in plain, non-technical language. Only visible when there's a problem.
+
+**Specifications:**
+- Position: Top of dashboard content area, below any app bar
+- Height: 40px
+- Width: Full content width with 16px horizontal margin
+- Border radius: `radiusMedium` (12px)
+- Padding: 12px horizontal, 8px vertical
+- Icon: 8px pulsing dot (left side)
+- Text: `bodySmall` (12px), white
+
+**States & Styling:**
+
+| State | Background | Dot Color | Message |
+|-------|-----------|-----------|---------|
+| Acquiring | `warning` at 15% opacity | `warning` (pulsing) | "Getting your location..." |
+| Weak | `warning` at 15% opacity | `warning` (static) | "Location signal is weak" |
+| Poor | `error` at 15% opacity | `error` (static) | "Location signal is poor — speed may be wrong" |
+| Lost | `error` at 15% opacity | `error` (pulsing) | "Location lost — check your surroundings" |
+| Good | — (HIDDEN) | — | — |
+
+**Animation:**
+- **Slide in:** 300ms, `easeOutCubic`, slides down from 0 height + fade in
+- **Slide out:** 250ms, `easeIn`, slides up to 0 height + fade out
+- **Acquiring dot:** Pulses opacity 0.4→1.0→0.4, 1200ms cycle
+- **Lost dot:** Pulses opacity 0.6→1.0→0.6, 800ms cycle (faster = more urgent)
+
+**Rules:**
+1. Show immediately when tracking starts (always starts in "acquiring" state)
+2. Auto-hide when GPS signal becomes "good" (accuracy < 10m)
+3. Re-appear if signal degrades during trip
+4. Non-blocking — content scrolls behind it
+5. NEVER show technical text (no "GPS", "±Xm", "satellites", "accuracy")
+6. See [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) for exact wording
+
+---
+
+### 6. Input Fields
 
 **Search Bar (Floating):**
 ```
@@ -367,7 +440,7 @@ Container(
 
 ---
 
-### 6. Rating Cards
+### 7. Rating Cards
 
 **Good/Bad Selection:**
 ```
@@ -389,7 +462,7 @@ Container(
 
 ---
 
-### 7. Chips (Quick Feedback)
+### 8. Chips (Quick Feedback)
 
 ```
 ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
@@ -454,15 +527,28 @@ verySlow:    600ms  // Hero animations, morphs
 - Duration: 200ms per update
 - Alert pulse: 1000ms cycle, ease-in-out
 
-**6. Rubber-Banding (Scroll):**
+**6. Odometer Roll (Speed Digits):**
+- Per-digit independent slide animation
+- Old digit: slides up + fades out
+- New digit: slides in from below + fades in
+- Duration: 200ms per digit
+- Curve: easeOutCubic
+- Multi-digit cascade: 50ms stagger left-to-right
+
+**7. Signal Strip (GPS Status Banner):**
+- Slide in: 300ms easeOutCubic, height 0→40px + fade
+- Slide out: 250ms easeIn, height 40→0px + fade
+- Acquiring/Lost dot: opacity pulse animation
+
+**8. Rubber-Banding (Scroll):**
 - Overscroll stretches content
 - Springs back on release
 - Built into Flutter's scroll physics
 
-**7. Haptic Feedback:**
+**9. Haptic Feedback:**
 - Light tap: On button press
 - Medium tap: On selection confirm
-- Heavy tap: On alert (80km/h warning)
+- Heavy tap: On overspeeding alert
 
 ---
 
@@ -474,7 +560,7 @@ verySlow:    600ms  // Hero animations, morphs
 │ Status Bar                              │
 ├─────────────────────────────────────────┤
 │ ┌─────────────────────────────────────┐ │
-│ │ 🔍 Search number plate...           │ │ ← Floating search
+│ │ 🔍 Search car number...            │ │ ← Floating search
 │ └─────────────────────────────────────┘ │
 │                                         │
 │ ┌─────────────────────────────────────┐ │
@@ -485,14 +571,12 @@ verySlow:    600ms  // Hero animations, morphs
 │           ╱                 ╲           │
 │          │                   │          │
 │          │        0          │          │ ← Speedometer
-│          │      km/h         │          │
+│          │      km/h         │          │    (digits roll)
 │           ╲                 ╱           │
 │            ╰───────────────╯            │
 │                                         │
-│        📍 Waiting for location          │
-│                                         │
 │     ┌───────────────────────────┐       │
-│     │ ▶  HOLD TO START TRACKING │       │ ← Primary action
+│     │ ▶  START SPEED CHECK      │       │ ← Primary action
 │     └───────────────────────────┘       │
 │                                         │
 │   ┌─────────────────────────────────┐   │
@@ -505,30 +589,27 @@ verySlow:    600ms  // Hero animations, morphs
 ### Active Tracking
 ```
 ┌─────────────────────────────────────────┐
-│ Status Bar                        🔴REC │
+│ Status Bar                       🔴LIVE │
 ├─────────────────────────────────────────┤
-│                                         │
-│   ┌─────────────────────────────────┐   │
-│   │                                 │   │
-│   │           [MAP VIEW]            │   │ ← Route map
-│   │                                 │   │
-│   └─────────────────────────────────┘   │
+│ ┌─────────────────────────────────────┐ │
+│ │ 🟡 Getting your location...        │ │ ← GPS Status Banner
+│ └─────────────────────────────────────┘ │   (auto-hides when good)
 │                                         │
 │            ╭───────────────╮            │
-│           ╱    ╱╲    ╲     ╲           │
-│          │    ╱  ╲    │     │          │
-│          │   85       │     │          │ ← Large speed
-│          │   km/h     │     │          │
-│           ╲          ╱     ╱           │
+│           ╱                 ╲           │
+│          │                   │          │
+│          │       85          │          │ ← Large speed
+│          │      km/h         │          │    (digits roll)
+│           ╲                 ╱           │
 │            ╰───────────────╯            │
 │                                         │
 │   ┌────────┐ ┌────────┐ ┌────────┐     │
 │   │   95   │ │   68   │ │  4.2   │     │ ← Stats row
-│   │  TOP   │ │  AVG   │ │   KM   │     │
+│   │FASTEST │ │AVERAGE │ │   KM   │     │
 │   └────────┘ └────────┘ └────────┘     │
 │                                         │
 │     ┌───────────────────────────┐       │
-│     │     ⏹  STOP TRIP          │       │ ← Stop (red)
+│     │     ⏹  STOP               │       │ ← Stop (red)
 │     └───────────────────────────┘       │
 │                                         │
 │                                         │
@@ -606,7 +687,11 @@ Before implementing ANY screen:
 - [ ] Animations follow timing guidelines
 - [ ] Bottom nav is floating style
 - [ ] Search bar is floating pill style
+- [ ] Speed digits use odometer roll animation
+- [ ] GPS status uses Signal Strip banner (not text on speedometer)
+- [ ] All user-facing text follows [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md)
+- [ ] No technical jargon in UI (no "GPS", "sync", "permission", etc.)
 
 ---
 
-**Remember:** This app should feel like a **premium digital cockpit** - smooth, tactile, and professional.
+**Remember:** This app should feel like a **premium digital cockpit** - smooth, tactile, and professional. All text must be easily understood by everyday Ghanaian passengers.
