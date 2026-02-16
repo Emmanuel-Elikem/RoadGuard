@@ -40,8 +40,7 @@ class SensorSpeedService {
   // Fusion tuning constants (easy to adjust)
   static const double _poorGpsBlendFactor =
       0.3; // 30% GPS, 70% sensor when GPS is poor
-  static const double _noAccelDecayFactor =
-      0.99; // Decay speed when no acceleration
+
   static const Duration _gpsFreshnessThreshold = Duration(seconds: 5);
 
   bool _isRunning = false;
@@ -147,7 +146,13 @@ class SensorSpeedService {
       }
     } else {
       // Small acceleration - apply friction/decay
-      _currentSpeedMs *= _noAccelDecayFactor;
+      // ZUPT: If acceleration is very low for a few frames, force decay faster
+      if (accelMagnitude < 0.1) {
+         _currentSpeedMs *= 0.8; // Aggressive Stop
+         if (_currentSpeedMs < 0.5) _currentSpeedMs = 0; // Snap to zero
+      } else {
+         _currentSpeedMs *= 0.95; // Normal decay
+      }
     }
 
     // Clamp to reasonable values

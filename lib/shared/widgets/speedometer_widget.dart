@@ -9,10 +9,10 @@
 library;
 
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
-import '../services/location_service.dart';
 
 /// Speed state for visual styling.
 enum SpeedState {
@@ -43,8 +43,8 @@ class SpeedometerWidget extends StatelessWidget {
   /// Size of the speedometer (width and height).
   final double size;
 
-  /// GPS signal quality for display.
-  final GpsSignalQuality signalQuality;
+  /// Whether GPS signal is available.
+  final bool hasSignal;
 
   /// GPS accuracy in meters (for display).
   final double? accuracy;
@@ -55,12 +55,9 @@ class SpeedometerWidget extends StatelessWidget {
     this.speedLimit,
     this.maxSpeed = 180,
     this.size = 280,
-    this.signalQuality = GpsSignalQuality.none,
+    this.hasSignal = true,
     this.accuracy,
   });
-
-  /// Whether we have usable GPS signal.
-  bool get hasSignal => signalQuality.isUsable;
 
   /// Determine speed state based on limit.
   SpeedState get speedState {
@@ -83,8 +80,8 @@ class SpeedometerWidget extends StatelessWidget {
       SpeedState.unknown => colorScheme.primary,
     };
 
-    // Progress percentage (0.0 to 1.0), guard against invalid maxSpeed
-    final progress = maxSpeed > 0 ? (speed / maxSpeed).clamp(0.0, 1.0) : 0.0;
+    // Progress percentage (0.0 to 1.0)
+    final progress = (speed / maxSpeed).clamp(0.0, 1.0);
 
     return SizedBox(
       width: size,
@@ -117,85 +114,91 @@ class SpeedometerWidget extends StatelessWidget {
               size: size,
             ),
 
-          // Center content
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Speed value
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: Text(
-                  speed.toStringAsFixed(0),
-                  key: ValueKey(speed.toStringAsFixed(0)),
-                  style: theme.textTheme.displayLarge?.copyWith(
-                    fontSize: size * 0.25,
-                    fontWeight: FontWeight.bold,
-                    color: hasSignal
-                        ? colorScheme.onSurface
-                        : colorScheme.onSurface.withValues(alpha: 0.3),
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ),
-
-              // Unit label
-              Text(
-                'km/h',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  letterSpacing: 2,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Speed limit indicator
-              if (speedLimit != null)
-                _SpeedLimitBadge(
-                  limit: speedLimit!,
-                  state: speedState,
-                  size: size * 0.18,
-                ),
-
-              // Signal quality indicator
-              if (signalQuality != GpsSignalQuality.excellent &&
-                  signalQuality != GpsSignalQuality.good) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: signalQuality == GpsSignalQuality.none
-                        ? colorScheme.errorContainer
-                        : colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    signalQuality.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: signalQuality == GpsSignalQuality.none
-                          ? colorScheme.onErrorContainer
-                          : colorScheme.onTertiaryContainer,
-                      fontWeight: FontWeight.bold,
+          // Center content - constrained to fit inside the ring
+          SizedBox(
+            width: size * 0.65,
+            height: size * 0.65,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Speed value
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 150),
+                    child: Text(
+                      speed.toStringAsFixed(0),
+                      key: ValueKey(speed.toStringAsFixed(0)),
+                      style: theme.textTheme.displayLarge?.copyWith(
+                        fontSize: size * 0.28,
+                        fontWeight: FontWeight.bold,
+                        color: hasSignal
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurface.withValues(alpha: 0.3),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        height: 1.0,
+                      ),
                     ),
                   ),
-                ),
-              ],
 
-              // Accuracy indicator (debug)
-              if (accuracy != null && hasSignal)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '±${accuracy!.toStringAsFixed(0)}m',
+                  // Unit label
+                  Text(
+                    'km/h',
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      letterSpacing: 2,
+                      fontSize: size * 0.08,
                     ),
                   ),
-                ),
-            ],
+
+                  SizedBox(height: size * 0.03),
+
+                  // Speed limit indicator
+                  if (speedLimit != null)
+                    _SpeedLimitBadge(
+                      limit: speedLimit!,
+                      state: speedState,
+                      size: size * 0.16,
+                    ),
+
+                  // No signal indicator
+                  if (!hasSignal) ...[
+                    SizedBox(height: size * 0.02),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'NO GPS',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: size * 0.07,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Accuracy indicator
+                  if (accuracy != null && hasSignal)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '±${accuracy!.toStringAsFixed(0)}m',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.4),
+                          fontSize: size * 0.07,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -222,10 +225,8 @@ class _SpeedometerRing extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      // Use Tween with only 'end' to animate from current value
-      // Providing 'begin' would force restart from 0 on every update
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: progress),
+        tween: Tween(begin: 0, end: progress),
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         builder: (context, value, child) {
@@ -303,30 +304,20 @@ class _SpeedLimitBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    // Color based on state - use theme-aware colors
+    // Color based on state
     final borderColor = switch (state) {
       SpeedState.danger => AppColors.error,
       SpeedState.warning => AppColors.warning,
-      // Safe/unknown uses error container outline for standard speed limit sign look
-      _ => colorScheme.error,
+      _ => Colors.red.shade700,
     };
-
-    // Background: white-ish in light mode, surface in dark mode
-    final backgroundColor = colorScheme.brightness == Brightness.light
-        ? colorScheme.surface
-        : colorScheme.surfaceContainerHighest;
-
-    // Text: dark in light mode, light in dark mode
-    final textColor = colorScheme.onSurface;
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: backgroundColor,
+        color: Colors.white,
         border: Border.all(color: borderColor, width: size * 0.1),
         boxShadow: state == SpeedState.danger
             ? [
@@ -342,7 +333,7 @@ class _SpeedLimitBadge extends StatelessWidget {
         child: Text(
           limit.toStringAsFixed(0),
           style: theme.textTheme.titleSmall?.copyWith(
-            color: textColor,
+            color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: size * 0.35,
           ),

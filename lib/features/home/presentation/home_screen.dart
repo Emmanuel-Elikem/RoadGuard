@@ -1,10 +1,8 @@
-/// Home Screen - Dashboard with real-time speed tracking.
+/// Home Screen - Dashboard with compact speedometer and trip info.
 ///
-/// Features:
-/// - Speedometer display with live GPS speed
-/// - Permission request flow
-/// - Start/stop tracking button
-/// - Safety tips ticker
+/// Compact speedometer top-left, trip stats, quick actions.
+/// Speed warning toast when limit exceeded.
+/// Wired to TripController for start/stop trip recording.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,113 +10,472 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
-import '../../../shared/services/location_service.dart';
 import '../../../shared/services/permission_service.dart';
+import '../../../shared/services/storage_service.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
-import '../../trip/application/trip_service.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
+import '../../trip/application/trip_service.dart';
 
-
-
-/// Home/Dashboard screen with speed tracking.
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final trackingState = ref.watch(speedTrackingProvider);
+    final permissionState = ref.watch(permissionNotifierProvider);
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
+        child: permissionState.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _ErrorView(
+            message: error.toString(),
+            onRetry: () =>
+                ref.read(permissionNotifierProvider.notifier).refresh(),
+          ),
+          data: (permission) {
+            if (!permission.canTrack) {
+              return _PermissionRequired(permission: permission);
+            }
+            return _DashboardContent(trackingState: trackingState);
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
+/// Main dashboard with compact speedometer and content.
+class _DashboardContent extends ConsumerStatefulWidget {
+  final SpeedTrackingState trackingState;
+
+  const _DashboardContent({required this.trackingState});
 
   @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
+  ConsumerState<_DashboardContent> createState() => _DashboardContentState();
+}
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-
-    // When app resumes from background (e.g., after user enables location in Settings),
-    // refresh permission state to detect any changes
-    if (state == AppLifecycleState.resumed) {
-      debugPrint('HomeScreen: App resumed, refreshing permissions');
-      ref.read(permissionNotifierProvider.notifier).refresh();
-    }
-  }
-
-  Future<void> _onStopTracking() async {
-      // Stop trip
-      await ref.read(tripControllerProvider.notifier).stopTrip();
-      
-      // Get completed trip
-      final trip = ref.read(tripControllerProvider.notifier).currentTrip;
-      
-      if (trip != null && mounted) {
-          // Navigate to summary
-          context.push(Routes.tripSummary, extra: trip);
-      }
-  }
+class _DashboardContentState extends ConsumerState<_DashboardContent> {
+  bool _warningShown = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trackingState = ref.watch(speedTrackingProvider); // Location updates for speedometer
-    final permissionState = ref.watch(permissionNotifierProvider);
-    final tripState = ref.watch(tripControllerProvider); // Trip recording state
+    final ts = widget.trackingState;
+    final isTracking = ts.state == TrackingState.tracking;
+    final tripState = ref.watch(tripControllerProvider);
+    final speedLimit = StorageService.instance.speedLimitThreshold;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppDimensions.spacingLg,
-            AppDimensions.spacingLg,
-            AppDimensions.spacingLg,
-            AppDimensions.floatingNavBarSafeArea,
+    // Show speed warning toast when limit exceeded
+    if (isTracking && ts.speedKmh > speedLimit) {
+      if (!_warningShown) {
+        _warningShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          // Clear any existing snackbar first to prevent stacking
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(LucideIcons.alertTriangle,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Speed limit exceeded! '
+                      '${ts.speedKmh.toStringAsFixed(0)} km/h > $speedLimit km/h',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              dismissDirection: DismissDirection.horizontal,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+              duration: const Duration(seconds: 3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+              ),
+            ),
+          );
+        });
+      }
+    } else {
+      _warningShown = false;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.spacingLg,
+        AppDimensions.spacingLg,
+        AppDimensions.spacingLg,
+        AppDimensions.floatingNavBarSafeArea,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // === TOP ROW: Compact speedometer + greeting ===
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SpeedometerWidget(
+                speed: ts.speedKmh,
+                speedLimit: speedLimit.toDouble(),
+                hasSignal: ts.hasSignal || !isTracking,
+                accuracy: ts.accuracy,
+                size: 120,
+              ),
+              const SizedBox(width: AppDimensions.spacingMd),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text('RoadGuard',
+                        style: theme.textTheme.headlineMedium),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isTracking
+                                ? AppColors.success
+                                : colorScheme.outline,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isTracking ? 'Tracking Active' : 'Ready to Track',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isTracking) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.15),
+                          borderRadius:
+                              BorderRadius.circular(AppDimensions.radiusFull),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.error),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'REC',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              IconButton(
+                onPressed: () => context.go(Routes.search),
+                icon: Icon(LucideIcons.search,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppDimensions.spacingLg),
+
+          // === LIVE TRIP STATS (shown when tracking) ===
+          if (isTracking && tripState == TripState.recording)
+            _LiveTripStats(speedLimit: speedLimit)
+          else ...[
+            _QuickStatsRow(),
+            const SizedBox(height: AppDimensions.spacingMd),
+            _QuickActions(),
+          ],
+
+          const Spacer(),
+          const _SafetyTipCard(),
+          const SizedBox(height: AppDimensions.spacingMd),
+          _TrackingButton(trackingState: ts),
+        ],
+      ),
+    );
+  }
+}
+
+/// Live trip statistics during active tracking.
+class _LiveTripStats extends ConsumerWidget {
+  final int speedLimit;
+  const _LiveTripStats({required this.speedLimit});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final controller = ref.read(tripControllerProvider.notifier);
+    final duration = controller.currentDuration;
+    final distance = controller.currentDistance;
+    final maxSpeed = controller.currentMaxSpeed;
+
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _StatCard(
+                icon: LucideIcons.timer,
+                label: 'DURATION',
+                value:
+                    '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: AppDimensions.spacingSm),
+              _StatCard(
+                icon: LucideIcons.navigation,
+                label: 'DISTANCE',
+                value: '${distance.toStringAsFixed(2)} km',
+                color: colorScheme.secondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          Row(
+            children: [
+              _StatCard(
+                icon: LucideIcons.zap,
+                label: 'TOP SPEED',
+                value: '${maxSpeed.toStringAsFixed(0)} km/h',
+                color: maxSpeed > speedLimit ? AppColors.error : AppColors.success,
+              ),
+              const SizedBox(width: AppDimensions.spacingSm),
+              _StatCard(
+                icon: LucideIcons.gauge,
+                label: 'LIMIT',
+                value: '$speedLimit km/h',
+                color: colorScheme.tertiary,
+              ),
+            ],
+          ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(AppDimensions.spacingMd),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 8),
+            Text(value,
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                    color:
+                        colorScheme.onSurface.withValues(alpha: 0.5))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickStatsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final trips = StorageService.instance.tripsBox.values.toList();
+    final totalTrips = trips.length;
+    final totalDistance =
+        trips.fold<double>(0, (sum, t) => sum + t.distance);
+
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spacingMd),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        border:
+            Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(children: [
+              Text('$totalTrips',
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text('Trips',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface
+                          .withValues(alpha: 0.6))),
+            ]),
+          ),
+          Container(
+              width: 1,
+              height: 40,
+              color: colorScheme.outline.withValues(alpha: 0.2)),
+          Expanded(
+            child: Column(children: [
+              Text(totalDistance.toStringAsFixed(1),
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text('km total',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface
+                          .withValues(alpha: 0.6))),
+            ]),
+          ),
+          Container(
+              width: 1,
+              height: 40,
+              color: colorScheme.outline.withValues(alpha: 0.2)),
+          Expanded(
+            child: Column(children: [
+              Text('${StorageService.instance.speedLimitThreshold}',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.primary)),
+              Text('km/h limit',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface
+                          .withValues(alpha: 0.6))),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        _ActionButton(
+          icon: LucideIcons.search,
+          label: 'Search\nDriver',
+          onTap: () => context.go(Routes.search),
+          color: colorScheme.primary,
+        ),
+        const SizedBox(width: AppDimensions.spacingSm),
+        _ActionButton(
+          icon: LucideIcons.barChart3,
+          label: 'View\nStats',
+          onTap: () => context.go(Routes.stats),
+          color: colorScheme.secondary,
+        ),
+        const SizedBox(width: AppDimensions.spacingSm),
+        _ActionButton(
+          icon: LucideIcons.settings,
+          label: 'Speed\nLimit',
+          onTap: () => context.go(Routes.settings),
+          color: colorScheme.tertiary,
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(AppDimensions.spacingMd),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Column(
             children: [
-              // Header
-              _Header(
-                isTracking: tripState == TripState.recording,
-              ),
-
-              const SizedBox(height: AppDimensions.spacingXl),
-
-              // Main content based on permission state
-              Expanded(
-                child: permissionState.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => _ErrorView(
-                    message: error.toString(),
-                    onRetry: () =>
-                        ref.read(permissionNotifierProvider.notifier).refresh(),
-                  ),
-                  data: (permission) {
-                    if (!permission.canTrack) {
-                      return _PermissionRequired(permission: permission);
-                    }
-                    return _TrackingView(
-                        trackingState: trackingState,
-                        tripState: tripState,
-                        onStop: _onStopTracking,
-                    );
-                  },
-                ),
-              ),
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: 8),
+              Text(label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurface
+                          .withValues(alpha: 0.8)),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -127,66 +484,137 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-/// Header with greeting and status.
-class _Header extends StatelessWidget {
-  final bool isTracking;
+class _TrackingButton extends ConsumerWidget {
+  final SpeedTrackingState trackingState;
+  const _TrackingButton({required this.trackingState});
 
-  const _Header({required this.isTracking});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isTracking = trackingState.state == TrackingState.tracking;
+    final isLoading = trackingState.state == TrackingState.starting ||
+        trackingState.state == TrackingState.stopping;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: FilledButton.icon(
+        onPressed:
+            isLoading ? null : () => _handleToggle(context, ref, isTracking),
+        icon: isLoading
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: isTracking
+                      ? colorScheme.onError
+                      : colorScheme.onPrimary,
+                ),
+              )
+            : Icon(isTracking ? LucideIcons.square : LucideIcons.play,
+                color:
+                    isTracking ? colorScheme.onError : colorScheme.onPrimary),
+        label: Text(
+          isTracking ? 'Stop Tracking' : 'Start Tracking',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: isTracking ? colorScheme.onError : colorScheme.onPrimary,
+          ),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor:
+              isTracking ? AppColors.error : colorScheme.primary,
+          foregroundColor:
+              isTracking ? colorScheme.onError : colorScheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleToggle(
+      BuildContext context, WidgetRef ref, bool isTracking) async {
+    if (isTracking) {
+      await ref.read(speedTrackingProvider.notifier).toggleTracking();
+      await ref.read(tripControllerProvider.notifier).stopTrip();
+      final trip = ref.read(tripControllerProvider.notifier).currentTrip;
+      if (trip != null && context.mounted) {
+        context.push(Routes.tripSummary, extra: trip);
+      }
+    } else {
+      await ref.read(speedTrackingProvider.notifier).toggleTracking();
+      ref.read(tripControllerProvider.notifier).startTrip();
+    }
+  }
+}
+
+class _SafetyTipCard extends StatelessWidget {
+  const _SafetyTipCard();
+
+  static const _tips = [
+    'Always wear your seatbelt when traveling.',
+    'Observe the speed limit for safer journeys.',
+    'Stay alert and report reckless driving.',
+    'Take breaks on long trips to stay fresh.',
+    'Avoid distractions while on the road.',
+    'Check vehicle condition before long trips.',
+  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('RoadGuard', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: AppDimensions.spacingXs),
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isTracking
-                          ? AppColors.success
-                          : colorScheme.outline,
-                    ),
-                  ),
-                  const SizedBox(width: AppDimensions.spacingSm),
-                  Text(
-                    isTracking ? 'Tracking Active' : 'Ready to Track',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spacingMd),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        border:
+            Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+            ),
+            child: const Icon(LucideIcons.lightbulb,
+                color: AppColors.info, size: 20),
           ),
-        ),
-        // Placeholder for search (Week 5)
-        IconButton(
-          onPressed: () {},
-          icon: Icon(
-            LucideIcons.search,
-            color: colorScheme.onSurface.withValues(alpha: 0.6),
+          const SizedBox(width: AppDimensions.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Safety Tip',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(_tips[DateTime.now().minute % _tips.length],
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// View shown when location permission is needed.
 class _PermissionRequired extends ConsumerWidget {
   final LocationPermissionState permission;
-
   const _PermissionRequired({required this.permission});
 
   @override
@@ -200,10 +628,9 @@ class _PermissionRequired extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
             Container(
-              width: AppDimensions.iconContainerLg,
-              height: AppDimensions.iconContainerLg,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer,
                 shape: BoxShape.circle,
@@ -212,57 +639,62 @@ class _PermissionRequired extends ConsumerWidget {
                 permission == LocationPermissionState.serviceDisabled
                     ? LucideIcons.mapPinOff
                     : LucideIcons.mapPin,
-                size: AppDimensions.iconXxl,
+                size: 56,
                 color: colorScheme.onPrimaryContainer,
               ),
             ),
-
             const SizedBox(height: AppDimensions.spacingXl),
-
-            // Title
-            Text(
-              permission.title,
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-
+            Text(permission.title,
+                style: theme.textTheme.headlineSmall,
+                textAlign: TextAlign.center),
             const SizedBox(height: AppDimensions.spacingMd),
-
-            // Description
-            Text(
-              permission.description,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-
+            Text(permission.description,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                    color:
+                        colorScheme.onSurface.withValues(alpha: 0.7)),
+                textAlign: TextAlign.center),
             const SizedBox(height: AppDimensions.spacingXl),
-
-            // Action button
             SizedBox(
               width: double.infinity,
-              height: AppDimensions.buttonHeightLg,
+              height: 52,
               child: FilledButton.icon(
-                onPressed: () => _handlePermissionAction(ref, permission),
+                onPressed: () {
+                  if (permission ==
+                      LocationPermissionState.deniedForever) {
+                    PermissionService.instance.openAppSettings();
+                  } else if (permission ==
+                      LocationPermissionState.serviceDisabled) {
+                    PermissionService.instance.openLocationSettings();
+                  } else {
+                    ref
+                        .read(permissionNotifierProvider.notifier)
+                        .requestPermission();
+                  }
+                },
                 icon: Icon(
-                  permission == LocationPermissionState.deniedForever
-                      ? LucideIcons.settings
-                      : LucideIcons.mapPin,
-                ),
+                    permission ==
+                            LocationPermissionState.deniedForever
+                        ? LucideIcons.settings
+                        : LucideIcons.mapPin,
+                    color: colorScheme.onPrimary),
                 label: Text(
-                  permission == LocationPermissionState.deniedForever
+                  permission ==
+                          LocationPermissionState.deniedForever
                       ? 'Open Settings'
-                      : permission == LocationPermissionState.serviceDisabled
-                      ? 'Enable Location'
-                      : 'Grant Permission',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                      : permission ==
+                              LocationPermissionState.serviceDisabled
+                          ? 'Enable Location'
+                          : 'Grant Permission',
+                  style: TextStyle(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
                   foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    borderRadius:
+                        BorderRadius.circular(AppDimensions.radiusMd),
                   ),
                 ),
               ),
@@ -272,203 +704,17 @@ class _PermissionRequired extends ConsumerWidget {
       ),
     );
   }
-
-  void _handlePermissionAction(
-    WidgetRef ref,
-    LocationPermissionState permission,
-  ) {
-    if (permission == LocationPermissionState.deniedForever) {
-      PermissionService.instance.openAppSettings();
-    } else if (permission == LocationPermissionState.serviceDisabled) {
-      PermissionService.instance.openLocationSettings();
-    } else {
-      ref.read(permissionNotifierProvider.notifier).requestPermission();
-    }
-  }
 }
 
-/// Main tracking view with speedometer.
-class _TrackingView extends ConsumerWidget {
-  final SpeedTrackingState trackingState;
-  final TripState tripState;
-  final VoidCallback onStop;
-
-  const _TrackingView({
-      required this.trackingState,
-      required this.tripState,
-      required this.onStop,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isTracking = tripState == TripState.recording;
-
-    return Column(
-      children: [
-        // Speedometer
-        Expanded(
-          child: Center(
-            child: SpeedometerWidget(
-              speed: trackingState.speedKmh,
-              // TODO: Dynamic speed limits (Week 7)
-              speedLimit: AppConstants.defaultSpeedLimit,
-              signalQuality: isTracking
-                  ? trackingState.signalQuality
-                  : GpsSignalQuality.none,
-              accuracy: trackingState.accuracy,
-              size: AppDimensions.speedometerSize,
-            ),
-          ),
-        ),
-
-        // Safety tip card
-        const _SafetyTipCard(),
-
-        const SizedBox(height: AppDimensions.spacingLg),
-
-        // Start/Stop button
-        SizedBox(
-          width: double.infinity,
-          height: AppDimensions.buttonHeightLg,
-          child: FilledButton.icon(
-            onPressed:
-                trackingState.state == TrackingState.starting ||
-                    trackingState.state == TrackingState.stopping
-                ? null
-                : () {
-                    if (isTracking) {
-                      onStop();
-                    } else {
-                      ref.read(tripControllerProvider.notifier).startTrip();
-                    }
-                  },
-            icon:
-                trackingState.state == TrackingState.starting ||
-                    trackingState.state == TrackingState.stopping
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: isTracking
-                          ? colorScheme.onError
-                          : colorScheme.onPrimary,
-                    ),
-                  )
-                : Icon(isTracking ? LucideIcons.square : LucideIcons.play),
-            label: Text(
-              isTracking
-                  ? 'Stop Tracking'
-                  : trackingState.state == TrackingState.starting
-                  ? 'Starting...'
-                  : 'Start Tracking',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isTracking
-                    ? colorScheme.onError
-                    : colorScheme.onPrimary,
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: isTracking
-                  ? AppColors.error
-                  : colorScheme.primary,
-              foregroundColor: isTracking
-                  ? colorScheme.onError
-                  : colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Safety tip card with rotating tips.
-class _SafetyTipCard extends StatelessWidget {
-  const _SafetyTipCard();
-
-  // TODO: Rotate through tips, fetch from backend
-  static const _tips = [
-    'Always wear your seatbelt when traveling.',
-    'Observe the speed limit for safer journeys.',
-    'Stay alert and report reckless driving.',
-    'Take breaks on long trips to stay fresh.',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.spacingMd),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: AppDimensions.iconContainerSm,
-            height: AppDimensions.iconContainerSm,
-            decoration: BoxDecoration(
-              color: AppColors.info.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-            ),
-            child: const Icon(
-              LucideIcons.lightbulb,
-              color: AppColors.info,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: AppDimensions.spacingMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Safety Tip',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _tips[DateTime.now().minute % _tips.length],
-                  style: theme.textTheme.bodyMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Error view for handling failures.
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
-
   const _ErrorView({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -477,13 +723,11 @@ class _ErrorView extends StatelessWidget {
           const SizedBox(height: AppDimensions.spacingMd),
           Text('Something went wrong', style: theme.textTheme.titleLarge),
           const SizedBox(height: AppDimensions.spacingSm),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
+          Text(message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                  color:
+                      colorScheme.onSurface.withValues(alpha: 0.7)),
+              textAlign: TextAlign.center),
           const SizedBox(height: AppDimensions.spacingLg),
           OutlinedButton.icon(
             onPressed: onRetry,

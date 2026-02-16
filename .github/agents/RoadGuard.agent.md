@@ -2,7 +2,7 @@
 name: RoadGuard Dev
 description: Expert Flutter developer for the RoadGuard road safety app. Follows offline-first architecture, SOLID principles, and the Digital Copilot design system.
 tools:
-  ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'dart-sdk-mcp-server/connect_dart_tooling_daemon', 'dart-sdk-mcp-server/create_project', 'dart-sdk-mcp-server/flutter_driver', 'dart-sdk-mcp-server/get_active_location', 'dart-sdk-mcp-server/get_app_logs', 'dart-sdk-mcp-server/get_runtime_errors', 'dart-sdk-mcp-server/get_selected_widget', 'dart-sdk-mcp-server/get_widget_tree', 'dart-sdk-mcp-server/hot_reload', 'dart-sdk-mcp-server/hot_restart', 'dart-sdk-mcp-server/hover', 'dart-sdk-mcp-server/launch_app', 'dart-sdk-mcp-server/list_devices', 'dart-sdk-mcp-server/list_running_apps', 'dart-sdk-mcp-server/pub', 'dart-sdk-mcp-server/pub_dev_search', 'dart-sdk-mcp-server/resolve_workspace_symbol', 'dart-sdk-mcp-server/set_widget_selection_mode', 'dart-sdk-mcp-server/signature_help', 'dart-sdk-mcp-server/stop_app', 'dart-sdk-mcp-server/*', 'pylance-mcp-server/*', 'agent', 'dart-code.dart-code/get_dtd_uri', 'dart-code.dart-code/dart_format', 'dart-code.dart-code/dart_fix', 'ms-azuretools.vscode-containers/containerToolsConfig', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'todo']
+  ['vscode/getProjectSetupInfo', 'vscode/installExtension', 'vscode/newWorkspace', 'vscode/openSimpleBrowser', 'vscode/runCommand', 'vscode/askQuestions', 'vscode/vscodeAPI', 'vscode/extensions', 'execute/runNotebookCell', 'execute/testFailure', 'execute/getTerminalOutput', 'execute/awaitTerminal', 'execute/killTerminal', 'execute/createAndRunTask', 'execute/runInTerminal', 'execute/runTests', 'read/getNotebookSummary', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'agent/runSubagent', 'edit/createDirectory', 'edit/createFile', 'edit/createJupyterNotebook', 'edit/editFiles', 'edit/editNotebook', 'search/changes', 'search/codebase', 'search/fileSearch', 'search/listDirectory', 'search/searchResults', 'search/textSearch', 'search/usages', 'web/fetch', 'web/githubRepo', 'pylance-mcp-server/pylanceDocuments', 'pylance-mcp-server/pylanceFileSyntaxErrors', 'pylance-mcp-server/pylanceImports', 'pylance-mcp-server/pylanceInstalledTopLevelModules', 'pylance-mcp-server/pylanceInvokeRefactoring', 'pylance-mcp-server/pylancePythonEnvironments', 'pylance-mcp-server/pylanceRunCodeSnippet', 'pylance-mcp-server/pylanceSettings', 'pylance-mcp-server/pylanceSyntaxErrors', 'pylance-mcp-server/pylanceUpdatePythonEnvironment', 'pylance-mcp-server/pylanceWorkspaceRoots', 'pylance-mcp-server/pylanceWorkspaceUserFiles', 'dart-sdk-mcp-server/connect_dart_tooling_daemon', 'dart-sdk-mcp-server/create_project', 'dart-sdk-mcp-server/flutter_driver', 'dart-sdk-mcp-server/get_active_location', 'dart-sdk-mcp-server/get_app_logs', 'dart-sdk-mcp-server/get_runtime_errors', 'dart-sdk-mcp-server/get_selected_widget', 'dart-sdk-mcp-server/get_widget_tree', 'dart-sdk-mcp-server/hot_reload', 'dart-sdk-mcp-server/hot_restart', 'dart-sdk-mcp-server/hover', 'dart-sdk-mcp-server/launch_app', 'dart-sdk-mcp-server/list_devices', 'dart-sdk-mcp-server/list_running_apps', 'dart-sdk-mcp-server/pub', 'dart-sdk-mcp-server/pub_dev_search', 'dart-sdk-mcp-server/resolve_workspace_symbol', 'dart-sdk-mcp-server/set_widget_selection_mode', 'dart-sdk-mcp-server/signature_help', 'dart-sdk-mcp-server/stop_app', 'vscode.mermaid-chat-features/renderMermaidDiagram', 'dart-code.dart-code/get_dtd_uri', 'dart-code.dart-code/dart_format', 'dart-code.dart-code/dart_fix', 'ms-azuretools.vscode-containers/containerToolsConfig', 'ms-python.python/getPythonEnvironmentInfo', 'ms-python.python/getPythonExecutableCommand', 'ms-python.python/installPythonPackage', 'ms-python.python/configurePythonEnvironment', 'todo']
 ---
 
 # RoadGuard AI Agent Instructions
@@ -18,11 +18,13 @@ tools:
 ### Core Guidelines
 - [RoadGuard-Coding-Standards.md](RoadGuard-Coding-Standards.md) - SOLID, DRY, testing, performance optimization
 - [RoadGuard-Design-System.md](RoadGuard-Design-System.md) - UI/UX patterns, colors, typography, motion
+- [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) - **ALL user-facing text rules, word swap table, translation table**
+- [RoadGuard-UX-Guide.md](RoadGuard-UX-Guide.md) - User flows, error patterns, Ghana-specific UX
 - [RoadGuard-Mistakes-Log.md](RoadGuard-Mistakes-Log.md) - Known issues, prevention patterns, **AUTO-LOG YOUR MISTAKES HERE**
 
 ### Architecture & Logic
 - [RoadGuard-Backend-Logic.md](RoadGuard-Backend-Logic.md) - Error handling, retry logic, sync queue, circuit breaker
-- [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) - Speed tracking, Kalman filter, plate validation, distance calculation
+- [RoadGuard-Algorithms.md](RoadGuard-Algorithms.md) - Speed tracking, GPS-only architecture, signal quality, distance calculation
 - [RoadGuard-Database-Schema.md](RoadGuard-Database-Schema.md) - Hive models, Firebase structure, relationships
 - [RoadGuard-Cloud-Functions.md](RoadGuard-Cloud-Functions.md) - Firebase functions, triggers, deployment
 
@@ -44,6 +46,7 @@ tools:
 2. ✅ Reference [RoadGuard-Design-System.md](RoadGuard-Design-System.md) for UI work
 3. ✅ Follow [RoadGuard-Coding-Standards.md](RoadGuard-Coding-Standards.md) for ALL code
 4. ✅ Check [RoadGuard-Backend-Logic.md](RoadGuard-Backend-Logic.md) for error handling patterns
+5. ✅ Check [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md) for ANY user-facing text
 
 ---
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:gap/gap.dart';
+import 'package:road_guard/core/router/routes.dart';
 import 'package:road_guard/core/theme/app_dimensions.dart';
 import 'package:road_guard/features/trip/application/trip_service.dart';
 import 'package:road_guard/features/trip/domain/models/rating_model.dart';
@@ -52,13 +53,21 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
       await ref.read(tripControllerProvider.notifier).saveCompletedTrip(updatedTrip);
       
       if (mounted) {
-        context.go('/home'); // Go back to home
+        context.go(Routes.home);
       }
     } catch (e) {
         // Show error
         if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to save trip: $e')),
+                SnackBar(
+                  content: Text(
+                    'Failed to save trip: $e',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onError,
+                    ),
+                  ),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
             );
         }
     } finally {
@@ -78,7 +87,12 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
         automaticallyImplyLeading: false, // Don't allow back without saving/discarding logic?
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppDimensions.spacingMd),
+        padding: const EdgeInsets.fromLTRB(
+          AppDimensions.spacingMd,
+          AppDimensions.spacingMd,
+          AppDimensions.spacingMd,
+          AppDimensions.spacingXl * 2,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -115,7 +129,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 Expanded(
                   child: _StatCard(
                     label: 'DURATION',
-                    value: '${widget.trip.endTime!.difference(widget.trip.startTime).inMinutes} min',
+                    value: '${widget.trip.endTime!.difference(widget.trip.startTime).inMinutes}:${(widget.trip.endTime!.difference(widget.trip.startTime).inSeconds % 60).toString().padLeft(2, '0')} min',
                   ),
                 ),
               ],

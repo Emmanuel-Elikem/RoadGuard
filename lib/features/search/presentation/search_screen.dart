@@ -1,11 +1,72 @@
+/// Search Screen - Search trips and vehicles by plate number.
+///
+/// Provides a functional search bar with real-time filtering
+/// against saved trips and ratings in Hive storage.
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/storage_service.dart';
+import '../../trip/domain/models/trip_model.dart';
 
-/// Vehicle search screen with theme-aware styling.
-class SearchScreen extends StatelessWidget {
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
+
+  @override
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends ConsumerState<SearchScreen> {
+  final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
+  List<TripModel> _results = [];
+  bool _hasSearched = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _search(String query) {
+    final trimmed = query.trim().toUpperCase();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _results = [];
+        _hasSearched = false;
+      });
+      return;
+    }
+
+    final allTrips = StorageService.instance.tripsBox.values.toList();
+
+    final filtered = allTrips.where((trip) {
+      // Search by plate number (primary)
+      if (trip.plateNumber != null &&
+          trip.plateNumber!.toUpperCase().contains(trimmed)) {
+        return true;
+      }
+      // Search by notes
+      if (trip.notes != null && trip.notes!.toUpperCase().contains(trimmed)) {
+        return true;
+      }
+      // Search by trip ID prefix
+      if (trip.id.toUpperCase().startsWith(trimmed)) {
+        return true;
+      }
+      return false;
+    }).toList()
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+
+    setState(() {
+      _results = filtered;
+      _hasSearched = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,94 +86,317 @@ class SearchScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Search', style: theme.textTheme.headlineLarge),
-              const SizedBox(height: AppDimensions.spacingXs),
+              // Header
+              Text('Search', style: theme.textTheme.headlineMedium),
+              const SizedBox(height: 4),
               Text(
-                'Look up drivers by plate number',
-                style: theme.textTheme.bodyLarge?.copyWith(
+                'Find trips by plate number or notes',
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
-
               const SizedBox(height: AppDimensions.spacingLg),
 
-              // Modern search input with pill shape
+              // Search bar
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppDimensions.spacingMd,
-                  vertical: AppDimensions.spacingMd,
-                ),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.5,
-                  ),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
                   border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.2),
+                    color: _focusNode.hasFocus
+                        ? colorScheme.primary
+                        : colorScheme.outline.withValues(alpha: 0.2),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _focusNode,
+                  onChanged: _search,
+                  textCapitalization: TextCapitalization.characters,
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText: 'Enter plate number (e.g. GR 1234-20)',
+                    hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                    prefixIcon: Icon(
                       LucideIcons.search,
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      size: 20,
                     ),
-                    const SizedBox(width: AppDimensions.spacingMd),
-                    Expanded(
-                      child: Text(
-                        'Enter plate number (e.g., GR-1234-20)',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              LucideIcons.x,
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              _search('');
+                              _focusNode.unfocus();
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.spacingMd,
+                      vertical: 14,
                     ),
-                  ],
+                  ),
                 ),
               ),
+              const SizedBox(height: AppDimensions.spacingLg),
 
-              const Spacer(),
-
-              // Empty state with modern design
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: AppDimensions.emptyStateIconContainer,
-                      height: AppDimensions.emptyStateIconContainer,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(
-                          AppDimensions.radiusXl,
-                        ),
-                      ),
-                      child: Icon(
-                        LucideIcons.car,
-                        size: 48,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.spacingMd),
-                    Text(
-                      'Search for a vehicle',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: AppDimensions.spacingXs),
-                    Text(
-                      'Enter a Ghana plate number to see ratings',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              // Results
+              Expanded(
+                child: _hasSearched
+                    ? _results.isEmpty
+                        ? _NoResults(query: _searchController.text)
+                        : _SearchResults(results: _results)
+                    : _RecentSearchHint(),
               ),
-
-              const Spacer(),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Search results list.
+class _SearchResults extends StatelessWidget {
+  final List<TripModel> results;
+
+  const _SearchResults({required this.results});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${results.length} result${results.length == 1 ? '' : 's'} found',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
+        const SizedBox(height: AppDimensions.spacingSm),
+        Expanded(
+          child: ListView.separated(
+            itemCount: results.length,
+            separatorBuilder: (_, __) => const SizedBox(height: AppDimensions.spacingSm),
+            itemBuilder: (context, index) {
+              final trip = results[index];
+              return _SearchResultCard(trip: trip);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Individual search result card.
+class _SearchResultCard extends StatelessWidget {
+  final TripModel trip;
+
+  const _SearchResultCard({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final duration = trip.endTime != null
+        ? trip.endTime!.difference(trip.startTime)
+        : Duration.zero;
+
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spacingMd),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Plate number + date
+          Row(
+            children: [
+              if (trip.plateNumber != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+                  ),
+                  child: Text(
+                    trip.plateNumber!,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.spacingSm),
+              ],
+              Text(
+                _formatDate(trip.startTime),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const Spacer(),
+              if (trip.rating != null) ...[
+                Icon(LucideIcons.star, size: 14, color: AppColors.warning),
+                const SizedBox(width: 4),
+                Text(
+                  '${trip.rating!.rating}/5',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+
+          // Trip stats
+          Row(
+            children: [
+              _SmallStat(LucideIcons.navigation, '${trip.distance.toStringAsFixed(1)} km'),
+              const SizedBox(width: AppDimensions.spacingMd),
+              _SmallStat(LucideIcons.timer, '${duration.inMinutes}m'),
+              const SizedBox(width: AppDimensions.spacingMd),
+              _SmallStat(LucideIcons.zap, '${(trip.maxSpeed * 3.6).toStringAsFixed(0)} km/h'),
+            ],
+          ),
+
+          // Notes
+          if (trip.notes != null && trip.notes!.isNotEmpty) ...[
+            const SizedBox(height: AppDimensions.spacingSm),
+            Text(
+              trip.notes!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                fontStyle: FontStyle.italic,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]} ${date.year}, '
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _SmallStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+
+  const _SmallStat(this.icon, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: colorScheme.onSurface.withValues(alpha: 0.5)),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+/// No results state.
+class _NoResults extends StatelessWidget {
+  final String query;
+
+  const _NoResults({required this.query});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.searchX,
+            size: 56,
+            color: colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: AppDimensions.spacingMd),
+          Text(
+            'No Results',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'No trips found matching "$query"',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Hint shown before any search.
+class _RecentSearchHint extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final totalTrips = StorageService.instance.tripsBox.length;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.search,
+            size: 56,
+            color: colorScheme.onSurface.withValues(alpha: 0.2),
+          ),
+          const SizedBox(height: AppDimensions.spacingMd),
+          Text(
+            'Search Your Trips',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            totalTrips == 0
+                ? 'Record trips to search them here'
+                : 'Search through $totalTrips trip${totalTrips == 1 ? '' : 's'} by plate number',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

@@ -119,24 +119,26 @@ Future<Result<T>> saveData<T>(T data) async {
 
 ### Standard Error Codes
 
+> **IMPORTANT:** All user-facing messages MUST follow [RoadGuard-UX-Copy-Guide.md](RoadGuard-UX-Copy-Guide.md). No technical jargon — write as if explaining to someone who's never used a smartphone app before. Never expose raw error objects (`$e`) to users.
+
 | Code | Name | Description | User Message | Retry? |
 |------|------|-------------|--------------|--------|
-| `E001` | `NETWORK_UNAVAILABLE` | No internet connection | "You're offline. Data saved locally." | Auto when online |
-| `E002` | `NETWORK_TIMEOUT` | Request timed out | "Connection slow. Retrying..." | Yes, with backoff |
-| `E003` | `SERVER_ERROR` | Firebase 5xx error | "Server busy. We'll retry automatically." | Yes, with backoff |
+| `E001` | `NETWORK_UNAVAILABLE` | No internet connection | "You're offline. Your data is saved on this phone." | Auto when online |
+| `E002` | `NETWORK_TIMEOUT` | Request timed out | "Connection is slow. We'll keep trying." | Yes, with backoff |
+| `E003` | `SERVER_ERROR` | Firebase 5xx error | "Our servers are busy. We'll try again shortly." | Yes, with backoff |
 | `E004` | `UNAUTHORIZED` | Auth token expired | "Please sign in again." | No, re-auth needed |
 | `E005` | `FORBIDDEN` | Permission denied | "You don't have access to this." | No |
-| `E006` | `NOT_FOUND` | Document doesn't exist | "Data not found." | No |
+| `E006` | `NOT_FOUND` | Document doesn't exist | "We couldn't find that." | No |
 | `E007` | `CONFLICT` | Duplicate or version conflict | (Handle silently) | No, resolve conflict |
-| `E008` | `RATE_LIMITED` | Too many requests | "Slow down! Try again in a moment." | Yes, long delay |
-| `E009` | `QUOTA_EXCEEDED` | Firebase quota hit | "Service temporarily unavailable." | Yes, long delay |
-| `E010` | `VALIDATION_ERROR` | Invalid input data | "Please check your input." | No, fix input |
-| `E011` | `GPS_UNAVAILABLE` | Location permission denied | "Location access required." | No, need permission |
-| `E012` | `GPS_TIMEOUT` | Couldn't get location | "Couldn't get your location. Trying again..." | Yes |
-| `E013` | `CAMERA_UNAVAILABLE` | Camera permission denied | "Camera access required for scanning." | No |
-| `E014` | `OCR_FAILED` | Couldn't read plate | "Couldn't read the plate. Try again or enter manually." | Yes (user retries) |
+| `E008` | `RATE_LIMITED` | Too many requests | "Too many requests. Please wait a moment." | Yes, long delay |
+| `E009` | `QUOTA_EXCEEDED` | Firebase quota hit | "Service is temporarily unavailable." | Yes, long delay |
+| `E010` | `VALIDATION_ERROR` | Invalid input data | "Please check what you entered." | No, fix input |
+| `E011` | `GPS_UNAVAILABLE` | Location permission denied | "We need location access to check your speed." | No, need permission |
+| `E012` | `GPS_TIMEOUT` | Couldn't get location | "Having trouble getting your location. Trying again..." | Yes |
+| `E013` | `CAMERA_UNAVAILABLE` | Camera permission denied | "Camera access is needed to scan car numbers." | No |
+| `E014` | `OCR_FAILED` | Couldn't read plate | "Couldn't read the number. Try again or type it in." | Yes (user retries) |
 | `E015` | `SYNC_FAILED` | Sync operation failed | (Silent, auto-retry) | Yes |
-| `E016` | `TRIP_RECOVERY_NEEDED` | Crashed mid-trip | "We found an unfinished trip. Resume?" | N/A |
+| `E016` | `TRIP_RECOVERY_NEEDED` | Crashed mid-trip | "We found a trip that wasn't finished. Continue?" | N/A |
 
 ### Error Classification
 

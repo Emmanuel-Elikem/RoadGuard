@@ -101,12 +101,12 @@ class StorageService {
 
   /// Get the speed limit warning threshold (km/h).
   int get speedLimitThreshold =>
-      _settings.get('speedLimitThreshold', defaultValue: 80);
+      _settings.get('speedLimitThreshold', defaultValue: 50);
 
   /// Set the speed limit warning threshold.
   Future<void> setSpeedLimitThreshold(int kmh) async {
-    if (kmh < 20 || kmh > 200) {
-      throw ArgumentError('Speed limit must be between 20 and 200 km/h');
+    if (kmh < 1 || kmh > 200) {
+      throw ArgumentError('Speed limit must be between 1 and 200 km/h');
     }
     await _settings.put('speedLimitThreshold', kmh);
   }

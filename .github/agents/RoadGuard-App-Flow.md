@@ -227,7 +227,7 @@ App Entry
 ---
 
 ### 5. Home Dashboard
-**Purpose:** Main hub, start tracking
+**Purpose:** Main hub, start speed check
 
 **State: Idle**
 ```
@@ -236,7 +236,7 @@ App Entry
 ├─────────────────────────────────────────┤
 │                                         │
 │ ┌─────────────────────────────────────┐ │
-│ │ 🔍 Search number plate...           │ │
+│ │ 🔍 Search car number...            │ │
 │ └─────────────────────────────────────┘ │
 │                                         │
 │ ┌─────────────────────────────────────┐ │
@@ -250,10 +250,8 @@ App Entry
 │           ╲                 ╱           │
 │            ╰───────────────╯            │
 │                                         │
-│        📍 Location: Accra, Ghana        │
-│                                         │
 │     ┌───────────────────────────┐       │
-│     │ ▶  START TRACKING         │       │
+│     │ ▶  START SPEED CHECK      │       │
 │     └───────────────────────────┘       │
 │                                         │
 │   ┌───────────────────────────────┐     │
@@ -265,42 +263,38 @@ App Entry
 **State: Tracking Active**
 ```
 ┌─────────────────────────────────────────┐
-│  🔴 Recording                    12:34  │
+│  🔴 LIVE                         12:34  │
 ├─────────────────────────────────────────┤
 │                                         │
 │   ┌─────────────────────────────────┐   │
-│   │                                 │   │
-│   │         [LIVE MAP]              │   │
-│   │     ●━━━━━━━━━━━●              │   │
-│   │                                 │   │
-│   └─────────────────────────────────┘   │
+│   │ 🟡 Getting your location...     │   │ ← GPS Status Banner
+│   └─────────────────────────────────┘   │   (auto-hides when good)
 │                                         │
 │            ╭───────────────╮            │
-│           ╱     ⚠️  ╲                    │
+│           ╱                 ╲           │
 │          │       85          │          │
-│          │      km/h         │          │
-│           ╲                 ╱           │
+│          │      km/h         │          │  ← Digits roll
+│           ╲                 ╱           │     with animation
 │            ╰───────────────╯            │
-│     ⚠️ Approaching speed limit!         │
 │                                         │
 │   ┌────────┐ ┌────────┐ ┌────────┐     │
 │   │   95   │ │   68   │ │  4.2   │     │
-│   │  TOP   │ │  AVG   │ │   KM   │     │
+│   │FASTEST │ │AVERAGE │ │   KM   │     │
 │   └────────┘ └────────┘ └────────┘     │
 │                                         │
 │     ┌───────────────────────────┐       │
-│     │   ⏹  STOP TRACKING        │       │
+│     │   ⏹  STOP                 │       │
 │     └───────────────────────────┘       │
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
 **Interactions:**
-- [START TRACKING] → Begin GPS tracking
-- [STOP TRACKING] → End trip → Trip Summary
-- Speed > 80 → Ring turns red, warning shows
-- Tap map → Fullscreen map view
-- Tap search → Navigate to Search tab
+- [START SPEED CHECK] → Begin GPS tracking, show GPS status banner
+- [STOP] → End trip → Trip Summary
+- Speed > limit → "Overspeeding! Slow down" toast (red)
+- GPS signal weak/lost → Status banner slides in
+- GPS signal good → Status banner auto-hides
 
 ---
 
@@ -453,17 +447,17 @@ App Entry
 
 ```
 ┌─────────────────────────────────────────┐
-│  Your Stats                             │
+│  Your Trips                             │
 ├─────────────────────────────────────────┤
 │                                         │
 │   ┌────────────────┐ ┌────────────────┐ │
 │   │      127       │ │     68.5       │ │
-│   │    TRIPS       │ │   AVG km/h     │ │
+│   │    TRIPS       │ │  AVERAGE km/h  │ │
 │   └────────────────┘ └────────────────┘ │
 │                                         │
 │   ┌────────────────┐ ┌────────────────┐ │
 │   │     1,234      │ │      45        │ │
-│   │   TOTAL KM     │ │  RATINGS GIVEN │ │
+│   │  KM TRAVELLED  │ │ RATINGS GIVEN  │ │
 │   └────────────────┘ └────────────────┘ │
 │                                         │
 │   Recent Trips                          │
@@ -610,19 +604,20 @@ App Entry
 │   ┌─────────────────────────────────┐   │
 │   │ 🌙 Dark Mode              [ON]  │   │
 │   ├─────────────────────────────────┤   │
-│   │ 📍 Background Tracking   [OFF]  │   │
+│   │ 📍 Track when app is     [ON]   │   │
+│   │    closed                        │   │
 │   ├─────────────────────────────────┤   │
-│   │ 🔔 Speed Alerts          [ON]   │   │
+│   │ 🔔 Speed Warning         [ON]   │   │
 │   ├─────────────────────────────────┤   │
-│   │ ⚡ Speed Limit           80km/h │   │
+│   │ ⚡ Speed Limit           50km/h │   │
 │   └─────────────────────────────────┘   │
 │                                         │
 │   Data                                  │
 │                                         │
 │   ┌─────────────────────────────────┐   │
-│   │ 🔄 Sync Now           Last: 2m  │   │
+│   │ 🔄 Save Online         Last: 2m │   │
 │   ├─────────────────────────────────┤   │
-│   │ 📦 Offline Data       245 MB    │   │
+│   │ 📦 Saved Data         245 MB    │   │
 │   ├─────────────────────────────────┤   │
 │   │ 🗺️ Download Maps              →│   │
 │   └─────────────────────────────────┘   │
@@ -640,10 +635,10 @@ App Entry
 ```
 
 **Interactions:**
-- Toggle settings → Save to Hive immediately
-- [Sync Now] → Force Firebase sync
+- Toggle settings → Save immediately
+- [Save Online] → Push data to cloud
 - [Download Maps] → Map region picker
-- [Sign Out] → Confirm dialog → Clear Hive → Auth screen
+- [Sign Out] → Confirm dialog → Clear → Auth screen
 
 ---
 
