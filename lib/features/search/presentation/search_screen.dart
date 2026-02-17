@@ -6,10 +6,15 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../trip/data/repositories/rating_repository.dart';
+import '../../trip/domain/models/driver_model.dart';
+import '../../trip/domain/models/rating_model.dart';
 import '../../trip/domain/models/trip_model.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -22,7 +27,8 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
-  List<TripModel> _results = [];
+  List<TripModel> _tripResults = [];
+  List<DriverModel> _driverResults = [];
   bool _hasSearched = false;
 
   @override
@@ -36,25 +42,23 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final trimmed = query.trim().toUpperCase();
     if (trimmed.isEmpty) {
       setState(() {
-        _results = [];
+        _tripResults = [];
+        _driverResults = [];
         _hasSearched = false;
       });
       return;
     }
 
+    // Search trips
     final allTrips = StorageService.instance.tripsBox.values.toList();
-
-    final filtered = allTrips.where((trip) {
-      // Search by plate number (primary)
+    final filteredTrips = allTrips.where((trip) {
       if (trip.plateNumber != null &&
           trip.plateNumber!.toUpperCase().contains(trimmed)) {
         return true;
       }
-      // Search by notes
       if (trip.notes != null && trip.notes!.toUpperCase().contains(trimmed)) {
         return true;
       }
-      // Search by trip ID prefix
       if (trip.id.toUpperCase().startsWith(trimmed)) {
         return true;
       }
@@ -62,8 +66,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }).toList()
       ..sort((a, b) => b.startTime.compareTo(a.startTime));
 
+    // Search drivers
+    final repo = ref.read(ratingRepositoryProvider);
+    final filteredDrivers = repo.searchDrivers(trimmed);
+
     setState(() {
-      _results = filtered;
+      _tripResults = filteredTrips;
+      _driverResults = filteredDrivers;
       _hasSearched = true;
     });
   }
@@ -149,9 +158,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               // Results
               Expanded(
                 child: _hasSearched
-                    ? _results.isEmpty
+                    ? (_tripResults.isEmpty && _driverResults.isEmpty)
                         ? _NoResults(query: _searchController.text)
-                        : _SearchResults(results: _results)
+                        : _SearchResults(
+                            trips: _tripResults,
+                            drivers: _driverResults,
+                          )
                     : _RecentSearchHint(),
               ),
             ],
@@ -162,38 +174,157 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-/// Search results list.
+/// Search results list with driver and trip sections.
 class _SearchResults extends StatelessWidget {
-  final List<TripModel> results;
+  final List<TripModel> trips;
+  final List<DriverModel> drivers;
 
-  const _SearchResults({required this.results});
+  const _SearchResults({required this.trips, required this.drivers});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final totalCount = drivers.length + trips.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
       children: [
         Text(
-          '${results.length} result${results.length == 1 ? '' : 's'} found',
+          '$totalCount result${totalCount == 1 ? '' : 's'} found',
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
         const SizedBox(height: AppDimensions.spacingSm),
-        Expanded(
-          child: ListView.separated(
-            itemCount: results.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppDimensions.spacingSm),
-            itemBuilder: (context, index) {
-              final trip = results[index];
-              return _SearchResultCard(trip: trip);
-            },
+
+        // Driver results
+        if (drivers.isNotEmpty) ...[
+          Text(
+            'Drivers',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          ...drivers.map(
+            (driver) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDimensions.spacingSm),
+              child: _DriverResultCard(driver: driver),
+            ),
+          ),
+          if (trips.isNotEmpty)
+            const SizedBox(height: AppDimensions.spacingSm),
+        ],
+
+        // Trip results
+        if (trips.isNotEmpty) ...[
+          Text(
+            'Trips',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          ...trips.map(
+            (trip) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDimensions.spacingSm),
+              child: _SearchResultCard(trip: trip),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Driver search result card — taps navigate to driver detail.
+class _DriverResultCard extends StatelessWidget {
+  final DriverModel driver;
+
+  const _DriverResultCard({required this.driver});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final goodPct = (driver.goodPercentage * 100).round();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(
+          Routes.vehicleDetailsPath(driver.plateNumber),
+        ),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.all(AppDimensions.spacingMd),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Plate badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(
+                    AppDimensions.radiusSm,
+                  ),
+                ),
+                child: Text(
+                  driver.plateNumber,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppDimensions.spacingMd),
+
+              // Rating summary
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$goodPct% good',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: goodPct >= 50
+                            ? AppColors.success
+                            : AppColors.error,
+                      ),
+                    ),
+                    Text(
+                      '${driver.totalRatings} rating${driver.totalRatings == 1 ? '' : 's'}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow
+              Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -212,7 +343,16 @@ class _SearchResultCard extends StatelessWidget {
         ? trip.endTime!.difference(trip.startTime)
         : Duration.zero;
 
-    return Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: trip.plateNumber != null
+            ? () => context.push(
+                  Routes.vehicleDetailsPath(trip.plateNumber!),
+                )
+            : null,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        child: Container(
       padding: const EdgeInsets.all(AppDimensions.spacingMd),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -249,15 +389,28 @@ class _SearchResultCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (trip.rating != null) ...[
-                Icon(LucideIcons.star, size: 14, color: AppColors.warning),
-                const SizedBox(width: 4),
-                Text(
-                  '${trip.rating!.rating}/5',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              if (trip.ratingId != null) ...[
+                Builder(builder: (context) {
+                  final RatingModel? rating = StorageService.instance.ratingsBox.get(trip.ratingId);
+                  if (rating == null) return const SizedBox.shrink();
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        rating.isGood ? LucideIcons.thumbsUp : LucideIcons.thumbsDown,
+                        size: 14,
+                        color: rating.isGood ? AppColors.success : AppColors.error,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating.isGood ? 'Good' : 'Bad',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ],
             ],
           ),
@@ -288,6 +441,8 @@ class _SearchResultCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    ),
       ),
     );
   }

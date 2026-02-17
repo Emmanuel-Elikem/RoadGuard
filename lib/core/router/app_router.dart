@@ -9,6 +9,7 @@ import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/password_reset_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/search/presentation/driver_detail_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/shell/shell_screen.dart';
@@ -152,6 +153,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final trip = state.extra as TripModel;
           return RatingScreen(trip: trip);
+        },
+      ),
+      GoRoute(
+        path: Routes.vehicleDetails,
+        name: RouteNames.vehicleDetails,
+        builder: (context, state) {
+          final plateNumber = state.pathParameters['plateNumber']!;
+          return DriverDetailScreen(plateNumber: plateNumber);
         },
       ),
     ],

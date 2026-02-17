@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../features/trip/domain/models/driver_model.dart';
 import '../../features/trip/domain/models/rating_model.dart';
 import '../../features/trip/domain/models/trip_model.dart';
 
@@ -44,13 +45,19 @@ class StorageService {
   static const String _settingsBox = 'settings';
   static const String _userBox = 'user';
   static const String _tripsBox = 'trips';
+  static const String _ratingsBox = 'ratings';
+  static const String _driversBox = 'drivers';
 
   // Boxes (opened during initialization)
   late Box<dynamic> _settings;
   late Box<dynamic> _user;
   late Box<TripModel> _trips;
+  late Box<RatingModel> _ratings;
+  late Box<DriverModel> _drivers;
 
   Box<TripModel> get tripsBox => _trips;
+  Box<RatingModel> get ratingsBox => _ratings;
+  Box<DriverModel> get driversBox => _drivers;
 
   /// Initialize Hive and open all boxes.
   ///
@@ -62,15 +69,17 @@ class StorageService {
     // Register Adapters
     Hive.registerAdapter(RatingModelAdapter());
     Hive.registerAdapter(TripModelAdapter());
+    Hive.registerAdapter(DriverModelAdapter());
 
     // Create instance
     _instance = StorageService._();
 
     // Open boxes
-    // Box names are like table names - keep them lowercase
     _instance!._settings = await Hive.openBox(_settingsBox);
     _instance!._user = await Hive.openBox(_userBox);
     _instance!._trips = await Hive.openBox<TripModel>(_tripsBox);
+    _instance!._ratings = await Hive.openBox<RatingModel>(_ratingsBox);
+    _instance!._drivers = await Hive.openBox<DriverModel>(_driversBox);
 
     debugPrint('StorageService initialized');
   }

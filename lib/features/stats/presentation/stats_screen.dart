@@ -10,7 +10,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../trip/domain/models/rating_model.dart';
 import '../../trip/domain/models/trip_model.dart';
+
+/// Looks up a rating by trip's ratingId from the ratings box.
+RatingModel? _lookupRating(TripModel trip) {
+  if (trip.ratingId == null) return null;
+  return StorageService.instance.ratingsBox.get(trip.ratingId);
+}
 
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
@@ -350,79 +357,91 @@ class _StatsContent extends StatelessWidget {
               ],
 
               // Rating
-              if (trip.rating != null) ...[
-                const SizedBox(height: AppDimensions.spacingSm),
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.all(AppDimensions.spacingMd),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusMd),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              Builder(builder: (context) {
+                final rating = _lookupRating(trip);
+                if (rating == null) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    const SizedBox(height: AppDimensions.spacingSm),
+                    Container(
+                      width: double.infinity,
+                      padding:
+                          const EdgeInsets.all(AppDimensions.spacingMd),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusMd),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(LucideIcons.star,
-                              size: 18,
-                              color: AppColors.warning),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${trip.rating!.rating} out of 5',
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(
-                                    fontWeight: FontWeight.w600),
+                          Row(
+                            children: [
+                              Icon(
+                                rating.isGood
+                                    ? LucideIcons.thumbsUp
+                                    : LucideIcons.thumbsDown,
+                                size: 18,
+                                color: rating.isGood
+                                    ? AppColors.success
+                                    : AppColors.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                rating.isGood ? 'Good driver' : 'Bad driver',
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(
+                                        fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
+                          if (rating.comment != null &&
+                              rating.comment!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(rating.comment!,
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                )),
+                          ],
+                          if (rating.tags.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: rating.tags.map((tag) {
+                                return Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            AppDimensions
+                                                .radiusFull),
+                                  ),
+                                  child: Text(tag,
+                                      style: theme
+                                          .textTheme.labelSmall
+                                          ?.copyWith(
+                                        color:
+                                            colorScheme.primary,
+                                      )),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ],
                       ),
-                      if (trip.rating!.comment != null &&
-                          trip.rating!.comment!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(trip.rating!.comment!,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                            )),
-                      ],
-                      if (trip.rating!.tags.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: trip.rating!.tags.map((tag) {
-                            return Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary
-                                    .withValues(alpha: 0.1),
-                                borderRadius:
-                                    BorderRadius.circular(
-                                        AppDimensions
-                                            .radiusFull),
-                              ),
-                              child: Text(tag,
-                                  style: theme
-                                      .textTheme.labelSmall
-                                      ?.copyWith(
-                                    color:
-                                        colorScheme.primary,
-                                  )),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              }),
 
               // Notes
               if (trip.notes != null &&
@@ -600,15 +619,31 @@ class _TripCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (trip.rating != null) ...[
-                    Icon(LucideIcons.star,
-                        size: 14, color: AppColors.warning),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${trip.rating!.rating}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
+                  if (trip.ratingId != null) ...[
+                    Builder(builder: (context) {
+                      final rating = _lookupRating(trip);
+                      if (rating == null) return const SizedBox.shrink();
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            rating.isGood
+                                ? LucideIcons.thumbsUp
+                                : LucideIcons.thumbsDown,
+                            size: 14,
+                            color: rating.isGood
+                                ? AppColors.success
+                                : AppColors.error,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            rating.isGood ? 'Good' : 'Bad',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      );
+                    }),
                   ],
                   const SizedBox(width: 4),
                   Icon(

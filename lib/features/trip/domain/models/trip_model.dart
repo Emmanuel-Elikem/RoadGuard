@@ -1,6 +1,4 @@
 import 'package:hive/hive.dart';
-import 'rating_model.dart';
-// import 'route_point_model.dart'; // Will add later if needed
 
 part 'trip_model.g.dart';
 
@@ -28,7 +26,7 @@ class TripModel extends HiveObject {
   final double avgSpeed; // in m/s
 
   @HiveField(7)
-  final RatingModel? rating;
+  final String? ratingId; // Reference to standalone RatingModel
 
   @HiveField(8)
   final String? notes;
@@ -47,7 +45,7 @@ class TripModel extends HiveObject {
     this.distance = 0.0,
     this.maxSpeed = 0.0,
     this.avgSpeed = 0.0,
-    this.rating,
+    this.ratingId,
     this.notes,
     this.isSynced = false,
     this.plateNumber,
@@ -61,7 +59,7 @@ class TripModel extends HiveObject {
     double? distance,
     double? maxSpeed,
     double? avgSpeed,
-    RatingModel? rating,
+    String? ratingId,
     String? notes,
     bool? isSynced,
     String? plateNumber,
@@ -74,7 +72,7 @@ class TripModel extends HiveObject {
       distance: distance ?? this.distance,
       maxSpeed: maxSpeed ?? this.maxSpeed,
       avgSpeed: avgSpeed ?? this.avgSpeed,
-      rating: rating ?? this.rating,
+      ratingId: ratingId ?? this.ratingId,
       notes: notes ?? this.notes,
       isSynced: isSynced ?? this.isSynced,
       plateNumber: plateNumber ?? this.plateNumber,
