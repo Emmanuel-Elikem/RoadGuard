@@ -43,12 +43,12 @@ extension LocationPermissionStateX on LocationPermissionState {
   /// User-friendly title for permission state.
   String get title {
     return switch (this) {
-      LocationPermissionState.unknown => 'Permission Required',
-      LocationPermissionState.serviceDisabled => 'Location Disabled',
-      LocationPermissionState.denied => 'Permission Denied',
-      LocationPermissionState.deniedForever => 'Permission Blocked',
-      LocationPermissionState.grantedWhileInUse => 'Permission Granted',
-      LocationPermissionState.grantedAlways => 'Full Access Granted',
+      LocationPermissionState.unknown => 'Location access needed',
+      LocationPermissionState.serviceDisabled => 'Location is turned off',
+      LocationPermissionState.denied => 'Location access declined',
+      LocationPermissionState.deniedForever => 'Location access blocked',
+      LocationPermissionState.grantedWhileInUse => 'Location access enabled',
+      LocationPermissionState.grantedAlways => 'Full location access enabled',
     };
   }
 
@@ -56,17 +56,17 @@ extension LocationPermissionStateX on LocationPermissionState {
   String get description {
     return switch (this) {
       LocationPermissionState.unknown =>
-        'RoadGuard needs location access to track your speed and ensure safe travels.',
+        'RoadGuard needs to know your location to monitor speed and keep you safe.',
       LocationPermissionState.serviceDisabled =>
-        'Please enable Location Services in your device settings to use speed tracking.',
+        'Turn on Location in your device settings so RoadGuard can monitor speed.',
       LocationPermissionState.denied =>
-        'Location permission is required for speed tracking. Tap to grant access.',
+        'RoadGuard needs location access to work. Tap below to allow it.',
       LocationPermissionState.deniedForever =>
-        'Location permission was blocked. Please enable it in Settings > Apps > RoadGuard > Permissions.',
+        'Location access was blocked. Open your phone\'s Settings, find RoadGuard, and turn on Location.',
       LocationPermissionState.grantedWhileInUse =>
-        'Speed tracking works while the app is open. For background tracking, grant "Always" permission.',
+        'Speed monitoring works while the app is open. To monitor in the background, allow location access "Always".',
       LocationPermissionState.grantedAlways =>
-        'Full location access granted. Speed tracking works in foreground and background.',
+        'All set! Speed monitoring works whether the app is open or in the background.',
     };
   }
 }

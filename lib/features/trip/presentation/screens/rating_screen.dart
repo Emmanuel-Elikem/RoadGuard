@@ -61,7 +61,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Failed to save trip: $e',
+                    'Couldn\'t save your trip. Please try again.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onError,
                     ),
@@ -109,7 +109,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                   children: [
                     Icon(LucideIcons.map, size: 48),
                     Gap(8),
-                    Text('Map View Coming Soon (Week 8)'),
+                    Text('Route map coming soon'),
                   ],
                 ),
               ),
@@ -128,7 +128,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 const Gap(AppDimensions.spacingMd),
                 Expanded(
                   child: _StatCard(
-                    label: 'DURATION',
+                    label: 'TIME',
                     value: '${widget.trip.endTime!.difference(widget.trip.startTime).inMinutes}:${(widget.trip.endTime!.difference(widget.trip.startTime).inSeconds % 60).toString().padLeft(2, '0')} min',
                   ),
                 ),
@@ -139,7 +139,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
               children: [
                  Expanded(
                   child: _StatCard(
-                    label: 'TOP SPEED',
+                    label: 'FASTEST',
                     value: '${(widget.trip.maxSpeed * 3.6).toStringAsFixed(0)} km/h',
                     isAlert: (widget.trip.maxSpeed * 3.6) > 80,
                   ),
@@ -147,7 +147,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 const Gap(AppDimensions.spacingMd),
                 Expanded(
                   child: _StatCard(
-                    label: 'AVG SPEED',
+                    label: 'AVERAGE',
                     value: '${(widget.trip.avgSpeed * 3.6).toStringAsFixed(0)} km/h',
                   ),
                 ),
@@ -194,7 +194,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 onPressed: _isSaving ? null : _saveTrip,
                 child: _isSaving 
                     ? const CircularProgressIndicator()
-                    : const Text('SAVE TRIP'),
+                    : const Text('Save trip'),
               ),
             ),
              const Gap(AppDimensions.spacingMd),

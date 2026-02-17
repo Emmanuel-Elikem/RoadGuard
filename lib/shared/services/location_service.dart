@@ -22,11 +22,11 @@ enum GpsSignalQuality { excellent, good, poor, veryPoor, none }
 
 extension GpsSignalQualityX on GpsSignalQuality {
   String get label => switch (this) {
-    GpsSignalQuality.excellent => 'GPS',
-    GpsSignalQuality.good => 'GPS',
-    GpsSignalQuality.poor => 'POOR GPS',
-    GpsSignalQuality.veryPoor => 'WEAK GPS',
-    GpsSignalQuality.none => 'NO GPS',
+    GpsSignalQuality.excellent => 'Strong signal',
+    GpsSignalQuality.good => 'Strong signal',
+    GpsSignalQuality.poor => 'Weak signal',
+    GpsSignalQuality.veryPoor => 'Very weak signal',
+    GpsSignalQuality.none => 'No signal',
   };
 
   bool get isUsable => this != GpsSignalQuality.none;

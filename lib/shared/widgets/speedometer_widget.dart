@@ -174,7 +174,7 @@ class SpeedometerWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'NO GPS',
+                        'No signal',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colorScheme.onErrorContainer,
                           fontWeight: FontWeight.bold,
@@ -184,8 +184,8 @@ class SpeedometerWidget extends StatelessWidget {
                     ),
                   ],
 
-                  // Accuracy indicator
-                  if (accuracy != null && hasSignal)
+                  // Accuracy indicator (hidden per UX Copy Guide)
+                  if (false && accuracy != null && hasSignal) // Hidden: users can't act on accuracy
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(

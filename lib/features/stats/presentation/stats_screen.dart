@@ -83,10 +83,10 @@ class _StatsContent extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your Stats', style: theme.textTheme.headlineMedium),
+              Text('Your Trips', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 4),
               Text(
-                '$totalTrips trip${totalTrips == 1 ? '' : 's'} recorded',
+                '$totalTrips trip${totalTrips == 1 ? '' : 's'} so far',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -137,7 +137,7 @@ class _StatsContent extends StatelessWidget {
                 const SizedBox(width: AppDimensions.spacingSm),
                 _SummaryCard(
                   icon: LucideIcons.zap,
-                  label: 'Top Speed',
+                  label: 'Fastest speed',
                   value: '${topSpeed.toStringAsFixed(0)} km/h',
                   color: topSpeed >
                           StorageService.instance.speedLimitThreshold
@@ -278,7 +278,7 @@ class _StatsContent extends StatelessWidget {
                 children: [
                   _DetailStat(
                     icon: LucideIcons.gauge,
-                    label: 'Avg Speed',
+                    label: 'Average speed',
                     value:
                         '${(trip.avgSpeed * 3.6).toStringAsFixed(1)} km/h',
                     color: AppColors.success,
@@ -286,7 +286,7 @@ class _StatsContent extends StatelessWidget {
                   const SizedBox(width: AppDimensions.spacingSm),
                   _DetailStat(
                     icon: LucideIcons.zap,
-                    label: 'Max Speed',
+                    label: 'Top speed',
                     value:
                         '${(trip.maxSpeed * 3.6).toStringAsFixed(1)} km/h',
                     color: (trip.maxSpeed * 3.6) >
@@ -342,7 +342,7 @@ class _StatsContent extends StatelessWidget {
                           color: colorScheme.onSurface
                               .withValues(alpha: 0.6)),
                       const SizedBox(width: 10),
-                      Text('Plate: ${trip.plateNumber}',
+                      Text('Vehicle: ${trip.plateNumber}',
                           style: theme.textTheme.bodyMedium),
                     ],
                   ),
@@ -372,7 +372,7 @@ class _StatsContent extends StatelessWidget {
                               color: AppColors.warning),
                           const SizedBox(width: 8),
                           Text(
-                            'Rating: ${trip.rating!.rating}/5',
+                            '${trip.rating!.rating} out of 5',
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(
                                     fontWeight: FontWeight.w600),
@@ -809,7 +809,7 @@ class _EmptyState extends StatelessWidget {
           Text('No Trips Yet', style: theme.textTheme.titleLarge),
           const SizedBox(height: AppDimensions.spacingSm),
           Text(
-            'Start tracking a trip from the home screen\nto see your stats here.',
+            'Start monitoring a trip from the home screen\nto see your trips here.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color:
                   colorScheme.onSurface.withValues(alpha: 0.6),

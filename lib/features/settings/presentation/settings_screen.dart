@@ -51,7 +51,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Text('Settings', style: theme.textTheme.headlineLarge),
               const SizedBox(height: AppDimensions.spacingXs),
               Text(
-                'App preferences & account',
+                'Your preferences and account',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -67,7 +67,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: LucideIcons.user,
                 title: user?.nameOrEmail ?? 'Guest User',
                 subtitle: isGuest
-                    ? 'Sign in to sync your data'
+                    ? 'Sign in to save your data across devices'
                     : user?.email ?? 'No email',
                 trailing: isGuest
                     ? TextButton(
@@ -84,7 +84,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: AppDimensions.spacingMd),
 
               // === TRACKING SECTION ===
-              _SectionHeader(title: 'Tracking'),
+              _SectionHeader(title: 'Speed monitoring'),
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SpeedLimitTile(
@@ -100,7 +100,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _SettingsTile(
                 icon: LucideIcons.bell,
                 title: 'Speed Alerts',
-                subtitle: 'Warn when exceeding limit',
+                subtitle: 'Get notified when going too fast',
                 trailing: Switch.adaptive(
                   value: _speedAlerts,
                   onChanged: (value) {
@@ -144,18 +144,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               _SettingsTile(
                 icon: LucideIcons.mapPin,
-                title: 'Background Tracking',
-                subtitle: 'Track speed when app is minimized',
+                title: 'Monitor in background',
+                subtitle: 'Keep monitoring when you leave the app',
                 trailing: Switch.adaptive(
                   value: _backgroundTracking,
                   onChanged: (value) {
                     if (!value) {
                       _confirmToggleOff(
                         context,
-                        title: 'Disable Background Tracking?',
+                        title: 'Stop background monitoring?',
                         description:
-                            'Speed tracking will stop when you minimize or switch '
-                            'away from RoadGuard. Your trip data will only be '
+                            'Speed monitoring will pause when you leave the app. '
+                            'Your trips will only be '
                             'recorded while the app is on screen.',
                         onConfirm: () =>
                             setState(() => _backgroundTracking = false),
@@ -171,10 +171,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (_backgroundTracking) {
                     _confirmToggleOff(
                       context,
-                      title: 'Disable Background Tracking?',
+                      title: 'Stop background monitoring?',
                       description:
-                          'Speed tracking will stop when you minimize or switch '
-                          'away from RoadGuard. Your trip data will only be '
+                          'Speed monitoring will pause when you leave the app. '
+                          'Your trips will only be '
                           'recorded while the app is on screen.',
                       onConfirm: () =>
                           setState(() => _backgroundTracking = false),
@@ -188,7 +188,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: AppDimensions.spacingMd),
 
               // === DATA SECTION ===
-              _SectionHeader(title: 'Data'),
+              _SectionHeader(title: 'Your data'),
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SettingsTile(
@@ -411,7 +411,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icon(LucideIcons.logIn,
                         color: colorScheme.onPrimary),
                     label: Text(
-                      'Sign In to Sync Data',
+                      'Sign in to save across devices',
                       style: TextStyle(color: colorScheme.onPrimary),
                     ),
                   ),
@@ -461,7 +461,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Sign In'),
         content: const Text(
-            'Sign in to sync your trips and ratings across devices.'),
+            'Sign in to save your trips and ratings across devices.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -485,7 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
         content:
-            const Text('Are you sure? Your local data will be preserved.'),
+            const Text('Are you sure? Your saved data on this phone will be kept.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -525,7 +525,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Trip history cleared',
+                      'All trips have been deleted',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onPrimary,
                       ),
@@ -556,7 +556,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 16),
         const Text(
           'Your Digital Copilot for road safety. '
-          'Track speed, rate drivers, and make Ghana\'s roads safer.',
+          'Monitor speed, rate drivers, and make Ghana\'s roads safer.',
         ),
       ],
     );
@@ -630,11 +630,11 @@ class _SpeedLimitTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Speed Limit Warning',
+                    Text('Speed limit alert',
                         style: theme.textTheme.titleSmall),
                     const SizedBox(height: 2),
                     Text(
-                      'Alert at $currentLimit km/h',
+                      'You\'ll be warned above $currentLimit km/h',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurface
                             .withValues(alpha: 0.6),
@@ -702,7 +702,7 @@ class _SpeedLimitTile extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Default (${AppConstants.defaultSpeedLimit.round()})',
+                    'Reset to default (${AppConstants.defaultSpeedLimit.round()})',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.primary,
                       fontWeight: FontWeight.w600,

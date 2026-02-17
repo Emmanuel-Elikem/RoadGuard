@@ -35,34 +35,34 @@ class AuthFailure extends AuthResult {
 /// Types of authentication errors.
 enum AuthError {
   // Email/Password errors
-  invalidEmail('Invalid email address'),
-  userDisabled('This account has been disabled'),
-  userNotFound('No account found with this email'),
-  wrongPassword('Incorrect password'),
-  invalidCredential('Invalid email or password'),
-  emailAlreadyInUse('An account already exists with this email'),
+  invalidEmail('Please enter a valid email address'),
+  userDisabled('This account has been deactivated. Contact support for help.'),
+  userNotFound('We couldn\'t find an account with that email'),
+  wrongPassword('The password you entered is incorrect'),
+  invalidCredential('The email or password you entered is incorrect'),
+  emailAlreadyInUse('This email is already in use. Try signing in instead.'),
   weakPassword('Password must be at least 6 characters'),
 
   // Google Sign In errors
-  googleSignInCancelled('Google sign in was cancelled'),
-  googleSignInFailed('Google sign in failed. Please try again'),
+  googleSignInCancelled('Google sign-in was cancelled'),
+  googleSignInFailed('Google sign-in didn\'t work. Please try again.'),
   accountExistsWithDifferentCredential(
-    'An account already exists with this email using a different sign-in method',
+    'This email is linked to a different sign-in method. Try another way.',
   ),
   credentialAlreadyInUse(
-    'This credential is already linked to another account',
+    'This sign-in is already connected to another account',
   ),
 
   // Account errors
-  requiresRecentLogin('Please sign in again to perform this action'),
+  requiresRecentLogin('For security, please sign in again to continue'),
 
   // Network errors
-  networkError('Network error. Check your connection'),
+  networkError('No internet connection. Please check and try again.'),
   tooManyRequests('Too many attempts. Please try again later'),
 
   // Generic errors
-  operationNotAllowed('This sign in method is not enabled'),
-  unknown('An unknown error occurred');
+  operationNotAllowed('This sign-in option is not available right now'),
+  unknown('Something went wrong. Please try again.');
 
   final String message;
   const AuthError(this.message);

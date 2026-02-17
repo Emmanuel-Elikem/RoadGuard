@@ -149,7 +149,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
     if (!success) {
       state = state.copyWith(
         state: TrackingState.error,
-        errorMessage: 'Failed to start GPS tracking',
+        errorMessage: 'Couldn\'t start speed monitoring. Please check your location settings.',
       );
       return;
     }
@@ -160,7 +160,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       debugPrint('SpeedTrackingNotifier: Stream is null after startTracking!');
       state = state.copyWith(
         state: TrackingState.error,
-        errorMessage: 'GPS stream not available',
+        errorMessage: 'Location service is not responding. Try restarting the app.',
       );
       return;
     }
