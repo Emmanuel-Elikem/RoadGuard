@@ -14,6 +14,7 @@ import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/permission_service.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../../shared/widgets/gps_status_banner.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
 import '../../trip/application/trip_service.dart';
@@ -211,6 +212,12 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           ),
 
           const SizedBox(height: AppDimensions.spacingLg),
+
+          // === GPS STATUS BANNER ===
+          GpsStatusBanner(
+            quality: ts.gpsSignalQuality,
+            isTracking: isTracking,
+          ),
 
           // === LIVE TRIP STATS (shown when tracking) ===
           if (isTracking && tripState == TripState.recording)

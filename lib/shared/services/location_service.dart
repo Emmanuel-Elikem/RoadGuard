@@ -17,19 +17,39 @@ const double kPoorGpsSpeedThreshold = 5.0;
 /// Minimum speed threshold in km/h when GPS accuracy is good.
 const double kGoodGpsSpeedThreshold = 2.0;
 
-/// GPS signal quality based on accuracy.
-enum GpsSignalQuality { excellent, good, poor, veryPoor, none }
+/// GPS signal quality for the Status Banner.
+enum GpsSignalQuality {
+  /// Waiting for first GPS fix.
+  acquiring,
+
+  /// Accuracy < 10m — reliable speed.
+  good,
+
+  /// Accuracy 10–25m — speed may fluctuate.
+  weak,
+
+  /// Accuracy > 25m — speed unreliable.
+  poor,
+
+  /// No GPS update for > 10 seconds.
+  lost,
+}
 
 extension GpsSignalQualityX on GpsSignalQuality {
   String get label => switch (this) {
-    GpsSignalQuality.excellent => 'Strong signal',
+    GpsSignalQuality.acquiring => 'Finding your location...',
     GpsSignalQuality.good => 'Strong signal',
-    GpsSignalQuality.poor => 'Weak signal',
-    GpsSignalQuality.veryPoor => 'Very weak signal',
-    GpsSignalQuality.none => 'No signal',
+    GpsSignalQuality.weak => 'Weak signal — speed may vary',
+    GpsSignalQuality.poor => 'Poor signal — speed not reliable',
+    GpsSignalQuality.lost => 'Signal lost. Move to open area',
   };
 
-  bool get isUsable => this != GpsSignalQuality.none;
+  /// Whether the signal is usable for speed tracking.
+  bool get isUsable =>
+      this == GpsSignalQuality.good || this == GpsSignalQuality.weak;
+
+  /// Whether the banner should be visible (hidden when good).
+  bool get showBanner => this != GpsSignalQuality.good;
 }
 
 /// Represents a speed reading with metadata.
@@ -52,12 +72,12 @@ class SpeedReading {
       speedMs >= 0 &&
       speedMs <= kMaxReasonableSpeedMs;
 
+  /// Signal quality based on accuracy alone (no temporal context).
   GpsSignalQuality get signalQuality {
-    if (accuracy <= 0) return GpsSignalQuality.none;
-    if (accuracy <= 10) return GpsSignalQuality.excellent;
-    if (accuracy <= 20) return GpsSignalQuality.good;
-    if (accuracy <= 50) return GpsSignalQuality.poor;
-    return GpsSignalQuality.veryPoor;
+    if (accuracy <= 0) return GpsSignalQuality.lost;
+    if (accuracy <= 10) return GpsSignalQuality.good;
+    if (accuracy <= 25) return GpsSignalQuality.weak;
+    return GpsSignalQuality.poor;
   }
 
   bool get hasGpsData => accuracy > 0;

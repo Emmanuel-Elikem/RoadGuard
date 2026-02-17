@@ -106,6 +106,22 @@ class SpeedTrackingState {
   /// GPS accuracy in meters.
   double? get accuracy => currentReading?.accuracy;
 
+  /// Signal quality for the GPS Status Banner.
+  /// Combines reading accuracy with temporal state (acquiring/lost).
+  GpsSignalQuality get gpsSignalQuality {
+    if (state == TrackingState.starting && currentReading == null) {
+      return GpsSignalQuality.acquiring;
+    }
+    if (currentReading == null) {
+      return GpsSignalQuality.good; // Not tracking, banner hidden anyway
+    }
+    final age = DateTime.now().difference(currentReading!.timestamp);
+    if (age.inSeconds > 10) {
+      return GpsSignalQuality.lost;
+    }
+    return currentReading!.signalQuality;
+  }
+
   SpeedTrackingState copyWith({
     TrackingState? state,
     SpeedReading? currentReading,

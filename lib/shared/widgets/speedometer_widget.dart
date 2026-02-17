@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
+import 'animated_speed_display.dart';
 
 /// Speed state for visual styling.
 enum SpeedState {
@@ -123,21 +124,17 @@ class SpeedometerWidget extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Speed value
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    child: Text(
-                      speed.toStringAsFixed(0),
-                      key: ValueKey(speed.toStringAsFixed(0)),
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        fontSize: size * 0.28,
-                        fontWeight: FontWeight.bold,
-                        color: hasSignal
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurface.withValues(alpha: 0.3),
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                        height: 1.0,
-                      ),
+                  // Speed value — odometer roll animation
+                  AnimatedSpeedDisplay(
+                    speed: speed,
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      fontSize: size * 0.28,
+                      fontWeight: FontWeight.bold,
+                      color: hasSignal
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.3),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      height: 1.0,
                     ),
                   ),
 
@@ -161,41 +158,7 @@ class SpeedometerWidget extends StatelessWidget {
                       size: size * 0.16,
                     ),
 
-                  // No signal indicator
-                  if (!hasSignal) ...[
-                    SizedBox(height: size * 0.02),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'No signal',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.bold,
-                          fontSize: size * 0.07,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Accuracy indicator (hidden per UX Copy Guide)
-                  if (false && accuracy != null && hasSignal) // Hidden: users can't act on accuracy
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        '±${accuracy!.toStringAsFixed(0)}m',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.4),
-                          fontSize: size * 0.07,
-                        ),
-                      ),
-                    ),
+                  // Signal quality is shown via GPS Status Banner, not here
                 ],
               ),
             ),
