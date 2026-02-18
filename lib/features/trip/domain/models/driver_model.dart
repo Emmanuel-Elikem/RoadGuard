@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'driver_model.g.dart';
-
 /// Cached driver profile with aggregate rating data.
 ///
 /// Stored in drivers_box, keyed by [plateNumber].
@@ -29,6 +27,9 @@ class DriverModel extends HiveObject {
   @HiveField(6)
   String? region;
 
+  @HiveField(7)
+  Map<String, int> tagFrequency;
+
   DriverModel({
     this.plateNumber = '',
     this.totalRatings = 0,
@@ -37,7 +38,9 @@ class DriverModel extends HiveObject {
     this.commonTags = const [],
     DateTime? lastUpdated,
     this.region,
-  }) : lastUpdated = lastUpdated ?? DateTime.now();
+    Map<String, int>? tagFrequency,
+  })  : lastUpdated = lastUpdated ?? DateTime.now(),
+        tagFrequency = tagFrequency ?? {};
 
   /// Percentage of good ratings (0.0-1.0).
   double get goodPercentage =>
@@ -52,15 +55,13 @@ class DriverModel extends HiveObject {
       badRatings++;
     }
 
-    // Update common tags — keep top 5
-    final tagCounts = <String, int>{};
-    for (final tag in commonTags) {
-      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
-    }
+    // Accumulate tag counts in the frequency map
     for (final tag in tags) {
-      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+      tagFrequency[tag] = (tagFrequency[tag] ?? 0) + 1;
     }
-    final sorted = tagCounts.entries.toList()
+
+    // Derive top 5 tags from frequency map
+    final sorted = tagFrequency.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     commonTags = sorted.take(5).map((e) => e.key).toList();
     lastUpdated = DateTime.now();

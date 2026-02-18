@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../shared/services/storage_service.dart';
+import '../../../../shared/utils/plate_validator.dart';
 import '../../domain/models/driver_model.dart';
 import '../../domain/models/rating_model.dart';
 
@@ -28,7 +29,11 @@ class RatingRepository {
     // Update driver aggregate
     var driver = _storage.driversBox.get(rating.plateNumber);
     if (driver == null) {
-      driver = DriverModel(plateNumber: rating.plateNumber);
+      final regionCode = rating.plateNumber.split('-').first;
+      driver = DriverModel(
+        plateNumber: rating.plateNumber,
+        region: PlateValidator.regionNames[regionCode],
+      );
       driver.applyRating(rating.isGood, rating.tags);
       await _storage.driversBox.put(rating.plateNumber, driver);
     } else {

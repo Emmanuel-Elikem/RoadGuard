@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'trip_model.g.dart';
-
 @HiveType(typeId: 3)
 class TripModel extends HiveObject {
   @HiveField(0)

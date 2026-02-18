@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'rating_model.g.dart';
-
 /// A driver rating submitted by a passenger.
 ///
 /// Standalone model stored in ratings_box.

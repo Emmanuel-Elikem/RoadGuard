@@ -1636,6 +1636,168 @@ Deferred to Phase 3 (Issue #5).
 
 ---
 
+#### M059: Broken Hive Adapters — hive_generator_plus Generated Empty Serialization
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-18  
+**Detected By:** Self (Agent) — discovered during PR #7 round 3 review
+
+**Symptom:**
+All three Hive TypeAdapters (TripModel, RatingModel, DriverModel) wrote 0 fields and read no data. All persisted data was effectively lost/empty.
+
+**Cause:**
+`hive_generator_plus` v4.0.2 (383 downloads, 4 likes) generated completely broken adapters. The `write()` method wrote `writeByte(0)` (0 fields) and `read()` created models with default constructors, ignoring all `@HiveField` annotations.
+
+**Prevention:**
+- Always verify generated code is correct — check `.g.dart` files after running `build_runner`
+- Prefer well-maintained official packages: `hive_generator` (172K downloads) over obscure forks
+- Write integration tests that actually serialize/deserialize model data to catch adapter bugs
+
+**Fix:**
+Removed `hive_generator_plus` from dev_dependencies. Wrote hand-coded standalone adapter files (`*_adapter.dart`) for all three models, removing the `part` directive dependency. Bumped schema version to 3.
+
+---
+
+#### M060: DriverModel Region Field Never Populated
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Completeness)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+DriverModel has a `region` field (HiveField 6) but it was always `null`. The driver detail screen showed no region info.
+
+**Cause:**
+Created the field in the model but forgot to extract and pass the region from `PlateValidator.regionNames` when constructing a new `DriverModel` in `saveRating()`.
+
+**Prevention:**
+When adding a model field, search all construction sites to ensure the field is populated everywhere.
+
+**Fix:**
+Extract region code from `rating.plateNumber.split('-').first` and look up `PlateValidator.regionNames[regionCode]` in `saveRating()`.
+
+---
+
+#### M061: Tag Aggregation Loses Historical Frequency
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+After 100 ratings with "Safe" tag, adding one "Reckless" rating gave both tags equal weight (count=1), because `applyRating()` counted each entry in `commonTags` as 1.
+
+**Cause:**
+`commonTags` is a `List<String>` storing only tag names (not counts). Re-counting the list on each call reset all historical frequency data to 1.
+
+**Prevention:**
+When implementing aggregate statistics, always verify the data structure preserves the accumulation. A list of names cannot hold frequency data.
+
+**Fix:**
+Added `tagFrequency` field (`Map<String, int>`, HiveField 7) to DriverModel. `applyRating()` now accumulates counts in the map and derives `commonTags` (top 5) from it.
+
+---
+
+#### M062: Inconsistent Rating ID Generation
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Integrity)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+`rating_screen.dart` used `Uuid().v4()` for rating IDs but `driver_detail_screen.dart` used `DateTime.now().millisecondsSinceEpoch.toString()`, risking ID collisions.
+
+**Cause:**
+Quick rating sheet was developed as a separate component and didn't use the same ID pattern.
+
+**Prevention:**
+Extract ID generation to a shared utility. Always search codebase for existing patterns before implementing a similar one.
+
+**Fix:**
+Replaced `millisecondsSinceEpoch` with `const Uuid().v4()` in `driver_detail_screen.dart`.
+
+---
+
+#### M063: DRY Violation — Duplicated Rating Tag Constants
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+Good/bad tag lists (`_goodTags`, `_badTags`) were duplicated in `rating_screen.dart` and `driver_detail_screen.dart`.
+
+**Cause:**
+The quick rating sheet was developed inside `driver_detail_screen.dart` and copied the constants locally instead of sharing them.
+
+**Prevention:**
+When reusing the same data in multiple files, extract to a shared constants file immediately.
+
+**Fix:**
+Created `lib/features/trip/domain/constants/rating_constants.dart` with `goodDriverTags` and `badDriverTags`. Both screens now import from there.
+
+---
+
+#### M064: _isFirstBuild Flag Consumed on No-Op Rebuild
+**Status:** 🟢 Resolved  
+**Severity:** Low (UI Polish)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+If the parent widget rebuilt with the same digit value before an actual digit change, `_isFirstBuild` was set to `false` prematurely. The next real digit change would then animate when it should have been skipped.
+
+**Cause:**
+The `_isFirstBuild` check was outside the `digit != widget.digit` conditional, so any rebuild consumed it.
+
+**Prevention:**
+Guards that depend on "the first time X happens" should be inside the condition that detects X, not outside it.
+
+**Fix:**
+Moved `_isFirstBuild` check inside the `if (oldWidget.digit != widget.digit)` block in `didUpdateWidget`.
+
+---
+
+#### M065: Schema Migration Crashes Release Builds
+**Status:** 🟢 Resolved  
+**Severity:** Critical (App Crash)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+Previous fix gated box deletion to `kDebugMode` only. Release builds would skip deletion but then try to open Hive boxes with incompatible schemas, causing a crash.
+
+**Cause:**
+Over-correction from round 2 review — tried to preserve offline data in release but didn't implement forward migration, leaving boxes in an inconsistent state.
+
+**Prevention:**
+When gating code by build mode, always verify the "else" path is also correct. Pre-launch apps should not worry about data preservation since there are no real users.
+
+**Fix:**
+Removed `kDebugMode` gate. All builds now clear data boxes on schema change (pre-launch). Added TODO comment for forward migration post-launch.
+
+---
+
+#### M066: Screen Not Refreshing After Quick Rating
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+After submitting a rating via the quick rating bottom sheet on `DriverDetailScreen`, the screen didn't show the new rating until the user navigated away and back.
+
+**Cause:**
+`showModalBottomSheet` returned `true` on success but the return value was never handled. The `ConsumerWidget` had no mechanism to trigger a rebuild.
+
+**Prevention:**
+When implementing modal flows that modify data, always handle the return value and trigger a UI refresh.
+
+**Fix:**
+Converted `DriverDetailScreen` to `ConsumerStatefulWidget`. Added `.then((rated) { if (rated == true && mounted) setState(() {}); })` to force rebuild after successful rating.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

@@ -9,16 +9,11 @@ import 'package:road_guard/core/theme/app_dimensions.dart';
 import 'package:road_guard/core/theme/app_colors.dart';
 import 'package:road_guard/features/trip/application/trip_service.dart';
 import 'package:road_guard/features/trip/data/repositories/rating_repository.dart';
+import 'package:road_guard/features/trip/domain/constants/rating_constants.dart';
 import 'package:road_guard/features/trip/domain/models/rating_model.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/utils/plate_validator.dart';
 import 'package:uuid/uuid.dart';
-
-/// Tags available for good driver feedback.
-const _goodTags = ['Safe', 'Courteous', 'Calm', 'Clean vehicle', 'On time'];
-
-/// Tags available for bad driver feedback.
-const _badTags = ['Speeding', 'Reckless', 'Rude', 'Phone use', 'Unsafe vehicle'];
 
 class RatingScreen extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -130,7 +125,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final availableTags = _isGood == true ? _goodTags : _badTags;
+    final availableTags = _isGood == true ? goodDriverTags : badDriverTags;
 
     return Scaffold(
       appBar: AppBar(

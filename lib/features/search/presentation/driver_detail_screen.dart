@@ -8,24 +8,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/theme.dart';
 import '../../trip/data/repositories/rating_repository.dart';
+import '../../trip/domain/constants/rating_constants.dart';
 import '../../trip/domain/models/driver_model.dart';
 import '../../trip/domain/models/rating_model.dart';
 
-class DriverDetailScreen extends ConsumerWidget {
+class DriverDetailScreen extends ConsumerStatefulWidget {
   final String plateNumber;
 
   const DriverDetailScreen({super.key, required this.plateNumber});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverDetailScreen> createState() =>
+      _DriverDetailScreenState();
+}
+
+class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final repo = ref.watch(ratingRepositoryProvider);
-    final driver = repo.getDriver(plateNumber);
-    final ratings = repo.getRatingsForPlate(plateNumber);
+    final driver = repo.getDriver(widget.plateNumber);
+    final ratings = repo.getRatingsForPlate(widget.plateNumber);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -52,7 +60,7 @@ class DriverDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppDimensions.spacingSm),
 
                 // Plate number badge
-                _PlateHeader(plateNumber: plateNumber, region: driver?.region),
+                _PlateHeader(plateNumber: widget.plateNumber, region: driver?.region),
                 const SizedBox(height: AppDimensions.spacingLg),
 
                 // Rating summary
@@ -122,14 +130,16 @@ class DriverDetailScreen extends ConsumerWidget {
   }
 
   void _navigateToRate(BuildContext context) {
-    // Navigate to rating screen with plate pre-filled
-    // Using a bottom sheet for quick rating from detail view
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _QuickRatingSheet(plateNumber: plateNumber),
-    );
+      builder: (_) => _QuickRatingSheet(plateNumber: widget.plateNumber),
+    ).then((rated) {
+      if (rated == true && mounted) {
+        setState(() {}); // Rebuild to show updated Hive data
+      }
+    });
   }
 }
 
@@ -508,8 +518,6 @@ class _RatingCard extends StatelessWidget {
 
 // ─── Quick Rating Sheet ────────────────────────────────────
 
-const _goodTags = ['Safe', 'Courteous', 'Calm', 'Clean vehicle', 'On time'];
-const _badTags = ['Speeding', 'Reckless', 'Rude', 'Phone use', 'Unsafe vehicle'];
 
 class _QuickRatingSheet extends ConsumerStatefulWidget {
   final String plateNumber;
@@ -532,7 +540,7 @@ class _QuickRatingSheetState extends ConsumerState<_QuickRatingSheet> {
     super.dispose();
   }
 
-  List<String> get _availableTags => _isGood == true ? _goodTags : _badTags;
+  List<String> get _availableTags => _isGood == true ? goodDriverTags : badDriverTags;
 
   Future<void> _save() async {
     if (_isGood == null) return;
@@ -541,7 +549,7 @@ class _QuickRatingSheetState extends ConsumerState<_QuickRatingSheet> {
 
     try {
       final rating = RatingModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: const Uuid().v4(),
         plateNumber: widget.plateNumber,
         isGood: _isGood!,
         tags: _selectedTags.toList(),

@@ -128,11 +128,10 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
       _previousDigit = _currentDigit;
       _currentDigit = widget.digit;
 
+      // Skip animation on the first digit change to avoid digits
+      // rolling from empty to their initial value on appearance.
       if (_isFirstBuild) {
         _isFirstBuild = false;
-        // Skip animation on initial render to avoid digits rolling
-        // from empty to their first value when the widget appears.
-        // Subsequent digit changes will animate normally.
         return;
       }
 

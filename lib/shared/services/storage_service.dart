@@ -15,8 +15,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../features/trip/domain/models/driver_model.dart';
+import '../../features/trip/domain/models/driver_model_adapter.dart';
 import '../../features/trip/domain/models/rating_model.dart';
+import '../../features/trip/domain/models/rating_model_adapter.dart';
 import '../../features/trip/domain/models/trip_model.dart';
+import '../../features/trip/domain/models/trip_model_adapter.dart';
 
 /// Provider for accessing the storage service
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -50,7 +53,7 @@ class StorageService {
 
   /// Schema version — bump when Hive model fields change.
   /// This triggers a one-time box reset on next launch.
-  static const int _schemaVersion = 2;
+  static const int _schemaVersion = 3;
 
   // Boxes (opened during initialization)
   late Box<dynamic> _settings;
@@ -90,20 +93,12 @@ class StorageService {
       debugPrint(
         'Schema version changed ($storedVersion → $_schemaVersion).',
       );
-      if (kDebugMode) {
-        // Dev builds: clear data boxes since we're pre-release
-        debugPrint('Debug build: clearing data boxes for schema migration.');
-        await Hive.deleteBoxFromDisk(_tripsBox);
-        await Hive.deleteBoxFromDisk(_ratingsBox);
-        await Hive.deleteBoxFromDisk(_driversBox);
-      } else {
-        // Release builds: preserve offline data — implement forward
-        // migrations here when schema changes post-launch
-        debugPrint(
-          'Release build: skipping destructive reset. '
-          'Forward migration needed.',
-        );
-      }
+      // Pre-launch: clear data boxes on schema change in all builds.
+      // Post-launch: replace with forward migration logic.
+      debugPrint('Clearing data boxes for schema migration.');
+      await Hive.deleteBoxFromDisk(_tripsBox);
+      await Hive.deleteBoxFromDisk(_ratingsBox);
+      await Hive.deleteBoxFromDisk(_driversBox);
       await _instance!._settings.put('schemaVersion', _schemaVersion);
     }
 
