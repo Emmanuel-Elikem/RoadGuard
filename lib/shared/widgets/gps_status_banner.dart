@@ -53,13 +53,16 @@ class _GpsStatusBannerState extends State<GpsStatusBanner>
         _pulseController
           ..duration = const Duration(milliseconds: 1200)
           ..repeat(reverse: true);
+        break;
       case GpsSignalQuality.lost:
         _pulseController
           ..duration = const Duration(milliseconds: 800)
           ..repeat(reverse: true);
+        break;
       default:
         _pulseController.stop();
         _pulseController.value = 1.0;
+        break;
     }
   }
 

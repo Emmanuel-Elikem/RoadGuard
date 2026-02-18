@@ -81,19 +81,29 @@ class StorageService {
     // Open settings box first (needed for schema version check)
     _instance!._settings = await Hive.openBox(_settingsBox);
 
-    // Schema migration: clear data boxes if version changed
+    // Schema migration: handle schema version changes
     final storedVersion = _instance!._settings.get(
       'schemaVersion',
       defaultValue: 0,
     );
     if (storedVersion != _schemaVersion) {
       debugPrint(
-        'Schema version changed ($storedVersion → $_schemaVersion). '
-        'Clearing data boxes.',
+        'Schema version changed ($storedVersion → $_schemaVersion).',
       );
-      await Hive.deleteBoxFromDisk(_tripsBox);
-      await Hive.deleteBoxFromDisk(_ratingsBox);
-      await Hive.deleteBoxFromDisk(_driversBox);
+      if (kDebugMode) {
+        // Dev builds: clear data boxes since we're pre-release
+        debugPrint('Debug build: clearing data boxes for schema migration.');
+        await Hive.deleteBoxFromDisk(_tripsBox);
+        await Hive.deleteBoxFromDisk(_ratingsBox);
+        await Hive.deleteBoxFromDisk(_driversBox);
+      } else {
+        // Release builds: preserve offline data — implement forward
+        // migrations here when schema changes post-launch
+        debugPrint(
+          'Release build: skipping destructive reset. '
+          'Forward migration needed.',
+        );
+      }
       await _instance!._settings.put('schemaVersion', _schemaVersion);
     }
 

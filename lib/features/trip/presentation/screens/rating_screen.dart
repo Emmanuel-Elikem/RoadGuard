@@ -82,11 +82,9 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
               : null,
           tripId: widget.trip.id,
         );
-
-        // Save standalone rating + update driver aggregate
-        await ref.read(ratingRepositoryProvider).saveRating(rating);
       }
 
+      // Save trip first so there's no orphan rating if trip save fails
       final updatedTrip = widget.trip.copyWith(
         ratingId: rating?.id,
         plateNumber: normalizedPlate ?? widget.trip.plateNumber,
@@ -98,6 +96,11 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
       await ref
           .read(tripControllerProvider.notifier)
           .saveCompletedTrip(updatedTrip);
+
+      // Save rating after trip succeeds
+      if (rating != null) {
+        await ref.read(ratingRepositoryProvider).saveRating(rating);
+      }
 
       if (mounted) {
         context.go(Routes.home);

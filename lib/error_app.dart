@@ -15,6 +15,8 @@ class ErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Log the error so "Technical details have been logged" is truthful
+    debugPrint('ErrorApp: Initialization failed: $error');
     // Use a simple theme since the app theme might not be initialized
     return MaterialApp(
       theme: ThemeData(

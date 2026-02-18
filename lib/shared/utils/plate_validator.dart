@@ -83,8 +83,8 @@ class PlateValidator {
     }
 
     // Ghana plates use 2-digit years:
-    // 90-99 = 1990s, 00-30 = 2000-2030 (current era)
-    // 31-89 are not yet valid registration years
+    // 90-99 = 1990s, 00-currentYear = 2000-20XX (based on current year)
+    // Any 2-digit year > currentYear and < 90 is treated as invalid (future)
     final yearNum = int.parse(year);
     final currentYear = DateTime.now().year % 100;
     if (yearNum > currentYear && yearNum < 90) {

@@ -113,6 +113,10 @@ class SpeedTrackingState {
       return GpsSignalQuality.acquiring;
     }
     if (currentReading == null) {
+      // Still acquiring if tracking but no reading arrived yet
+      if (state == TrackingState.tracking) {
+        return GpsSignalQuality.acquiring;
+      }
       return GpsSignalQuality.good; // Not tracking, banner hidden anyway
     }
     final age = DateTime.now().difference(currentReading!.timestamp);

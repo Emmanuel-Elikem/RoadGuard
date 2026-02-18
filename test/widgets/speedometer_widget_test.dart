@@ -38,11 +38,17 @@ void main() {
     group('speed display', () {
       testWidgets('shows speed via AnimatedSpeedDisplay', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 45));
-        // AnimatedSpeedDisplay renders per-digit Text widgets
         expect(find.byType(AnimatedSpeedDisplay), findsOneWidget);
-        // Individual digits: '4' and '5'
-        expect(find.text('4'), findsOneWidget);
-        expect(find.text('5'), findsOneWidget);
+        // Scope digit finds to AnimatedSpeedDisplay subtree
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('4')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('5')),
+          findsOneWidget,
+        );
       });
 
       testWidgets('shows km/h unit', (tester) async {
@@ -57,9 +63,16 @@ void main() {
 
       testWidgets('shows rounded speed digits', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 45.7));
-        // 45.7 rounds to 46 → digits '4' and '6'
-        expect(find.text('4'), findsOneWidget);
-        expect(find.text('6'), findsOneWidget);
+        // 45.7 rounds to 46 — digits '4' and '6'
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('4')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('6')),
+          findsOneWidget,
+        );
       });
     });
 
@@ -116,22 +129,27 @@ void main() {
 
     group('progress clamping', () {
       testWidgets('handles speed > maxSpeed without overflow', (tester) async {
-        // Should not throw any errors
         await tester.pumpWidget(
-          buildSpeedometer(
-            speed: 200, // > 180 maxSpeed
-            maxSpeed: 180,
-          ),
+          buildSpeedometer(speed: 200, maxSpeed: 180),
         );
-        // Digits: '2', '0', '0'
-        expect(find.text('2'), findsOneWidget);
-        expect(find.text('0'), findsWidgets);
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('2')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('0')),
+          findsWidgets,
+        );
       });
 
       testWidgets('handles very high speed gracefully', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 999));
-        // Digits: '9', '9', '9'
-        expect(find.text('9'), findsWidgets);
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('9')),
+          findsWidgets,
+        );
       });
     });
   });
