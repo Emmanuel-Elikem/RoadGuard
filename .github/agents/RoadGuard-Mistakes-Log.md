@@ -1798,6 +1798,26 @@ Converted `DriverDetailScreen` to `ConsumerStatefulWidget`. Added `.then((rated)
 
 ---
 
+#### M067: Account Enumeration via Auth Error Messages
+**Status:** 🟢 Resolved  
+**Severity:** High (Security)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 4)
+
+**Symptom:**
+Distinct error messages for `userNotFound` ("We couldn't find an account with that email") vs `wrongPassword` ("The password you entered is incorrect") vs `emailAlreadyInUse` ("This email is already in use") revealed to attackers which emails are registered, enabling account enumeration for phishing/credential stuffing.
+
+**Cause:**
+Error messages were written for UX clarity without considering security implications. Each auth failure mode had a unique, specific message.
+
+**Prevention:**
+Auth error messages shown to users must never reveal whether an email exists. Use a generic "email or password is incorrect" message for all credential errors. Keep distinct enum values for internal routing only.
+
+**Fix:**
+Changed `userNotFound`, `wrongPassword`, and `invalidCredential` messages to the same generic string: "The email or password you entered is incorrect". Changed `emailAlreadyInUse` to "Unable to create account. Try signing in instead." (does not confirm the email exists). Internal enum values preserved for the signup-offer dialog flow.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

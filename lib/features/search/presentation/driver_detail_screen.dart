@@ -569,7 +569,7 @@ class _QuickRatingSheetState extends ConsumerState<_QuickRatingSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not save rating. Try again.'),
+            content: const Text('Could not save rating. Try again.'),
             backgroundColor: AppColors.error,
           ),
         );

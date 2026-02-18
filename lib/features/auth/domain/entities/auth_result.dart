@@ -35,12 +35,15 @@ class AuthFailure extends AuthResult {
 /// Types of authentication errors.
 enum AuthError {
   // Email/Password errors
+  // NOTE: userNotFound, wrongPassword, invalidCredential, and emailAlreadyInUse
+  // intentionally share a generic message to prevent account enumeration.
+  // Attackers must not learn which emails are registered.
   invalidEmail('Please enter a valid email address'),
   userDisabled('This account has been deactivated. Contact support for help.'),
-  userNotFound('We couldn\'t find an account with that email'),
-  wrongPassword('The password you entered is incorrect'),
+  userNotFound('The email or password you entered is incorrect'),
+  wrongPassword('The email or password you entered is incorrect'),
   invalidCredential('The email or password you entered is incorrect'),
-  emailAlreadyInUse('This email is already in use. Try signing in instead.'),
+  emailAlreadyInUse('Unable to create account. Try signing in instead.'),
   weakPassword('Password must be at least 6 characters'),
 
   // Google Sign In errors
