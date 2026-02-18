@@ -47,9 +47,6 @@ class SpeedometerWidget extends StatelessWidget {
   /// Whether GPS signal is available.
   final bool hasSignal;
 
-  /// GPS accuracy in meters (for display).
-  final double? accuracy;
-
   const SpeedometerWidget({
     super.key,
     required this.speed,
@@ -57,7 +54,6 @@ class SpeedometerWidget extends StatelessWidget {
     this.maxSpeed = 180,
     this.size = 280,
     this.hasSignal = true,
-    this.accuracy,
   });
 
   /// Determine speed state based on limit.

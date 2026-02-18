@@ -132,7 +132,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 speed: ts.speedKmh,
                 speedLimit: speedLimit.toDouble(),
                 hasSignal: ts.hasSignal || !isTracking,
-                accuracy: ts.accuracy,
                 size: 120,
               ),
               const SizedBox(width: AppDimensions.spacingMd),

@@ -159,7 +159,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.vehicleDetails,
         name: RouteNames.vehicleDetails,
         builder: (context, state) {
-          final plateNumber = state.pathParameters['plateNumber']!;
+          final plateNumber = Uri.decodeComponent(
+            state.pathParameters['plateNumber']!,
+          );
           return DriverDetailScreen(plateNumber: plateNumber);
         },
       ),

@@ -255,7 +255,9 @@ class _DriverResultCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => context.push(
-          Routes.vehicleDetailsPath(driver.plateNumber),
+          Routes.vehicleDetailsPath(
+            Uri.encodeComponent(driver.plateNumber),
+          ),
         ),
         borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         child: Container(
@@ -348,7 +350,9 @@ class _SearchResultCard extends StatelessWidget {
       child: InkWell(
         onTap: trip.plateNumber != null
             ? () => context.push(
-                  Routes.vehicleDetailsPath(trip.plateNumber!),
+                  Routes.vehicleDetailsPath(
+                    Uri.encodeComponent(trip.plateNumber!),
+                  ),
                 )
             : null,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMd),

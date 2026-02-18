@@ -138,6 +138,7 @@ class SpeedTrackingState {
 /// Notifier for speed tracking state.
 class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
   StreamSubscription<SpeedReading>? _subscription;
+  Timer? _stalenessTimer;
 
   @override
   SpeedTrackingState build() {
@@ -147,6 +148,7 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
       if (subscription != null) {
         unawaited(subscription.cancel());
       }
+      _stalenessTimer?.cancel();
       unawaited(LocationService.instance.stopTracking());
     });
 
@@ -216,6 +218,26 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
     }
 
     state = state.copyWith(state: TrackingState.tracking);
+
+    // Start staleness timer — checks every 5s if GPS reading is stale.
+    // This ensures the UI updates to "lost" even when the GPS stream
+    // stops emitting (e.g., no satellite fix).
+    _stalenessTimer?.cancel();
+    _stalenessTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        if (state.state == TrackingState.tracking &&
+            state.currentReading != null) {
+          final age = DateTime.now().difference(
+            state.currentReading!.timestamp,
+          );
+          if (age.inSeconds > 10) {
+            // Re-emit state to trigger UI rebuild with "lost" quality
+            state = state.copyWith(currentReading: state.currentReading);
+          }
+        }
+      },
+    );
   }
 
   /// Stop GPS speed tracking.
@@ -223,6 +245,9 @@ class SpeedTrackingNotifier extends Notifier<SpeedTrackingState> {
     if (state.state != TrackingState.tracking) return;
 
     state = state.copyWith(state: TrackingState.stopping);
+
+    _stalenessTimer?.cancel();
+    _stalenessTimer = null;
 
     await _subscription?.cancel();
     _subscription = null;

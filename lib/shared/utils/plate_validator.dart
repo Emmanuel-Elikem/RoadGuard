@@ -82,8 +82,12 @@ class PlateValidator {
       return PlateValidationResult.invalid('Unknown region: $region');
     }
 
+    // Ghana plates use 2-digit years:
+    // 90-99 = 1990s, 00-30 = 2000-2030 (current era)
+    // 31-89 are not yet valid registration years
     final yearNum = int.parse(year);
-    if (yearNum < 90 && yearNum > 30) {
+    final currentYear = DateTime.now().year % 100;
+    if (yearNum > currentYear && yearNum < 90) {
       return PlateValidationResult.invalid('Invalid year: $year');
     }
 

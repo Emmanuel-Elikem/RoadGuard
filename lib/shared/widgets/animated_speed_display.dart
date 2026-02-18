@@ -73,6 +73,11 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
   bool _isAnimating = false;
   bool _isFirstBuild = true;
 
+  // Cached digit dimensions to avoid TextPainter.layout() on every build
+  double _cachedDigitWidth = 0;
+  double _cachedDigitHeight = 0;
+  TextStyle? _cachedStyle;
+
   @override
   void initState() {
     super.initState();
@@ -151,14 +156,20 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
 
   @override
   Widget build(BuildContext context) {
-    // Measure digit width for consistent sizing
-    final textPainter = TextPainter(
-      text: TextSpan(text: '0', style: widget.style),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    // Cache digit dimensions — only recalculate when style changes
+    if (_cachedStyle != widget.style) {
+      _cachedStyle = widget.style;
+      final textPainter = TextPainter(
+        text: TextSpan(text: '0', style: widget.style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      _cachedDigitWidth = textPainter.width;
+      _cachedDigitHeight = textPainter.height;
+      textPainter.dispose();
+    }
 
-    final digitWidth = textPainter.width;
-    final digitHeight = textPainter.height;
+    final digitWidth = _cachedDigitWidth;
+    final digitHeight = _cachedDigitHeight;
 
     return SizedBox(
       width: digitWidth,

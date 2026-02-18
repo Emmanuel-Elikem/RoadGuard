@@ -56,7 +56,7 @@ class RatingRepository {
     return _storage.driversBox.get(plateNumber);
   }
 
-  /// Searches drivers by plate number prefix.
+  /// Searches drivers by plate number (partial match).
   List<DriverModel> searchDrivers(String query) {
     final normalized = query.toUpperCase().trim();
     if (normalized.isEmpty) return [];

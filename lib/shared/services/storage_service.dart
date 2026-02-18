@@ -48,6 +48,10 @@ class StorageService {
   static const String _ratingsBox = 'ratings';
   static const String _driversBox = 'drivers';
 
+  /// Schema version — bump when Hive model fields change.
+  /// This triggers a one-time box reset on next launch.
+  static const int _schemaVersion = 2;
+
   // Boxes (opened during initialization)
   late Box<dynamic> _settings;
   late Box<dynamic> _user;
@@ -74,8 +78,26 @@ class StorageService {
     // Create instance
     _instance = StorageService._();
 
-    // Open boxes
+    // Open settings box first (needed for schema version check)
     _instance!._settings = await Hive.openBox(_settingsBox);
+
+    // Schema migration: clear data boxes if version changed
+    final storedVersion = _instance!._settings.get(
+      'schemaVersion',
+      defaultValue: 0,
+    );
+    if (storedVersion != _schemaVersion) {
+      debugPrint(
+        'Schema version changed ($storedVersion → $_schemaVersion). '
+        'Clearing data boxes.',
+      );
+      await Hive.deleteBoxFromDisk(_tripsBox);
+      await Hive.deleteBoxFromDisk(_ratingsBox);
+      await Hive.deleteBoxFromDisk(_driversBox);
+      await _instance!._settings.put('schemaVersion', _schemaVersion);
+    }
+
+    // Open remaining boxes
     _instance!._user = await Hive.openBox(_userBox);
     _instance!._trips = await Hive.openBox<TripModel>(_tripsBox);
     _instance!._ratings = await Hive.openBox<RatingModel>(_ratingsBox);
