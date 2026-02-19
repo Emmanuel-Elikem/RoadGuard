@@ -539,7 +539,7 @@ class _RecentSearchHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final totalTrips = StorageService.instance.tripsBox.length;
+    final totalTrips = StorageService.instance.currentUserTrips.length;
     final tripLabel = humanizeCount(
       totalTrips,
       suffix: totalTrips == 1 ? 'trip' : 'trips',

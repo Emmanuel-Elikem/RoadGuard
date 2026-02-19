@@ -80,10 +80,16 @@ class StorageService {
     // Initialize Hive with Flutter support (handles path resolution)
     await Hive.initFlutter();
 
-    // Register Adapters
-    Hive.registerAdapter(RatingModelAdapter());
-    Hive.registerAdapter(TripModelAdapter());
-    Hive.registerAdapter(DriverModelAdapter());
+    // Register Adapters (guarded for hot-restart / test re-initialization)
+    if (!Hive.isAdapterRegistered(RatingModelAdapter().typeId)) {
+      Hive.registerAdapter(RatingModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(TripModelAdapter().typeId)) {
+      Hive.registerAdapter(TripModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(DriverModelAdapter().typeId)) {
+      Hive.registerAdapter(DriverModelAdapter());
+    }
 
     // Create instance
     _instance = StorageService._();
@@ -184,14 +190,7 @@ class StorageService {
     await _user.clear();
   }
 
-  /// Clear all user-specific data (trips, ratings, drivers).
-  /// Called on sign-out to prevent data leaking between accounts.
-  Future<void> clearUserData() async {
-    await _trips.clear();
-    await _ratings.clear();
-    await _drivers.clear();
-    await _user.clear();
-  }
+
 
   // ==========================================
   // CLEANUP

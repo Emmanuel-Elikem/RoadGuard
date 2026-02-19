@@ -159,23 +159,13 @@ void main() {
       });
 
 
-      test('rejects single digit year', () {
+      test('rejects single char suffix', () {
         final result = PlateValidator.validate('GR-1234-2');
         expect(result.isValid, isFalse);
       });
 
-      test('rejects 3 digit year', () {
-        final result = PlateValidator.validate('GR-1234-210');
-        expect(result.isValid, isFalse);
-      });
-
-      test('rejects single digit suffix', () {
-        final result = PlateValidator.validate('GR-1234-2');
-        expect(result.isValid, isFalse);
-      });
-
-      test('rejects 3 digit suffix', () {
-        final result = PlateValidator.validate('GR-1234-210');
+      test('rejects 3 char suffix', () {
+        final result = PlateValidator.validate('GR-1234-21A');
         expect(result.isValid, isFalse);
       });
     });

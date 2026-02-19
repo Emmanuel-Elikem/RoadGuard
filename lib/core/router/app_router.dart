@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,10 +54,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn) {
         final storage = StorageService.instance;
         if (storage.userId != user.uid) {
-          storage.saveUserLogin(
-            id: user.uid,
-            name: user.nameOrEmail,
-            isGuest: user.isAnonymous,
+          unawaited(
+            storage.saveUserLogin(
+              id: user.uid,
+              name: user.nameOrEmail,
+              isGuest: user.isAnonymous,
+            ).catchError((_) {}),
           );
         }
       }

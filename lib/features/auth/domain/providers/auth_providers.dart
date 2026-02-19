@@ -231,11 +231,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Handle auth result and update state.
-  bool _handleResult(AuthResult result) {
+  Future<bool> _handleResult(AuthResult result) async {
     if (result is AuthSuccess) {
       final user = result.user;
       // Persist user to Hive so userId is available offline
-      StorageService.instance.saveUserLogin(
+      await StorageService.instance.saveUserLogin(
         id: user.uid,
         name: user.nameOrEmail,
         isGuest: user.isAnonymous,

@@ -4,6 +4,8 @@
 /// Old digits slide up and fade out, new digits slide in from below.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Displays speed with independent per-digit roll animations.
@@ -72,6 +74,7 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
   String _previousDigit = '';
   bool _isAnimating = false;
   bool _isFirstBuild = true;
+  Timer? _delayTimer;
 
   // Cached digit dimensions to avoid TextPainter.layout() on every build
   double _cachedDigitWidth = 0;
@@ -128,8 +131,8 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
       _previousDigit = _currentDigit;
       _currentDigit = widget.digit;
 
-      // Skip animation on the first digit change to avoid digits
-      // rolling from empty to their initial value on appearance.
+      // Skip the very first update — _currentDigit was already set
+      // from widget.digit in initState, so no visible change needed.
       if (_isFirstBuild) {
         _isFirstBuild = false;
         return;
@@ -138,9 +141,12 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
       _isAnimating = true;
       _controller.reset();
 
+      // Cancel any pending cascade delay from a previous digit change
+      _delayTimer?.cancel();
+
       // Apply cascade delay
       if (widget.delay > Duration.zero) {
-        Future.delayed(widget.delay, () {
+        _delayTimer = Timer(widget.delay, () {
           if (mounted) _controller.forward();
         });
       } else {
@@ -151,6 +157,7 @@ class _AnimatedDigitState extends State<_AnimatedDigit>
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
