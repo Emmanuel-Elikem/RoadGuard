@@ -12,6 +12,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../../shared/utils/fuzzy_search.dart';
+import '../../../shared/utils/humanize_count.dart';
 import '../../trip/data/repositories/rating_repository.dart';
 import '../../trip/domain/models/driver_model.dart';
 import '../../trip/domain/models/rating_model.dart';
@@ -39,7 +41,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   void _search(String query) {
-    final trimmed = query.trim().toUpperCase();
+    final trimmed = query.trim();
     if (trimmed.isEmpty) {
       setState(() {
         _tripResults = [];
@@ -49,29 +51,34 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return;
     }
 
-    // Search trips (user's own only)
+    // Fuzzy search trips (user's own only)
     final allTrips = StorageService.instance.currentUserTrips;
-    final filteredTrips = allTrips.where((trip) {
-      if (trip.plateNumber != null &&
-          trip.plateNumber!.toUpperCase().contains(trimmed)) {
-        return true;
-      }
-      if (trip.notes != null && trip.notes!.toUpperCase().contains(trimmed)) {
-        return true;
-      }
-      if (trip.id.toUpperCase().startsWith(trimmed)) {
-        return true;
+    final tripMatches = PlateSearchEngine.search<TripModel>(
+      query: trimmed,
+      items: allTrips.where((t) => t.plateNumber != null),
+      getText: (t) => t.plateNumber!,
+      threshold: 0.25,
+    );
+    // Also include exact note/id matches
+    final upper = trimmed.toUpperCase();
+    final noteMatches = allTrips.where((trip) {
+      if (trip.notes != null && trip.notes!.toUpperCase().contains(upper)) {
+        return !tripMatches.any((m) => m.item.id == trip.id);
       }
       return false;
-    }).toList()
-      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    }).toList();
 
-    // Search drivers
+    final combinedTrips = [
+      ...tripMatches.map((m) => m.item),
+      ...noteMatches,
+    ];
+
+    // Fuzzy search drivers (community data)
     final repo = ref.read(ratingRepositoryProvider);
     final filteredDrivers = repo.searchDrivers(trimmed);
 
     setState(() {
-      _tripResults = filteredTrips;
+      _tripResults = combinedTrips;
       _driverResults = filteredDrivers;
       _hasSearched = true;
     });
@@ -530,6 +537,10 @@ class _RecentSearchHint extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final totalTrips = StorageService.instance.tripsBox.length;
+    final tripLabel = humanizeCount(
+      totalTrips,
+      suffix: totalTrips == 1 ? 'trip' : 'trips',
+    );
 
     return Center(
       child: Column(
@@ -549,7 +560,7 @@ class _RecentSearchHint extends StatelessWidget {
           Text(
             totalTrips == 0
                 ? 'Record trips to search them here'
-                : 'Search through $totalTrips trip${totalTrips == 1 ? '' : 's'} by plate number',
+                : 'Search through $tripLabel by plate number',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),

@@ -1898,6 +1898,46 @@ Converted `_StatsContent` to `StatefulWidget`, added `_isSheetOpen` tracking fla
 
 ---
 
+#### M072: User ID Never Persisted to Hive After Login
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-19  
+**Detected By:** Device Testing
+
+**Symptom:**
+Trips saved after a trip recording didn't appear in the user's Stats, Home quick stats, or Search trips. The plate number showed in driver search (community data) but trips were invisible. Also, `hasTripsWithPlate` always returned false, preventing users from rating drivers they rode with.
+
+**Cause:**
+`StorageService.saveUserLogin()` was defined but NEVER called anywhere. After Firebase Auth login, `_handleResult()` set `AuthState` to `AuthAuthenticated` but never persisted `userId` to Hive. This meant `StorageService.userId` returned null. Trips were saved with userId='guest' (the fallback), but `currentUserTrips` returned empty because `uid == null` short-circuits to `[]`.
+
+**Prevention:**
+When adding a method like `saveUserLogin()`, immediately verify it has at least one call site. Write an integration test that verifies the full sign-in → create trip → query trips flow.
+
+**Fix:**
+Called `saveUserLogin()` in `_handleResult()`, `checkEmailVerified()`, and in the router redirect (for app restart with existing Firebase session). This ensures userId is always persisted before any trip or rating operations.
+
+---
+
+#### M073: Search Uses Exact String Match Only
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-19  
+**Detected By:** Device Testing
+
+**Symptom:**
+Searching for "GR1234" didn't find "GR-1234-21". Searching for "JR222" didn't find "JR-2220-19". Users had to type the exact formatted plate string with hyphens to get results.
+
+**Cause:**
+`searchDrivers()` used `String.contains()` on the raw formatted plate. Since "GR1234" doesn't appear in "GR-1234-21" (because of hyphens), the search returned nothing.
+
+**Prevention:**
+Search implementations should ALWAYS normalize input (strip separators, case-fold) before comparison. Consider fuzzy matching for user-facing search where typos are common.
+
+**Fix:**
+Created `PlateSearchEngine` with fuzzy matching: normalizes both query and candidates by stripping non-alphanumeric chars, scores by relevance (exact > starts-with > contains > fuzzy edit distance), and returns results ranked by score.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

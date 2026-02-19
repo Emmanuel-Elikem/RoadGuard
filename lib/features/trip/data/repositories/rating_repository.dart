@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../shared/services/storage_service.dart';
+import '../../../../shared/utils/fuzzy_search.dart';
 import '../../../../shared/utils/plate_validator.dart';
 import '../../domain/models/driver_model.dart';
 import '../../domain/models/rating_model.dart';
@@ -62,16 +63,22 @@ class RatingRepository {
     return _storage.driversBox.get(plateNumber);
   }
 
-  /// Searches drivers by plate number (partial match).
+  /// Searches drivers by plate number with fuzzy matching.
+  ///
+  /// Tolerates missing hyphens, typos, and partial input.
+  /// Results are ranked by relevance (best match first).
   List<DriverModel> searchDrivers(String query) {
-    final normalized = query.toUpperCase().trim();
-    if (normalized.isEmpty) return [];
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
 
-    return _storage.driversBox.values
-        .where((d) =>
-            d.plateNumber.toUpperCase().contains(normalized))
-        .toList()
-      ..sort((a, b) => b.totalRatings.compareTo(a.totalRatings));
+    final matches = PlateSearchEngine.search<DriverModel>(
+      query: trimmed,
+      items: _storage.driversBox.values,
+      getText: (d) => d.plateNumber,
+      threshold: 0.25,
+    );
+
+    return matches.map((m) => m.item).toList();
   }
 
   /// Gets all user's ratings (most recent first).

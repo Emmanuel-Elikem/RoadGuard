@@ -182,12 +182,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final isVerified = await _repo.isEmailVerified();
     debugPrint('checkEmailVerified: isVerified = $isVerified');
     if (isVerified) {
-      // Reload to get updated user
       final user = _repo.currentUser;
       debugPrint(
         'checkEmailVerified: Got user = ${user?.email}, emailVerified = ${user?.emailVerified}',
       );
       if (user != null) {
+        // Persist updated user info
+        await StorageService.instance.saveUserLogin(
+          id: user.uid,
+          name: user.nameOrEmail,
+          isGuest: user.isAnonymous,
+        );
         state = AuthAuthenticated(user);
         debugPrint('checkEmailVerified: Set state to AuthAuthenticated');
       }
@@ -228,7 +233,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Handle auth result and update state.
   bool _handleResult(AuthResult result) {
     if (result is AuthSuccess) {
-      state = AuthAuthenticated(result.user);
+      final user = result.user;
+      // Persist user to Hive so userId is available offline
+      StorageService.instance.saveUserLogin(
+        id: user.uid,
+        name: user.nameOrEmail,
+        isGuest: user.isAnonymous,
+      );
+      state = AuthAuthenticated(user);
       return true;
     } else if (result is AuthFailure) {
       // Pass the error type for robust checking in UI

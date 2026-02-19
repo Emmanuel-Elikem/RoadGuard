@@ -48,6 +48,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       final user = authState.valueOrNull;
       final isLoggedIn = user != null;
 
+      // Sync Firebase user to Hive on every auth check
+      if (isLoggedIn) {
+        final storage = StorageService.instance;
+        if (storage.userId != user.uid) {
+          storage.saveUserLogin(
+            id: user.uid,
+            name: user.nameOrEmail,
+            isGuest: user.isAnonymous,
+          );
+        }
+      }
+
       // If user is logged in
       if (isLoggedIn) {
         // If on auth/onboarding, redirect to home
