@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../shared/services/storage_service.dart';
@@ -12,7 +13,7 @@ import '../../domain/models/rating_model.dart';
 part 'rating_repository.g.dart';
 
 @riverpod
-RatingRepository ratingRepository(ref) {
+RatingRepository ratingRepository(Ref ref) {
   return RatingRepository(StorageService.instance);
 }
 
@@ -86,11 +87,14 @@ class RatingRepository {
         .toList();
   }
 
-  /// Checks if the user has any trips with a given plate number.
+  /// Checks if the current user has any trips with a given plate number.
   bool hasTripsWithPlate(String plateNumber) {
     final normalized = plateNumber.toUpperCase().trim();
+    final uid = _storage.userId;
     return _storage.tripsBox.values.any(
-      (t) => t.plateNumber?.toUpperCase().trim() == normalized,
+      (t) =>
+          t.plateNumber?.toUpperCase().trim() == normalized &&
+          t.userId == uid,
     );
   }
 }

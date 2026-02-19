@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -12,6 +11,8 @@ import 'package:road_guard/features/trip/data/repositories/rating_repository.dar
 import 'package:road_guard/features/trip/domain/constants/rating_constants.dart';
 import 'package:road_guard/features/trip/domain/models/rating_model.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
+import 'package:road_guard/shared/services/storage_service.dart';
+import 'package:road_guard/shared/utils/plate_number_formatter.dart';
 import 'package:road_guard/shared/utils/plate_validator.dart';
 import 'package:uuid/uuid.dart';
 
@@ -70,6 +71,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
         rating = RatingModel(
           id: const Uuid().v4(),
           plateNumber: normalizedPlate,
+          raterId: StorageService.instance.userId,
           isGood: _isGood!,
           tags: _selectedTags.toList(),
           comment: _commentController.text.isNotEmpty
@@ -197,12 +199,9 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
             TextField(
               controller: _plateController,
               textCapitalization: TextCapitalization.characters,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\s\-]')),
-                LengthLimitingTextInputFormatter(12),
-              ],
+              inputFormatters: [PlateNumberFormatter()],
               decoration: InputDecoration(
-                hintText: 'e.g. GR-1234-21',
+                hintText: 'e.g. GR-1234-24',
                 errorText: _plateError,
                 prefixIcon: const Icon(LucideIcons.car),
                 suffixIcon: _plateController.text.isNotEmpty

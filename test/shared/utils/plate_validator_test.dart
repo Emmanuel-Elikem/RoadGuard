@@ -35,16 +35,22 @@ void main() {
         expect(result.formatted, 'GR-1234-21');
       });
 
-      test('accepts 5-digit number', () {
-        final result = PlateValidator.validate('AS-12345-20');
+      test('accepts 1-digit number', () {
+        final result = PlateValidator.validate('GR-1-21');
         expect(result.isValid, isTrue);
-        expect(result.formatted, 'AS-12345-20');
+        expect(result.formatted, 'GR-1-21');
       });
 
-      test('accepts mixed separators', () {
-        final result = PlateValidator.validate('CR 1234-22');
+      test('accepts 2-digit number', () {
+        final result = PlateValidator.validate('AS-12-20');
         expect(result.isValid, isTrue);
-        expect(result.formatted, 'CR-1234-22');
+        expect(result.formatted, 'AS-12-20');
+      });
+
+      test('accepts 3-digit number', () {
+        final result = PlateValidator.validate('CR-123-22');
+        expect(result.isValid, isTrue);
+        expect(result.formatted, 'CR-123-22');
       });
 
       test('trims whitespace', () {
@@ -70,7 +76,7 @@ void main() {
     });
 
     group('valid regions', () {
-      test('accepts all 22 region codes', () {
+      test('accepts all region codes', () {
         for (final region in PlateValidator.validRegions) {
           final result = PlateValidator.validate('$region-1234-21');
           expect(result.isValid, isTrue, reason: '$region should be valid');
@@ -101,7 +107,7 @@ void main() {
       test('rejects invalid format', () {
         final result = PlateValidator.validate('ABCDEF');
         expect(result.isValid, isFalse);
-        expect(result.error, 'Expected format: GR-1234-21');
+        expect(result.error, 'Expected format: GR-1234-24');
       });
 
       test('rejects unknown region code', () {
@@ -120,12 +126,12 @@ void main() {
         expect(result.isValid, isFalse);
       });
 
-      test('rejects fewer than 4 digits', () {
-        final result = PlateValidator.validate('GR-123-21');
+      test('rejects more than 4 digits', () {
+        final result = PlateValidator.validate('GR-12345-21');
         expect(result.isValid, isFalse);
       });
 
-      test('rejects more than 5 digits', () {
+      test('rejects more than 5 total digits', () {
         final result = PlateValidator.validate('GR-123456-21');
         expect(result.isValid, isFalse);
       });

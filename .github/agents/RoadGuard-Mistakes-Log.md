@@ -1818,6 +1818,86 @@ Changed `userNotFound`, `wrongPassword`, and `invalidCredential` messages to the
 
 ---
 
+#### M068: Data Deletion on Sign-Out Instead of User Scoping
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing
+
+**Symptom:**
+Signing out deleted ALL trips, ratings, and drivers from the device. Signing back into the same account showed no data. The `clearUserData()` method was called during sign-out, wiping Hive boxes completely.
+
+**Cause:**
+Previous fix for "data isolation" (M049 duplicate) was too aggressive — called `clearUserData()` which clears all Hive boxes instead of scoping data by user.
+
+**Prevention:**
+Data isolation between accounts should use FILTERING (query by userId), not DELETION. Never delete community data (drivers, ratings) on sign-out.
+
+**Fix:**
+Reverted sign-out to only call `clearUser()`. Added `currentUserTrips` getter that filters by userId. Updated all screens (home, stats, search, settings) to use filtered trips. Clear Trip History now only deletes current user's trips.
+
+---
+
+#### M069: Missing raterId on Rating Creation
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-20  
+**Detected By:** Code Review (Self)
+
+**Symptom:**
+Ratings created in `rating_screen.dart` and `driver_detail_screen.dart` didn't set the `raterId` field, making it impossible to scope ratings by user.
+
+**Cause:**
+The `raterId` field existed on `RatingModel` but was never populated during creation.
+
+**Prevention:**
+When a model has a user-association field, ensure it's populated at ALL creation points.
+
+**Fix:**
+Added `raterId: StorageService.instance.userId` to both `RatingModel` creation sites.
+
+---
+
+#### M070: Incomplete Ghana Plate Region Codes
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Feature Gap)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing + Research
+
+**Symptom:**
+Plate validator only recognized 22 region codes. Many valid Ghana plates (e.g. GB, GC, GE, AE, AK, EN, VA, WT) were rejected as "Unknown region".
+
+**Cause:**
+Initial region code list was incomplete. Ghana DVLA issues supplemental codes per region as registration demand grows (e.g. Greater Accra has 15+ codes).
+
+**Prevention:**
+Research official sources (DVLA, Wikipedia) for complete data before implementing validators. Validate against real-world examples.
+
+**Fix:**
+Expanded `validRegions` to 50+ codes covering all 16 regions plus special codes (police, fire, prisons, diplomatic). Updated `regionNames` map. Changed number regex from `\d{4,5}` to `\d{1,4}` to match actual Ghana format (1-9999).
+
+---
+
+#### M071: Bottom Sheet Not Dismissed on Tab Switch
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing
+
+**Symptom:**
+Opening trip details bottom sheet on Stats tab, then switching to another tab via FloatingNavBar, left the bottom sheet visible over the new tab content.
+
+**Cause:**
+`showModalBottomSheet` pushes a modal route on the shell navigator. GoRouter's `context.go()` replaces the child widget but doesn't auto-pop modal routes from the navigator stack.
+
+**Prevention:**
+When using `showModalBottomSheet` inside tab-based navigation, track open state and dismiss in `deactivate()`.
+
+**Fix:**
+Converted `_StatsContent` to `StatefulWidget`, added `_isSheetOpen` tracking flag, and `deactivate()` override that pops the sheet if open.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

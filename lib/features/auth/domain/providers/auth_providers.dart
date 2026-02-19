@@ -195,10 +195,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return isVerified;
   }
 
-  /// Sign out and clear local user data.
+  /// Sign out and clear user session.
   Future<void> signOut() async {
     state = const AuthLoading();
-    await StorageService.instance.clearUserData();
+    await StorageService.instance.clearUser();
     await _repo.signOut();
     state = const AuthUnauthenticated();
   }

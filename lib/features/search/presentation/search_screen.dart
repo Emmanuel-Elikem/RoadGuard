@@ -49,8 +49,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return;
     }
 
-    // Search trips
-    final allTrips = StorageService.instance.tripsBox.values.toList();
+    // Search trips (user's own only)
+    final allTrips = StorageService.instance.currentUserTrips;
     final filteredTrips = allTrips.where((trip) {
       if (trip.plateNumber != null &&
           trip.plateNumber!.toUpperCase().contains(trimmed)) {
@@ -124,7 +124,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   textCapitalization: TextCapitalization.characters,
                   style: theme.textTheme.bodyLarge,
                   decoration: InputDecoration(
-                    hintText: 'Enter plate number (e.g. GR 1234-20)',
+                    hintText: 'Enter plate number (e.g. GR-1234-24)',
                     hintStyle: theme.textTheme.bodyLarge?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.4),
                     ),

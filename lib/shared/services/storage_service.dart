@@ -66,6 +66,13 @@ class StorageService {
   Box<RatingModel> get ratingsBox => _ratings;
   Box<DriverModel> get driversBox => _drivers;
 
+  /// Returns trips belonging to the current user.
+  List<TripModel> get currentUserTrips {
+    final uid = userId;
+    if (uid == null) return [];
+    return _trips.values.where((t) => t.userId == uid).toList();
+  }
+
   /// Initialize Hive and open all boxes.
   ///
   /// MUST be called in main() before runApp().

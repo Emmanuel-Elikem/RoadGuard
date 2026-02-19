@@ -343,7 +343,7 @@ class _QuickStatsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trips = StorageService.instance.tripsBox.values.toList();
+    final trips = StorageService.instance.currentUserTrips;
     final totalTrips = trips.length;
     final totalDistance =
         trips.fold<double>(0, (sum, t) => sum + t.distance);

@@ -368,7 +368,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _ProfileStat(
                       label: 'Trips',
                       value:
-                          '${StorageService.instance.tripsBox.length}',
+                          '${StorageService.instance.currentUserTrips.length}',
                     ),
                     Container(
                       width: 1,
@@ -379,7 +379,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _ProfileStat(
                       label: 'Distance',
                       value:
-                          '${StorageService.instance.tripsBox.values.fold<double>(0, (s, t) => s + t.distance).toStringAsFixed(1)} km',
+                          '${StorageService.instance.currentUserTrips.fold<double>(0, (s, t) => s + t.distance).toStringAsFixed(1)} km',
                     ),
                     Container(
                       width: 1,
@@ -470,8 +470,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final router = GoRouter.of(context);
               await ref.read(authNotifierProvider.notifier).signOut();
-              if (mounted) context.go(Routes.auth);
+              if (mounted) router.go(Routes.auth);
             },
             child: const Text('Sign In'),
           ),
@@ -486,7 +487,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
         content:
-            const Text('Your trips and ratings on this phone will be cleared.'),
+            const Text('Your trips and ratings will be safe when you sign back in.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -494,8 +495,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final router = GoRouter.of(context);
               await ref.read(authNotifierProvider.notifier).signOut();
-              if (mounted) context.go(Routes.auth);
+              if (mounted) router.go(Routes.auth);
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
@@ -522,18 +524,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await StorageService.instance.tripsBox.clear();
+              final messenger = ScaffoldMessenger.of(context);
+              final colorScheme = Theme.of(context).colorScheme;
+              final uid = StorageService.instance.userId;
+              if (uid != null) {
+                final box = StorageService.instance.tripsBox;
+                final userTripKeys = box.keys.where((key) {
+                  final trip = box.get(key);
+                  return trip != null && trip.userId == uid;
+                }).toList();
+                for (final key in userTripKeys) {
+                  await box.delete(key);
+                }
+              }
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text(
                       'All trips have been deleted',
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        color: colorScheme.onPrimary,
                       ),
                     ),
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primary,
+                    backgroundColor: colorScheme.primary,
                   ),
                 );
               }

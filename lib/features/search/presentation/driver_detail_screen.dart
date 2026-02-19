@@ -11,6 +11,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/storage_service.dart';
 import '../../trip/data/repositories/rating_repository.dart';
 import '../../trip/domain/constants/rating_constants.dart';
 import '../../trip/domain/models/driver_model.dart';
@@ -564,6 +565,7 @@ class _QuickRatingSheetState extends ConsumerState<_QuickRatingSheet> {
       final rating = RatingModel(
         id: const Uuid().v4(),
         plateNumber: widget.plateNumber,
+        raterId: StorageService.instance.userId,
         isGood: _isGood!,
         tags: _selectedTags.toList(),
         comment: _commentController.text.trim().isEmpty

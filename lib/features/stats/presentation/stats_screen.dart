@@ -26,7 +26,7 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trips = StorageService.instance.tripsBox.values.toList()
+    final trips = StorageService.instance.currentUserTrips
       ..sort((a, b) => b.startTime.compareTo(a.startTime));
 
     return Scaffold(
@@ -44,10 +44,26 @@ class StatsScreen extends ConsumerWidget {
 }
 
 /// Full-scroll stats content - everything scrolls together.
-class _StatsContent extends StatelessWidget {
+class _StatsContent extends StatefulWidget {
   final List<TripModel> trips;
 
   const _StatsContent({required this.trips});
+
+  @override
+  State<_StatsContent> createState() => _StatsContentState();
+}
+
+class _StatsContentState extends State<_StatsContent> {
+  bool _isSheetOpen = false;
+
+  @override
+  void deactivate() {
+    if (_isSheetOpen) {
+      Navigator.of(context).pop();
+      _isSheetOpen = false;
+    }
+    super.deactivate();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +71,7 @@ class _StatsContent extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     // Aggregate stats
+    final trips = widget.trips;
     final totalTrips = trips.length;
     final totalDistance = trips.fold<double>(0, (sum, t) => sum + t.distance);
     final totalDuration = trips.fold<Duration>(
@@ -205,6 +222,7 @@ class _StatsContent extends StatelessWidget {
   }
 
   void _showTripDetail(BuildContext context, TripModel trip) {
+    _isSheetOpen = true;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final duration = trip.endTime != null
@@ -482,7 +500,7 @@ class _StatsContent extends StatelessWidget {
           ),
         );
       },
-    );
+    ).then((_) => _isSheetOpen = false);
   }
 
   String _formatFullDate(DateTime date) {
