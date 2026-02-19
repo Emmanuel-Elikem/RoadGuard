@@ -177,6 +177,15 @@ class StorageService {
     await _user.clear();
   }
 
+  /// Clear all user-specific data (trips, ratings, drivers).
+  /// Called on sign-out to prevent data leaking between accounts.
+  Future<void> clearUserData() async {
+    await _trips.clear();
+    await _ratings.clear();
+    await _drivers.clear();
+    await _user.clear();
+  }
+
   // ==========================================
   // CLEANUP
   // ==========================================

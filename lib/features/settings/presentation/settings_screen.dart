@@ -447,6 +447,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Turn Off'),
           ),
@@ -485,7 +486,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
         content:
-            const Text('Are you sure? Your saved data on this phone will be kept.'),
+            const Text('Your trips and ratings on this phone will be cleared.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -498,6 +499,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Sign Out'),
           ),
@@ -538,6 +540,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Delete All'),
           ),

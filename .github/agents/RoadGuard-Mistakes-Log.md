@@ -2044,15 +2044,95 @@ Closed PR #4, using PR #3 which correctly targets develop.
 
 ---
 
+#### M048: Black Text on Red Background (Contrast)
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UI/Accessibility)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Sign-out, "Turn Off", and "Delete All" buttons in settings dialogs had black text on red background — unreadable in dark mode.
+
+**Cause:**
+`FilledButton.styleFrom(backgroundColor: colorScheme.error)` was used without setting `foregroundColor`. Default `foregroundColor` falls through to `colorScheme.onPrimary` (black in dark theme) instead of `colorScheme.onError` (white).
+
+**Prevention:**
+ALWAYS pair `backgroundColor` overrides on `FilledButton` with the matching `foregroundColor`. When using `error`, use `onError`. When using `primary`, use `onPrimary`.
+
+**Fix:**
+Added `foregroundColor: colorScheme.onError` to all three `FilledButton.styleFrom` calls in settings_screen.dart.
+
+---
+
+#### M049: Trip Details Sheet Fills Entire Screen
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Trip details bottom sheet expanded to cover 100% of the screen for long trips, preventing users from swiping it down to dismiss.
+
+**Cause:**
+`showModalBottomSheet` used `isScrollControlled: true` with `SingleChildScrollView` and `MainAxisSize.min` but no max height constraint.
+
+**Prevention:**
+Always add `constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8)` to `showModalBottomSheet` with `isScrollControlled: true` to reserve space for dismissal.
+
+**Fix:**
+Added `constraints` parameter capping the sheet at 80% of screen height.
+
+---
+
+#### M050: Unrestricted Driver Ratings
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Any user could rate any driver by searching their plate number, even without ever riding with that driver. Allows spam/fake ratings.
+
+**Cause:**
+No trip history check before allowing rating submission.
+
+**Prevention:**
+Enforce business rules at the action layer — require trip history before allowing rating.
+
+**Fix:**
+Added `hasTripsWithPlate()` to `RatingRepository`. Gate the "Rate this driver" action in `driver_detail_screen.dart` — shows SnackBar if user has no trips with that plate.
+
+---
+
+#### M051: Data Leaks Between User Accounts
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Privacy/Security)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+After signing out and into a different account (or guest), trips and ratings from the previous account were still visible.
+
+**Cause:**
+Sign-out only cleared the user identity box but not the data boxes (trips, ratings, drivers).
+
+**Prevention:**
+Always scope or clear user-specific data on sign-out.
+
+**Fix:**
+Added `clearUserData()` to `StorageService` (clears trips, ratings, drivers, user boxes). Called from `AuthNotifier.signOut()`. Updated sign-out dialog text to inform user.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
-| 🔴 Critical | 4 | 1 | 0 |
-| 🟠 High | 4 | 0 | 4 |
-| 🟡 Medium | 4 | 0 | 2 |
+| 🔴 Critical | 4 | 1 | 1 |
+| 🟠 High | 5 | 0 | 5 |
+| 🟡 Medium | 6 | 0 | 4 |
 | 🟢 Low | 2 | 0 | 1 |
-| **Total** | **14** | **1** | **7** |
+| **Total** | **17** | **1** | **11** |
 
 ---
 

@@ -215,6 +215,9 @@ class _StatsContent extends StatelessWidget {
       context: context,
       backgroundColor: colorScheme.surface,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppDimensions.spacingLg)),

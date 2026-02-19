@@ -130,6 +130,19 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
   }
 
   void _navigateToRate(BuildContext context) {
+    final repo = ref.read(ratingRepositoryProvider);
+    if (!repo.hasTripsWithPlate(widget.plateNumber)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'You can only rate drivers you\'ve had a trip with.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -137,7 +150,7 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
       builder: (_) => _QuickRatingSheet(plateNumber: widget.plateNumber),
     ).then((rated) {
       if (rated == true && mounted) {
-        setState(() {}); // Rebuild to show updated Hive data
+        setState(() {});
       }
     });
   }
@@ -394,7 +407,7 @@ class _NoRatingsYet extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Be the first to rate this driver',
+            'Take a trip with this driver to leave a rating',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),

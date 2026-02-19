@@ -201,12 +201,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   ],
                 ),
               ),
-
-              IconButton(
-                onPressed: () => context.go(Routes.search),
-                icon: Icon(LucideIcons.search,
-                    color: colorScheme.onSurface.withValues(alpha: 0.6)),
-              ),
             ],
           ),
 

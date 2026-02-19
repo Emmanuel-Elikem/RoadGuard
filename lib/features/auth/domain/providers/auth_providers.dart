@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/services/storage_service.dart';
 import '../../data/datasources/firebase_auth_datasource.dart';
 import '../entities/entities.dart';
 import '../repositories/auth_repository.dart';
@@ -194,9 +195,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return isVerified;
   }
 
-  /// Sign out.
+  /// Sign out and clear local user data.
   Future<void> signOut() async {
     state = const AuthLoading();
+    await StorageService.instance.clearUserData();
     await _repo.signOut();
     state = const AuthUnauthenticated();
   }

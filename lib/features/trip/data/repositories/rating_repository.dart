@@ -85,4 +85,12 @@ class RatingRepository {
         .where((r) => !r.isSynced)
         .toList();
   }
+
+  /// Checks if the user has any trips with a given plate number.
+  bool hasTripsWithPlate(String plateNumber) {
+    final normalized = plateNumber.toUpperCase().trim();
+    return _storage.tripsBox.values.any(
+      (t) => t.plateNumber?.toUpperCase().trim() == normalized,
+    );
+  }
 }
