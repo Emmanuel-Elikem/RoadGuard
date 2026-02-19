@@ -22,9 +22,10 @@ class PlateValidationResult {
 }
 
 class PlateValidator {
-  /// Modern format (2009+): 2 letters, optional separator, 1-4 digits, optional separator, 2 digits.
-  static final RegExp _modernPlateRegex = RegExp(
-    r'^([A-Z]{2})[\s\-]?(\d{1,4})[\s\-]?(\d{2})$',
+  /// Plate format: 2 letters, optional separator, 1-4 digits,
+  /// optional separator, 2 alphanumeric chars (digits or letters for older plates).
+  static final RegExp _plateRegex = RegExp(
+    r'^([A-Z]{2})[\s\-]?(\d{1,4})[\s\-]?([A-Z0-9]{2})$',
     caseSensitive: false,
   );
 
@@ -121,7 +122,7 @@ class PlateValidator {
       return const PlateValidationResult.invalid('Enter a plate number');
     }
 
-    final match = _modernPlateRegex.firstMatch(normalized);
+    final match = _plateRegex.firstMatch(normalized);
     if (match == null) {
       return const PlateValidationResult.invalid(
         'Expected format: GR-1234-24',
@@ -130,22 +131,18 @@ class PlateValidator {
 
     final region = match.group(1)!;
     final number = match.group(2)!;
-    final year = match.group(3)!;
+    final suffix = match.group(3)!;
 
     if (!validRegions.contains(region)) {
       return PlateValidationResult.invalid('Unknown region: $region');
     }
 
-    // Ghana plates use 2-digit years:
-    // 90-99 = 1990s, 00-currentYear = 2000-20XX (based on current year)
-    // Any 2-digit year > currentYear and < 90 is treated as invalid (future)
-    final yearNum = int.parse(year);
-    final currentYear = DateTime.now().year % 100;
-    if (yearNum > currentYear && yearNum < 90) {
-      return PlateValidationResult.invalid('Invalid year: $year');
-    }
+    // Accept any 2-char alphanumeric suffix without year validation.
+    // Older plates (pre-2009) used letter codes, modern plates use
+    // 2-digit years. We don't reject future years — they'll become
+    // valid naturally.
 
-    final formatted = '$region-$number-$year';
+    final formatted = '$region-$number-$suffix';
     return PlateValidationResult.valid(formatted, region);
   }
 

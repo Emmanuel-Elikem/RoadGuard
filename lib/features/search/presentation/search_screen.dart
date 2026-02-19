@@ -257,6 +257,9 @@ class _DriverResultCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final goodPct = (driver.goodPercentage * 100).round();
+    final isGood = goodPct >= 50;
+    final displayPct = isGood ? goodPct : (100 - goodPct);
+    final displayLabel = isGood ? 'good' : 'bad';
 
     return Material(
       color: Colors.transparent,
@@ -306,10 +309,10 @@ class _DriverResultCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$goodPct% good',
+                      '$displayPct% $displayLabel',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: goodPct >= 50
+                        color: isGood
                             ? AppColors.success
                             : AppColors.error,
                       ),

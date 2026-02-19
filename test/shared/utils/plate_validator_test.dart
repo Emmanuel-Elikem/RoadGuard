@@ -73,6 +73,28 @@ void main() {
         final result = PlateValidator.validate('GR-1234-90');
         expect(result.isValid, isTrue);
       });
+
+      test('accepts letter suffix for old-format plates', () {
+        final result = PlateValidator.validate('GR-1234-AB');
+        expect(result.isValid, isTrue);
+        expect(result.formatted, 'GR-1234-AB');
+      });
+
+      test('accepts mixed alphanumeric suffix', () {
+        final result = PlateValidator.validate('AS-567-A2');
+        expect(result.isValid, isTrue);
+        expect(result.formatted, 'AS-567-A2');
+      });
+
+      test('accepts future year digits without rejection', () {
+        final futureYear = (DateTime.now().year % 100) + 5;
+        if (futureYear < 100) {
+          final result = PlateValidator.validate(
+            'GR-1234-${futureYear.toString().padLeft(2, '0')}',
+          );
+          expect(result.isValid, isTrue);
+        }
+      });
     });
 
     group('valid regions', () {
@@ -126,15 +148,16 @@ void main() {
         expect(result.isValid, isFalse);
       });
 
+      test('rejects zero digits in middle', () {
+        final result = PlateValidator.validate('GR-AB-21');
+        expect(result.isValid, isFalse);
+      });
+
       test('rejects more than 4 digits', () {
         final result = PlateValidator.validate('GR-12345-21');
         expect(result.isValid, isFalse);
       });
 
-      test('rejects more than 5 total digits', () {
-        final result = PlateValidator.validate('GR-123456-21');
-        expect(result.isValid, isFalse);
-      });
 
       test('rejects single digit year', () {
         final result = PlateValidator.validate('GR-1234-2');
@@ -146,16 +169,14 @@ void main() {
         expect(result.isValid, isFalse);
       });
 
-      test('rejects future year beyond current', () {
-        // This test is dynamic based on current year
-        final futureYear = (DateTime.now().year % 100) + 5;
-        if (futureYear < 90) {
-          final result = PlateValidator.validate(
-            'GR-1234-${futureYear.toString().padLeft(2, '0')}',
-          );
-          expect(result.isValid, isFalse);
-          expect(result.error, contains('Invalid year'));
-        }
+      test('rejects single digit suffix', () {
+        final result = PlateValidator.validate('GR-1234-2');
+        expect(result.isValid, isFalse);
+      });
+
+      test('rejects 3 digit suffix', () {
+        final result = PlateValidator.validate('GR-1234-210');
+        expect(result.isValid, isFalse);
       });
     });
 

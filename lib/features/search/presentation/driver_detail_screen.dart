@@ -106,26 +106,28 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
         ],
       ),
 
-      // Rate this driver FAB
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.spacingLg,
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: AppDimensions.buttonHeightLg,
-          child: FloatingActionButton.extended(
-            onPressed: () => _navigateToRate(context),
-            backgroundColor: colorScheme.primary,
-            foregroundColor: colorScheme.onPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-            ),
-            icon: const Icon(LucideIcons.edit3),
-            label: const Text('Rate this driver'),
-          ),
-        ),
-      ),
+      // Rate this driver FAB — only shown if user rode with this driver
+      floatingActionButton: repo.hasTripsWithPlate(widget.plateNumber)
+          ? Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.spacingLg,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: AppDimensions.buttonHeightLg,
+                child: FloatingActionButton.extended(
+                  onPressed: () => _navigateToRate(context),
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                  ),
+                  icon: const Icon(LucideIcons.edit3),
+                  label: const Text('Rate this driver'),
+                ),
+              ),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }

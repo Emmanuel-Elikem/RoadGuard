@@ -59,7 +59,14 @@ class _StatsContentState extends State<_StatsContent> {
   @override
   void deactivate() {
     if (_isSheetOpen) {
-      Navigator.of(context).pop();
+      try {
+        final navigator = Navigator.maybeOf(context);
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+        }
+      } catch (_) {
+        // Context may not have a valid navigator during disposal
+      }
       _isSheetOpen = false;
     }
     super.deactivate();

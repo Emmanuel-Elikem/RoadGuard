@@ -28,7 +28,7 @@ class PlateNumberFormatter extends TextInputFormatter {
       );
     }
 
-    // Max 8 raw chars: 2 region + 4 number + 2 year
+    // Max 8 raw chars: 2 region + 4 number + 2 suffix
     final capped = raw.length > 8 ? raw.substring(0, 8) : raw;
 
     final buffer = StringBuffer();
