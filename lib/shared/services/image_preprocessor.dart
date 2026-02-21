@@ -13,7 +13,8 @@ import 'package:image/image.dart' as img;
 
 /// Defines the guide box region as fractions of the full image.
 ///
-/// These match the guide overlay in [_GuideBoxPainter]:
+/// These constants match the guide overlay dimensions used in the
+/// plate scanner screen:
 /// - width = 82% of screen width
 /// - height = 28% of width (plate aspect ratio)
 /// - centered horizontally, shifted 40px up from center
@@ -26,6 +27,19 @@ class GuideBoxRegion {
 
   /// Upward offset from center in logical pixels.
   static const double verticalOffset = 40.0;
+
+  /// Horizontal padding around the crop region (fraction of crop width).
+  ///
+  /// 15% on each side accounts for plates slightly off-center in the
+  /// guide box. Wider padding reduces the risk of clipping plate edges.
+  static const double horizontalPadding = 0.15;
+
+  /// Vertical padding around the crop region (fraction of crop height).
+  ///
+  /// 30% on each side accommodates variance in plate height and vertical
+  /// alignment. Taller padding is needed because plates are narrow and
+  /// small vertical misalignment matters more proportionally.
+  static const double verticalPadding = 0.30;
 }
 
 /// Result of image preprocessing.
@@ -99,7 +113,7 @@ class ImagePreprocessor {
       // Calculate crop region
       // The camera preview is fitted to cover the screen (FittedBox.cover),
       // so we need to map screen coordinates to image coordinates.
-      final cropRect = _calculateCropRect(
+      final cropRect = calculateCropRect(
         imageWidth: original.width,
         imageHeight: original.height,
         screenWidth: args.screenWidth,
@@ -144,7 +158,8 @@ class ImagePreprocessor {
   /// The camera preview uses FittedBox.cover, which scales the preview
   /// to fill the screen and may crop edges. We need to account for this
   /// when mapping screen coordinates to image coordinates.
-  static _CropRect _calculateCropRect({
+  @visibleForTesting
+  static CropRect calculateCropRect({
     required int imageWidth,
     required int imageHeight,
     required double screenWidth,
@@ -186,10 +201,9 @@ class ImagePreprocessor {
     final imgCropW = (guideW * scale).round();
     final imgCropH = (guideH * scale).round();
 
-    // Add padding (15% on each side) to capture plates that aren't
-    // perfectly centered in the guide box
-    final padX = (imgCropW * 0.15).round();
-    final padY = (imgCropH * 0.30).round();
+    // Add padding to capture plates not perfectly centered
+    final padX = (imgCropW * GuideBoxRegion.horizontalPadding).round();
+    final padY = (imgCropH * GuideBoxRegion.verticalPadding).round();
 
     // Clamp to image bounds
     final x = math.max(0, imgLeft - padX);
@@ -197,7 +211,7 @@ class ImagePreprocessor {
     final w = math.min(imgW.round() - x, imgCropW + padX * 2);
     final h = math.min(imgH.round() - y, imgCropH + padY * 2);
 
-    return _CropRect(x: x, y: y, width: w, height: h);
+    return CropRect(x: x, y: y, width: w, height: h);
   }
 }
 
@@ -214,14 +228,14 @@ class _ProcessArgs {
   });
 }
 
-/// Simple rectangle for crop coordinates.
-class _CropRect {
+/// Rectangle for crop coordinates.
+class CropRect {
   final int x;
   final int y;
   final int width;
   final int height;
 
-  const _CropRect({
+  const CropRect({
     required this.x,
     required this.y,
     required this.width,

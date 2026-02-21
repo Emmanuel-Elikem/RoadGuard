@@ -166,12 +166,13 @@ class PlateRecognitionService {
     // Strategy 1: Direct validation (text already looks like a plate)
     final directResult = PlateValidator.validate(cleaned);
     if (directResult.isValid) {
-      candidates.add(PlateCandidate(
-        plateNumber: directResult.formatted!,
-        rawText: text,
-        confidence: 1.0,
-      ));
-      return candidates;
+      return [
+        PlateCandidate(
+          plateNumber: directResult.formatted!,
+          rawText: text,
+          confidence: 1.0,
+        ),
+      ];
     }
 
     // Strategy 2: Find plate-like patterns within the text
@@ -217,36 +218,58 @@ class PlateRecognitionService {
   }
 
   /// Generate variants of the text with common OCR fixes applied.
+  ///
+  /// Produces up to three variants:
+  /// 1. Letter-position fixes only (first 2 chars)
+  /// 2. Digit-position fixes only (chars after position 2)
+  /// 3. Both fixes combined (handles multi-error OCR output)
   List<String> _applyOcrCorrections(String text) {
     final variants = <String>[];
 
     // Fix digits in letter positions (first 2 chars)
+    String letterFixed = text;
     if (text.length >= 2) {
-      var fixed = text;
-      for (var i = 0; i < 2 && i < fixed.length; i++) {
-        final char = fixed[i];
+      for (var i = 0; i < 2 && i < letterFixed.length; i++) {
+        final char = letterFixed[i];
         if (_letterFixes.containsKey(char)) {
-          fixed = fixed.substring(0, i) +
+          letterFixed = letterFixed.substring(0, i) +
               _letterFixes[char]! +
-              fixed.substring(i + 1);
+              letterFixed.substring(i + 1);
         }
       }
-      if (fixed != text) variants.add(fixed);
+      if (letterFixed != text) variants.add(letterFixed);
     }
 
     // Fix letters in digit positions (middle section)
+    String digitFixed = text;
     if (text.length >= 4) {
-      var fixed = text;
-      // Start from position 2 (after region code)
-      for (var i = 2; i < fixed.length; i++) {
-        final char = fixed[i];
+      for (var i = 2; i < digitFixed.length; i++) {
+        final char = digitFixed[i];
         if (_digitFixes.containsKey(char)) {
-          fixed = fixed.substring(0, i) +
+          digitFixed = digitFixed.substring(0, i) +
               _digitFixes[char]! +
-              fixed.substring(i + 1);
+              digitFixed.substring(i + 1);
         }
       }
-      if (fixed != text) variants.add(fixed);
+      if (digitFixed != text) variants.add(digitFixed);
+    }
+
+    // Combined: apply both letter and digit fixes together
+    if (letterFixed != text && digitFixed != text) {
+      var combined = letterFixed;
+      if (combined.length >= 4) {
+        for (var i = 2; i < combined.length; i++) {
+          final char = combined[i];
+          if (_digitFixes.containsKey(char)) {
+            combined = combined.substring(0, i) +
+                _digitFixes[char]! +
+                combined.substring(i + 1);
+          }
+        }
+        if (combined != letterFixed && combined != digitFixed) {
+          variants.add(combined);
+        }
+      }
     }
 
     return variants;

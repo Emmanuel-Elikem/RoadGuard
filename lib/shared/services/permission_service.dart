@@ -57,7 +57,7 @@ extension CameraPermissionStateX on CameraPermissionState {
       CameraPermissionState.denied =>
         'Camera access is needed to scan car numbers. Tap below to allow it.',
       CameraPermissionState.deniedForever =>
-        'Camera access was blocked. Open Settings, find RoadGuard, and turn on Camera.',
+        'To scan car numbers: Open Settings, find RoadGuard, and turn on Camera.',
       CameraPermissionState.granted => 'Camera access enabled.',
     };
   }

@@ -287,5 +287,25 @@ void main() {
         expect(str, contains('90%'));
       });
     });
+
+    group('Combined OCR correction', () {
+      test('corrects both letter and digit OCR errors simultaneously', () {
+        // "6R I234 24" — 6 should be G (letter fix) AND I should be 1 (digit fix)
+        final result = service.extractPlates(_ocrFromText('6R I234 24'));
+
+        expect(result, isNotEmpty);
+        final plates = result.map((c) => c.plateNumber).toSet();
+        expect(plates, contains('GR-1234-24'));
+      });
+
+      test('corrects digit-as-letter in region with letter-as-digit in number', () {
+        // "8R S234 24" — 8→B and S→5
+        final result = service.extractPlates(_ocrFromText('8R S234 24'));
+
+        expect(result, isNotEmpty);
+        final plates = result.map((c) => c.plateNumber).toSet();
+        expect(plates, contains('BR-5234-24'));
+      });
+    });
   });
 }

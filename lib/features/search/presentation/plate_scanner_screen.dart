@@ -66,8 +66,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
     if (controller == null || !controller.value.isInitialized) return;
 
     if (state == AppLifecycleState.inactive) {
-      controller.dispose();
+      final ctrl = _cameraController;
       _cameraController = null;
+      ctrl?.dispose();
     } else if (state == AppLifecycleState.resumed) {
       _initializeCamera();
     }
@@ -118,7 +119,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
         setState(() {
           _hasError = true;
           _errorMessage = 'Could not start the camera. '
-              'Make sure camera access is allowed.';
+              'Check that camera access is allowed in Settings.';
         });
       }
     }
@@ -193,7 +194,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
       if (mounted) {
         setState(() => _isProcessing = false);
         _showSnackBar(
-          'Couldn\'t read the number. Try again or type it in.',
+          'Could not read the number. Try again or type it manually.',
         );
       }
     }
@@ -337,12 +338,19 @@ class CameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final previewSize = controller.value.previewSize;
+    if (previewSize == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
-          width: controller.value.previewSize?.height ?? 1,
-          height: controller.value.previewSize?.width ?? 1,
+          width: previewSize.height,
+          height: previewSize.width,
           child: controller.buildPreview(),
         ),
       ),
