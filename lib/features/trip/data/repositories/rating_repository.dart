@@ -28,23 +28,26 @@ class RatingRepository {
     // Save to ratings_box
     await _storage.ratingsBox.put(rating.id, rating);
 
+    // Normalize plate number for consistent driver aggregation keys.
+    final normalizedPlate = PlateValidator.normalize(rating.plateNumber) ?? rating.plateNumber.toUpperCase();
+
     // Update driver aggregate
-    var driver = _storage.driversBox.get(rating.plateNumber);
+    var driver = _storage.driversBox.get(normalizedPlate);
     if (driver == null) {
-      final regionCode = rating.plateNumber.split('-').first;
+      final regionCode = normalizedPlate.split('-').first;
       driver = DriverModel(
-        plateNumber: rating.plateNumber,
+        plateNumber: normalizedPlate,
         region: PlateValidator.regionNames[regionCode],
       );
       driver.applyRating(rating.isGood, rating.tags);
-      await _storage.driversBox.put(rating.plateNumber, driver);
+      await _storage.driversBox.put(normalizedPlate, driver);
     } else {
       driver.applyRating(rating.isGood, rating.tags);
       await driver.save();
     }
 
     debugPrint(
-      'Rating saved: ${rating.plateNumber} '
+      'Rating saved: $normalizedPlate '
       '${rating.isGood ? "good" : "bad"} '
       '(driver total: ${driver.totalRatings})',
     );
@@ -52,15 +55,17 @@ class RatingRepository {
 
   /// Gets all ratings for a specific plate number.
   List<RatingModel> getRatingsForPlate(String plateNumber) {
+    final normalizedPlate = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase();
     return _storage.ratingsBox.values
-        .where((r) => r.plateNumber == plateNumber)
+        .where((r) => (PlateValidator.normalize(r.plateNumber) ?? r.plateNumber.toUpperCase()) == normalizedPlate)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   /// Gets a driver model by plate number.
   DriverModel? getDriver(String plateNumber) {
-    return _storage.driversBox.get(plateNumber);
+    final normalizedPlate = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase();
+    return _storage.driversBox.get(normalizedPlate);
   }
 
   /// Searches drivers by plate number with fuzzy matching.
@@ -96,12 +101,14 @@ class RatingRepository {
 
   /// Checks if the current user has any trips with a given plate number.
   bool hasTripsWithPlate(String plateNumber) {
-    final normalized = plateNumber.toUpperCase().trim();
+    final normalized = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase().trim();
     final uid = _storage.userId;
     return _storage.tripsBox.values.any(
-      (t) =>
-          t.plateNumber?.toUpperCase().trim() == normalized &&
-          t.userId == uid,
+      (t) {
+        if (t.plateNumber == null) return false;
+        final tripPlate = PlateValidator.normalize(t.plateNumber!) ?? t.plateNumber!.toUpperCase().trim();
+        return tripPlate == normalized && t.userId == uid;
+      },
     );
   }
 }
