@@ -51,10 +51,12 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
 
   late final OcrService _ocrService;
   late final PlateRecognitionService _plateRecognition;
+  late final bool _ownsOcrService;
 
   @override
   void initState() {
     super.initState();
+    _ownsOcrService = widget.ocrService == null;
     _ocrService = widget.ocrService ?? OcrService();
     _plateRecognition = widget.plateRecognitionService ?? PlateRecognitionService();
     WidgetsBinding.instance.addObserver(this);
@@ -66,7 +68,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _plateEditController.dispose();
-    _ocrService.dispose();
+    if (_ownsOcrService) _ocrService.dispose();
     super.dispose();
   }
 

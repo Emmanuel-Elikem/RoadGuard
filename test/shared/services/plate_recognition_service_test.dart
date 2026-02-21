@@ -131,11 +131,13 @@ void main() {
         expect(result.first.plateNumber, 'GR-1234-24');
       });
 
-      test('corrects I→1 in digit positions', () {
-        final result = service.extractPlates(_ocrFromText('GR I234 24'));
+      test('corrects S→5 in digit positions', () {
+        // \"GR S234 24\" — S at the start of digit section blocks regex match.
+        // OCR correction fixes S→5, producing GR-5234-24.
+        final result = service.extractPlates(_ocrFromText('GR S234 24'));
 
         expect(result, isNotEmpty);
-        expect(result.first.plateNumber, 'GR-1234-24');
+        expect(result.first.plateNumber, 'GR-5234-24');
       });
 
       test('corrects 0→O in letter positions', () {

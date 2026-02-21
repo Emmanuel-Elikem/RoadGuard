@@ -2244,15 +2244,75 @@ Added `clearUserData()` to `StorageService` (clears trips, ratings, drivers, use
 
 ---
 
+#### M052: Created Duplicate Test Names During Rename
+**Status:** 🟢 Resolved  
+**Severity:** Low (Test quality)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+Two tests named "corrects I→1 in digit positions" with identical inputs/assertions. The first was originally "corrects O→0" but was renamed in a PR review fix without checking the test immediately below it.
+
+**Cause:**
+When addressing a PR comment to rename a mislabeled test, I changed "O→0" to "I→1" without scrolling down to see the next test already had that exact name and input. Careless refactoring without full context.
+
+**Prevention:**
+When renaming or modifying a test, always read the surrounding tests in the same group to check for duplication. Don't just fix the flagged line — scan the neighbors.
+
+**Fix:**
+Changed the duplicate to test a different OCR correction (S→5 in digit positions) with distinct input `'GR 12S4 24'`.
+
+---
+
+#### M053: Hardcoded `/tmp` Paths in Tests
+**Status:** 🟢 Resolved  
+**Severity:** Low (Portability)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+Tests used hardcoded `/tmp/` paths for file operations. Would fail on Windows where `/tmp` doesn't exist.
+
+**Cause:**
+Some tests were written using `Directory.systemTemp.createTemp()` (correct) while others were written with shorthand `/tmp/` paths for brevity. Inconsistency within the same test file.
+
+**Prevention:**
+Always use `Directory.systemTemp` for temp file paths in tests. Never hardcode `/tmp/` or any OS-specific path.
+
+**Fix:**
+Replaced all `/tmp/` references with `Directory.systemTemp.path` construction.
+
+---
+
+#### M054: Disposing Injected Service (Ownership Violation)
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Testing bug, resource management)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`PlateScannerScreen.dispose()` unconditionally called `_ocrService.dispose()`, even when the service was injected by the caller. This would cause use-after-dispose errors in tests or any DI scenario.
+
+**Cause:**
+When adding constructor injection for testability (previous PR fix), I only added the optional parameters but didn't consider that `dispose()` should respect ownership. Classic oversight when retrofitting DI onto existing code.
+
+**Prevention:**
+When adding injectable dependencies, always track ownership with a boolean flag (e.g., `_ownsOcrService = widget.ocrService == null`). Only dispose resources you created.
+
+**Fix:**
+Added `_ownsOcrService` flag set in `initState()`. `dispose()` only calls `_ocrService.dispose()` when the screen created the instance.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
 | 🔴 Critical | 4 | 1 | 1 |
 | 🟠 High | 5 | 0 | 5 |
-| 🟡 Medium | 6 | 0 | 4 |
-| 🟢 Low | 2 | 0 | 1 |
-| **Total** | **17** | **1** | **11** |
+| 🟡 Medium | 6 | 0 | 5 |
+| 🟢 Low | 2 | 0 | 3 |
+| **Total** | **17** | **1** | **14** |
 
 ---
 

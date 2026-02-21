@@ -288,7 +288,8 @@ void main() {
     });
 
     test('returns wasProcessed=false for non-existent file', () async {
-      final file = File('/tmp/does_not_exist_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final tempDir = Directory.systemTemp;
+      final file = File('${tempDir.path}/does_not_exist_${DateTime.now().millisecondsSinceEpoch}.jpg');
 
       final result = await ImagePreprocessor.processForOcr(
         imageFile: file,
@@ -348,9 +349,10 @@ void main() {
 
   group('PreprocessedImage', () {
     test('stores file and processing flag', () {
-      final file = File('/tmp/test.jpg');
+      final tempDir = Directory.systemTemp;
+      final file = File('${tempDir.path}/test.jpg');
       final result = PreprocessedImage(file: file, wasProcessed: false);
-      expect(result.file.path, '/tmp/test.jpg');
+      expect(result.file.path, file.path);
       expect(result.wasProcessed, isFalse);
 
       final result2 = PreprocessedImage(file: file, wasProcessed: true);
