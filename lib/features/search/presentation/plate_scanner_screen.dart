@@ -13,6 +13,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:road_guard/core/theme/app_colors.dart';
 import 'package:road_guard/core/theme/app_dimensions.dart';
+import 'package:road_guard/shared/services/image_preprocessor.dart';
 import 'package:road_guard/shared/services/ocr_service.dart';
 import 'package:road_guard/shared/services/permission_service.dart';
 import 'package:road_guard/shared/services/plate_recognition_service.dart';
@@ -126,6 +127,9 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
   Future<void> _captureAndProcess() async {
     if (_isProcessing || _cameraController == null) return;
 
+    // Capture screen size before async gap
+    final screenSize = MediaQuery.of(context).size;
+
     setState(() {
       _isProcessing = true;
       _detectedPlate = null;
@@ -135,7 +139,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
       final image = await _cameraController!.takePicture();
       final file = File(image.path);
 
-      final ocrResult = await _ocrService.processImage(file);
+      // Crop to the guide box region and enhance for OCR
+      final processed = await ImagePreprocessor.processForOcr(
+        imageFile: file,
+        screenWidth: screenSize.width,
+        screenHeight: screenSize.height,
+      );
+
+      final ocrResult = await _ocrService.processImage(processed.file);
 
       if (!ocrResult.hasText) {
         if (mounted) {
@@ -147,6 +158,8 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
             'No text found. Move closer to the car number and try again.',
           );
         }
+        // Clean up files
+        _cleanupFiles(file, processed);
         return;
       }
 
@@ -161,6 +174,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
             _plateEditController.text = _detectedPlate!;
           });
         }
+        _cleanupFiles(file, processed);
         return;
       }
 
@@ -174,10 +188,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
         });
       }
 
-      // Clean up the captured file
-      try {
-        await file.delete();
-      } catch (_) {}
+      _cleanupFiles(file, processed);
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -185,6 +196,18 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
           'Couldn\'t read the number. Try again or type it in.',
         );
       }
+    }
+  }
+
+  /// Clean up temporary image files.
+  void _cleanupFiles(File original, PreprocessedImage processed) {
+    try {
+      original.deleteSync();
+    } catch (_) {}
+    if (processed.wasProcessed) {
+      try {
+        processed.file.deleteSync();
+      } catch (_) {}
     }
   }
 
