@@ -67,16 +67,8 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
 
     try {
       String? normalizedPlate;
-      if (_plateController.text.isNotEmpty) {
-        final result = PlateValidator.validate(_plateController.text);
-        if (!result.isValid) {
-          setState(() {
-            _plateError = result.error;
-            _isSaving = false;
-          });
-          return;
-        }
-        normalizedPlate = result.formatted;
+      if (_plateController.text.trim().isNotEmpty) {
+        normalizedPlate = PlateValidator.normalize(_plateController.text);
       }
 
       RatingModel? rating;

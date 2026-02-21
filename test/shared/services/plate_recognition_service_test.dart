@@ -191,13 +191,16 @@ void main() {
       });
     });
 
-    group('No match', () {
-      test('returns empty for random text', () {
+    group('No match — raw fallback', () {
+      test('returns raw text for non-plate text', () {
         final result = service.extractPlates(
-          _ocrFromText('Hello world this is a test'),
+          _ocrFromText('TOYOTA COROLLA'),
         );
 
-        expect(result, isEmpty);
+        // Falls back to raw OCR text with low confidence
+        expect(result, isNotEmpty);
+        expect(result.first.confidence, 0.3);
+        expect(result.first.plateNumber, contains('TOYOTA'));
       });
 
       test('returns empty for empty OCR result', () {
@@ -208,8 +211,19 @@ void main() {
         expect(result, isEmpty);
       });
 
-      test('returns empty for numbers only', () {
+      test('returns raw text for numbers only', () {
         final result = service.extractPlates(_ocrFromText('123456789'));
+
+        // Raw fallback returns the text since it has digits
+        expect(result, isNotEmpty);
+        expect(result.first.confidence, 0.3);
+      });
+
+      test('skips very long lines for raw fallback', () {
+        final longText = 'A' * 25; // > 20 chars — skipped
+        final result = service.extractPlates(
+          _ocrFromText(longText),
+        );
 
         expect(result, isEmpty);
       });

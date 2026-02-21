@@ -142,7 +142,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   textCapitalization: TextCapitalization.characters,
                   style: theme.textTheme.bodyLarge,
                   decoration: InputDecoration(
-                    hintText: 'Enter plate number (e.g. GR-1234-24)',
+                    hintText: 'Enter car number or notes',
                     hintStyle: theme.textTheme.bodyLarge?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.4),
                     ),

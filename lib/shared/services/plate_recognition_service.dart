@@ -62,6 +62,8 @@ class PlateRecognitionService {
   /// Extract plate candidates from OCR results.
   ///
   /// Returns candidates sorted by confidence (best first).
+  /// If no Ghana-format plate is found, returns the best raw OCR
+  /// text as a low-confidence candidate so users can edit it.
   List<PlateCandidate> extractPlates(OcrResult ocrResult) {
     final candidates = <PlateCandidate>[];
 
@@ -99,7 +101,53 @@ class PlateRecognitionService {
     final results = seen.values.toList()
       ..sort((a, b) => b.confidence.compareTo(a.confidence));
 
+    // If no structured plate was found, return the best raw OCR
+    // line so the user can still see and edit what was captured.
+    if (results.isEmpty && ocrResult.hasText) {
+      final bestLine = _pickBestRawLine(ocrResult);
+      if (bestLine != null && bestLine.trim().isNotEmpty) {
+        results.add(PlateCandidate(
+          plateNumber: bestLine.trim().toUpperCase(),
+          rawText: bestLine,
+          confidence: 0.3,
+        ));
+      }
+    }
+
     return results;
+  }
+
+  /// Pick the most plate-like raw line from OCR output.
+  ///
+  /// Prefers short lines with mixed letters+digits (plate-like)
+  /// over long paragraphs of text.
+  String? _pickBestRawLine(OcrResult ocrResult) {
+    String? best;
+    int bestScore = -1;
+
+    for (final block in ocrResult.blocks) {
+      for (final line in block.lines) {
+        final text = line.text.trim();
+        if (text.isEmpty || text.length > 20) continue;
+
+        // Score: prefer lines with both letters and digits
+        final hasLetters = RegExp(r'[A-Za-z]').hasMatch(text);
+        final hasDigits = RegExp(r'\d').hasMatch(text);
+        int score = 0;
+        if (hasLetters && hasDigits) score += 10;
+        if (hasLetters) score += 3;
+        if (hasDigits) score += 3;
+        // Prefer shorter lines (more likely a plate)
+        score += (20 - text.length).clamp(0, 10);
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = text;
+        }
+      }
+    }
+
+    return best;
   }
 
   /// Try to extract plate numbers from a text string.

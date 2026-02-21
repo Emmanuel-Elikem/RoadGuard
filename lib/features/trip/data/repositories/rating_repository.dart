@@ -29,7 +29,7 @@ class RatingRepository {
     await _storage.ratingsBox.put(rating.id, rating);
 
     // Normalize plate number for consistent driver aggregation keys.
-    final normalizedPlate = PlateValidator.normalize(rating.plateNumber) ?? rating.plateNumber.toUpperCase();
+    final normalizedPlate = PlateValidator.normalize(rating.plateNumber);
 
     // Update driver aggregate
     var driver = _storage.driversBox.get(normalizedPlate);
@@ -55,16 +55,16 @@ class RatingRepository {
 
   /// Gets all ratings for a specific plate number.
   List<RatingModel> getRatingsForPlate(String plateNumber) {
-    final normalizedPlate = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase();
+    final normalizedPlate = PlateValidator.normalize(plateNumber);
     return _storage.ratingsBox.values
-        .where((r) => (PlateValidator.normalize(r.plateNumber) ?? r.plateNumber.toUpperCase()) == normalizedPlate)
+        .where((r) => PlateValidator.normalize(r.plateNumber) == normalizedPlate)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   /// Gets a driver model by plate number.
   DriverModel? getDriver(String plateNumber) {
-    final normalizedPlate = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase();
+    final normalizedPlate = PlateValidator.normalize(plateNumber);
     return _storage.driversBox.get(normalizedPlate);
   }
 
@@ -101,12 +101,12 @@ class RatingRepository {
 
   /// Checks if the current user has any trips with a given plate number.
   bool hasTripsWithPlate(String plateNumber) {
-    final normalized = PlateValidator.normalize(plateNumber) ?? plateNumber.toUpperCase().trim();
+    final normalized = PlateValidator.normalize(plateNumber);
     final uid = _storage.userId;
     return _storage.tripsBox.values.any(
       (t) {
         if (t.plateNumber == null) return false;
-        final tripPlate = PlateValidator.normalize(t.plateNumber!) ?? t.plateNumber!.toUpperCase().trim();
+        final tripPlate = PlateValidator.normalize(t.plateNumber!);
         return tripPlate == normalized && t.userId == uid;
       },
     );

@@ -38,6 +38,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
   String? _errorMessage;
   String? _detectedPlate;
   bool _flashOn = false;
+  final _plateEditController = TextEditingController();
 
   final _ocrService = OcrService();
   final _plateRecognition = PlateRecognitionService();
@@ -53,6 +54,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
+    _plateEditController.dispose();
     _ocrService.dispose();
     super.dispose();
   }
@@ -151,15 +153,13 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
       final candidates = _plateRecognition.extractPlates(ocrResult);
 
       if (candidates.isEmpty) {
+        // No plate-like text at all — show the full OCR text for editing
         if (mounted) {
           setState(() {
             _isProcessing = false;
-            _detectedPlate = null;
+            _detectedPlate = ocrResult.fullText.trim().toUpperCase();
+            _plateEditController.text = _detectedPlate!;
           });
-          _showSnackBar(
-            'Couldn\'t read a car number. '
-            'Try again or type it in manually.',
-          );
         }
         return;
       }
@@ -170,6 +170,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
         setState(() {
           _isProcessing = false;
           _detectedPlate = best.plateNumber;
+          _plateEditController.text = best.plateNumber;
         });
       }
 
@@ -199,14 +200,16 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
   }
 
   void _confirmPlate() {
-    if (_detectedPlate != null) {
-      Navigator.of(context).pop(_detectedPlate);
+    final text = _plateEditController.text.trim();
+    if (text.isNotEmpty) {
+      Navigator.of(context).pop(text.toUpperCase());
     }
   }
 
   void _retake() {
     setState(() {
       _detectedPlate = null;
+      _plateEditController.clear();
     });
   }
 
@@ -283,7 +286,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
             right: 0,
             child: _detectedPlate != null
                 ? _PlateConfirmation(
-                    plateNumber: _detectedPlate!,
+                    controller: _plateEditController,
                     onConfirm: _confirmPlate,
                     onRetake: _retake,
                     colorScheme: colorScheme,
@@ -510,14 +513,14 @@ class _CaptureControls extends StatelessWidget {
 // ─── Plate Confirmation ────────────────────────────────────
 
 class _PlateConfirmation extends StatelessWidget {
-  final String plateNumber;
+  final TextEditingController controller;
   final VoidCallback onConfirm;
   final VoidCallback onRetake;
   final ColorScheme colorScheme;
   final ThemeData theme;
 
   const _PlateConfirmation({
-    required this.plateNumber,
+    required this.controller,
     required this.onConfirm,
     required this.onRetake,
     required this.colorScheme,
@@ -542,33 +545,51 @@ class _PlateConfirmation extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Detected plate display
+          // Header
           Text(
-            'Car number found',
+            'Car number found — tap to edit',
             style: theme.textTheme.titleSmall?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: AppDimensions.spacingSm),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.spacingLg,
-              vertical: AppDimensions.spacingMd,
+
+          // Editable plate field
+          TextField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            textCapitalization: TextCapitalization.characters,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 3,
             ),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius:
-                  BorderRadius.circular(AppDimensions.radiusMd),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.5),
-                width: 2,
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.spacingLg,
+                vertical: AppDimensions.spacingMd,
               ),
-            ),
-            child: Text(
-              plateNumber,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 3,
+              enabledBorder: OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(AppDimensions.radiusMd),
+                borderSide: BorderSide(
+                  color: AppColors.primary.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(AppDimensions.radiusMd),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: colorScheme.surfaceContainerHighest,
+              suffixIcon: Icon(
+                LucideIcons.pencil,
+                size: 18,
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ),

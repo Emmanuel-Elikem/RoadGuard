@@ -115,14 +115,34 @@ class PlateValidator {
   };
 
   /// Validates and normalizes a plate number.
-  static PlateValidationResult validate(String input) {
+  ///
+  /// If [strict] is true (default), only accepts the standard Ghana
+  /// format (XX-NNNN-YY with a known region code). If false, any
+  /// non-empty string is accepted and cleaned up.
+  static PlateValidationResult validate(String input, {bool strict = true}) {
     final normalized = input.toUpperCase().trim();
 
     if (normalized.isEmpty) {
-      return const PlateValidationResult.invalid('Enter a plate number');
+      return const PlateValidationResult.invalid('Enter a car number');
     }
 
     final match = _plateRegex.firstMatch(normalized);
+    if (match != null) {
+      final region = match.group(1)!;
+      final number = match.group(2)!;
+      final suffix = match.group(3)!;
+
+      if (validRegions.contains(region)) {
+        final formatted = '$region-$number-$suffix';
+        return PlateValidationResult.valid(formatted, region);
+      }
+    }
+
+    // In lenient mode, accept any non-empty text as-is
+    if (!strict) {
+      return PlateValidationResult.valid(normalized, null);
+    }
+
     if (match == null) {
       return const PlateValidationResult.invalid(
         'Expected format: GR-1234-24',
@@ -130,25 +150,17 @@ class PlateValidator {
     }
 
     final region = match.group(1)!;
-    final number = match.group(2)!;
-    final suffix = match.group(3)!;
-
-    if (!validRegions.contains(region)) {
-      return PlateValidationResult.invalid('Unknown region: $region');
-    }
-
-    // Accept any 2-char alphanumeric suffix without year validation.
-    // Older plates (pre-2009) used letter codes, modern plates use
-    // 2-digit years. We don't reject future years — they'll become
-    // valid naturally.
-
-    final formatted = '$region-$number-$suffix';
-    return PlateValidationResult.valid(formatted, region);
+    return PlateValidationResult.invalid('Unknown region: $region');
   }
 
   /// Quick check if a string looks like a valid plate.
   static bool isValidFormat(String input) => validate(input).isValid;
 
-  /// Normalize plate to consistent format (XX-NNNN-YY).
-  static String? normalize(String input) => validate(input).formatted;
+  /// Normalize plate to consistent format (XX-NNNN-YY) if it
+  /// matches the standard Ghana pattern. Otherwise returns the
+  /// uppercased/trimmed input.
+  static String normalize(String input) {
+    final result = validate(input, strict: false);
+    return result.formatted ?? input.toUpperCase().trim();
+  }
 }
