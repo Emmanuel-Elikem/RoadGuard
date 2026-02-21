@@ -2,7 +2,6 @@
 ///
 /// Tests edge cases:
 /// - Speed states (safe, warning, danger)
-/// - No GPS signal display
 /// - Clamped progress for speeds > maxSpeed
 /// - Speed limit badge visibility
 library;
@@ -10,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:road_guard/shared/widgets/speedometer_widget.dart';
+import 'package:road_guard/shared/widgets/animated_speed_display.dart';
 import 'package:road_guard/core/theme/theme.dart';
 
 void main() {
@@ -18,7 +18,6 @@ void main() {
     double? speedLimit = 50,
     double maxSpeed = 180,
     bool hasSignal = true,
-    double? accuracy,
   }) {
     return MaterialApp(
       theme: createDarkTheme(),
@@ -29,7 +28,6 @@ void main() {
             speedLimit: speedLimit,
             maxSpeed: maxSpeed,
             hasSignal: hasSignal,
-            accuracy: accuracy,
           ),
         ),
       ),
@@ -38,9 +36,19 @@ void main() {
 
   group('SpeedometerWidget', () {
     group('speed display', () {
-      testWidgets('shows speed value', (tester) async {
+      testWidgets('shows speed via AnimatedSpeedDisplay', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 45));
-        expect(find.text('45'), findsOneWidget);
+        expect(find.byType(AnimatedSpeedDisplay), findsOneWidget);
+        // Scope digit finds to AnimatedSpeedDisplay subtree
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('4')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('5')),
+          findsOneWidget,
+        );
       });
 
       testWidgets('shows km/h unit', (tester) async {
@@ -53,9 +61,18 @@ void main() {
         expect(find.text('0'), findsOneWidget);
       });
 
-      testWidgets('shows rounded speed value', (tester) async {
+      testWidgets('shows rounded speed digits', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 45.7));
-        expect(find.text('46'), findsOneWidget);
+        // 45.7 rounds to 46 — digits '4' and '6'
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('4')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('6')),
+          findsOneWidget,
+        );
       });
     });
 
@@ -70,43 +87,6 @@ void main() {
         // Only speed value should show, no limit
         expect(find.text('0'), findsOneWidget);
         expect(find.text('50'), findsNothing);
-      });
-    });
-
-    group('GPS signal quality', () {
-      testWidgets('shows NO GPS when hasSignal is false', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(hasSignal: false),
-        );
-        expect(find.text('NO GPS'), findsOneWidget);
-      });
-
-      testWidgets('hides signal badge when hasSignal is true', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(hasSignal: true),
-        );
-        expect(find.text('NO GPS'), findsNothing);
-      });
-    });
-
-    group('accuracy display', () {
-      testWidgets('shows accuracy when provided', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(hasSignal: true, accuracy: 5),
-        );
-        expect(find.text('±5m'), findsOneWidget);
-      });
-
-      testWidgets('hides accuracy when null', (tester) async {
-        await tester.pumpWidget(buildSpeedometer(accuracy: null));
-        expect(find.textContaining('±'), findsNothing);
-      });
-
-      testWidgets('hides accuracy when no signal', (tester) async {
-        await tester.pumpWidget(
-          buildSpeedometer(hasSignal: false, accuracy: 5),
-        );
-        expect(find.textContaining('±'), findsNothing);
       });
     });
 
@@ -149,20 +129,27 @@ void main() {
 
     group('progress clamping', () {
       testWidgets('handles speed > maxSpeed without overflow', (tester) async {
-        // Should not throw any errors
         await tester.pumpWidget(
-          buildSpeedometer(
-            speed: 200, // > 180 maxSpeed
-            maxSpeed: 180,
-          ),
+          buildSpeedometer(speed: 200, maxSpeed: 180),
         );
-        expect(find.text('200'), findsOneWidget);
-        // Widget should render without issues
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('2')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('0')),
+          findsWidgets,
+        );
       });
 
       testWidgets('handles very high speed gracefully', (tester) async {
         await tester.pumpWidget(buildSpeedometer(speed: 999));
-        expect(find.text('999'), findsOneWidget);
+        final displayFinder = find.byType(AnimatedSpeedDisplay);
+        expect(
+          find.descendant(of: displayFinder, matching: find.text('9')),
+          findsWidgets,
+        );
       });
     });
   });

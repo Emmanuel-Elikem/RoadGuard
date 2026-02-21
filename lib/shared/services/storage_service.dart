@@ -14,8 +14,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../features/trip/domain/models/driver_model.dart';
+import '../../features/trip/domain/models/driver_model_adapter.dart';
 import '../../features/trip/domain/models/rating_model.dart';
+import '../../features/trip/domain/models/rating_model_adapter.dart';
 import '../../features/trip/domain/models/trip_model.dart';
+import '../../features/trip/domain/models/trip_model_adapter.dart';
 
 /// Provider for accessing the storage service
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -44,13 +48,30 @@ class StorageService {
   static const String _settingsBox = 'settings';
   static const String _userBox = 'user';
   static const String _tripsBox = 'trips';
+  static const String _ratingsBox = 'ratings';
+  static const String _driversBox = 'drivers';
+
+  /// Schema version — bump when Hive model fields change.
+  /// This triggers a one-time box reset on next launch.
+  static const int _schemaVersion = 3;
 
   // Boxes (opened during initialization)
   late Box<dynamic> _settings;
   late Box<dynamic> _user;
   late Box<TripModel> _trips;
+  late Box<RatingModel> _ratings;
+  late Box<DriverModel> _drivers;
 
   Box<TripModel> get tripsBox => _trips;
+  Box<RatingModel> get ratingsBox => _ratings;
+  Box<DriverModel> get driversBox => _drivers;
+
+  /// Returns trips belonging to the current user.
+  List<TripModel> get currentUserTrips {
+    final uid = userId;
+    if (uid == null) return [];
+    return _trips.values.where((t) => t.userId == uid).toList();
+  }
 
   /// Initialize Hive and open all boxes.
   ///
@@ -59,18 +80,46 @@ class StorageService {
     // Initialize Hive with Flutter support (handles path resolution)
     await Hive.initFlutter();
 
-    // Register Adapters
-    Hive.registerAdapter(RatingModelAdapter());
-    Hive.registerAdapter(TripModelAdapter());
+    // Register Adapters (guarded for hot-restart / test re-initialization)
+    if (!Hive.isAdapterRegistered(RatingModelAdapter().typeId)) {
+      Hive.registerAdapter(RatingModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(TripModelAdapter().typeId)) {
+      Hive.registerAdapter(TripModelAdapter());
+    }
+    if (!Hive.isAdapterRegistered(DriverModelAdapter().typeId)) {
+      Hive.registerAdapter(DriverModelAdapter());
+    }
 
     // Create instance
     _instance = StorageService._();
 
-    // Open boxes
-    // Box names are like table names - keep them lowercase
+    // Open settings box first (needed for schema version check)
     _instance!._settings = await Hive.openBox(_settingsBox);
+
+    // Schema migration: handle schema version changes
+    final storedVersion = _instance!._settings.get(
+      'schemaVersion',
+      defaultValue: 0,
+    );
+    if (storedVersion != _schemaVersion) {
+      debugPrint(
+        'Schema version changed ($storedVersion → $_schemaVersion).',
+      );
+      // Pre-launch: clear data boxes on schema change in all builds.
+      // Post-launch: replace with forward migration logic.
+      debugPrint('Clearing data boxes for schema migration.');
+      await Hive.deleteBoxFromDisk(_tripsBox);
+      await Hive.deleteBoxFromDisk(_ratingsBox);
+      await Hive.deleteBoxFromDisk(_driversBox);
+      await _instance!._settings.put('schemaVersion', _schemaVersion);
+    }
+
+    // Open remaining boxes
     _instance!._user = await Hive.openBox(_userBox);
     _instance!._trips = await Hive.openBox<TripModel>(_tripsBox);
+    _instance!._ratings = await Hive.openBox<RatingModel>(_ratingsBox);
+    _instance!._drivers = await Hive.openBox<DriverModel>(_driversBox);
 
     debugPrint('StorageService initialized');
   }
@@ -140,6 +189,8 @@ class StorageService {
   Future<void> clearUser() async {
     await _user.clear();
   }
+
+
 
   // ==========================================
   // CLEANUP

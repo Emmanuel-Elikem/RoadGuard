@@ -5,11 +5,16 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:gap/gap.dart';
 import 'package:road_guard/core/router/routes.dart';
 import 'package:road_guard/core/theme/app_dimensions.dart';
+import 'package:road_guard/core/theme/app_colors.dart';
 import 'package:road_guard/features/trip/application/trip_service.dart';
+import 'package:road_guard/features/trip/data/repositories/rating_repository.dart';
+import 'package:road_guard/features/trip/domain/constants/rating_constants.dart';
 import 'package:road_guard/features/trip/domain/models/rating_model.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
-import 'package:road_guard/shared/widgets/star_rating_widget.dart';
-
+import 'package:road_guard/shared/services/storage_service.dart';
+import 'package:road_guard/shared/utils/plate_number_formatter.dart';
+import 'package:road_guard/shared/utils/plate_validator.dart';
+import 'package:uuid/uuid.dart';
 
 class RatingScreen extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -21,55 +26,96 @@ class RatingScreen extends ConsumerStatefulWidget {
 }
 
 class _RatingScreenState extends ConsumerState<RatingScreen> {
-  int _rating = 0;
-  final TextEditingController _notesController = TextEditingController();
+  bool? _isGood;
+  final Set<String> _selectedTags = {};
+  final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _plateController = TextEditingController();
   bool _isSaving = false;
+  String? _plateError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.trip.plateNumber != null &&
+        widget.trip.plateNumber!.isNotEmpty) {
+      _plateController.text = widget.trip.plateNumber!;
+    }
+  }
 
   @override
   void dispose() {
-    _notesController.dispose();
+    _commentController.dispose();
+    _plateController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveTrip() async {
+  Future<void> _saveTrip({bool skipRating = false}) async {
     setState(() => _isSaving = true);
-    
+
     try {
+      String? normalizedPlate;
+      if (_plateController.text.isNotEmpty) {
+        final result = PlateValidator.validate(_plateController.text);
+        if (!result.isValid) {
+          setState(() {
+            _plateError = result.error;
+            _isSaving = false;
+          });
+          return;
+        }
+        normalizedPlate = result.formatted;
+      }
+
+      RatingModel? rating;
+      if (!skipRating && _isGood != null && normalizedPlate != null) {
+        rating = RatingModel(
+          id: const Uuid().v4(),
+          plateNumber: normalizedPlate,
+          raterId: StorageService.instance.userId,
+          isGood: _isGood!,
+          tags: _selectedTags.toList(),
+          comment: _commentController.text.isNotEmpty
+              ? _commentController.text
+              : null,
+          tripId: widget.trip.id,
+        );
+      }
+
+      // Save trip first so there's no orphan rating if trip save fails
       final updatedTrip = widget.trip.copyWith(
-        rating: _rating > 0 
-          ? RatingModel(
-              rating: _rating, 
-              timestamp: DateTime.now(),
-              comment: _notesController.text.isNotEmpty ? _notesController.text : null,
-            ) 
-          : null,
-        notes: _notesController.text,
+        ratingId: rating?.id,
+        plateNumber: normalizedPlate ?? widget.trip.plateNumber,
+        notes: _commentController.text.isNotEmpty
+            ? _commentController.text
+            : widget.trip.notes,
       );
 
-      // Verify validation? 
-      // MVP: If rating > 0, we save it. If rating == 0, maybe prompt? 
-      // Plan says "Prompt to rate driver".
+      await ref
+          .read(tripControllerProvider.notifier)
+          .saveCompletedTrip(updatedTrip);
 
-      await ref.read(tripControllerProvider.notifier).saveCompletedTrip(updatedTrip);
-      
+      // Save rating after trip succeeds
+      if (rating != null) {
+        await ref.read(ratingRepositoryProvider).saveRating(rating);
+      }
+
       if (mounted) {
         context.go(Routes.home);
       }
     } catch (e) {
-        // Show error
-        if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Failed to save trip: $e',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onError,
-                    ),
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                ),
-            );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Couldn\'t save your trip. Please try again.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -80,11 +126,13 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final colorScheme = theme.colorScheme;
+    final availableTags = _isGood == true ? goodDriverTags : badDriverTags;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Trip Summary'),
-        automaticallyImplyLeading: false, // Don't allow back without saving/discarding logic?
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -96,40 +144,22 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Map Placeholder
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(LucideIcons.map, size: 48),
-                    Gap(8),
-                    Text('Map View Coming Soon (Week 8)'),
-                  ],
-                ),
-              ),
-            ),
-            const Gap(AppDimensions.spacingLg),
-
-            // Stats Grid
+            // === Trip Stats ===
             Row(
               children: [
                 Expanded(
                   child: _StatCard(
                     label: 'DISTANCE',
-                    value: '${widget.trip.distance.toStringAsFixed(1)} km',
+                    value:
+                        '${widget.trip.distance.toStringAsFixed(1)} km',
                   ),
                 ),
                 const Gap(AppDimensions.spacingMd),
                 Expanded(
                   child: _StatCard(
-                    label: 'DURATION',
-                    value: '${widget.trip.endTime!.difference(widget.trip.startTime).inMinutes}:${(widget.trip.endTime!.difference(widget.trip.startTime).inSeconds % 60).toString().padLeft(2, '0')} min',
+                    label: 'TIME',
+                    value:
+                        '${widget.trip.endTime!.difference(widget.trip.startTime).inMinutes}:${(widget.trip.endTime!.difference(widget.trip.startTime).inSeconds % 60).toString().padLeft(2, '0')} min',
                   ),
                 ),
               ],
@@ -137,75 +167,224 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
             const Gap(AppDimensions.spacingMd),
             Row(
               children: [
-                 Expanded(
+                Expanded(
                   child: _StatCard(
-                    label: 'TOP SPEED',
-                    value: '${(widget.trip.maxSpeed * 3.6).toStringAsFixed(0)} km/h',
+                    label: 'FASTEST',
+                    value:
+                        '${(widget.trip.maxSpeed * 3.6).toStringAsFixed(0)} km/h',
                     isAlert: (widget.trip.maxSpeed * 3.6) > 80,
                   ),
                 ),
                 const Gap(AppDimensions.spacingMd),
                 Expanded(
                   child: _StatCard(
-                    label: 'AVG SPEED',
-                    value: '${(widget.trip.avgSpeed * 3.6).toStringAsFixed(0)} km/h',
+                    label: 'AVERAGE',
+                    value:
+                        '${(widget.trip.avgSpeed * 3.6).toStringAsFixed(0)} km/h',
                   ),
                 ),
               ],
             ),
-            
+
             const Gap(AppDimensions.spacingXl),
             const Divider(),
             const Gap(AppDimensions.spacingMd),
 
-            // Rating Section
+            // === Plate Number Input ===
             Text(
-              'Rate this Trip',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
+              'Vehicle plate number',
+              style: theme.textTheme.titleMedium,
             ),
-            const Gap(AppDimensions.spacingMd),
-            Center(
-              child: StarRatingWidget(
-                onRatingChanged: (rating) {
-                  setState(() => _rating = rating);
-                },
-              ),
-            ),
-             const Gap(AppDimensions.spacingLg),
-
-            // Notes
+            const Gap(AppDimensions.spacingSm),
             TextField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                    labelText: 'Notes (Optional)',
-                    hintText: 'Any feedback about the driver?',
-                    border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
+              controller: _plateController,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [PlateNumberFormatter()],
+              decoration: InputDecoration(
+                hintText: 'e.g. GR-1234-24',
+                errorText: _plateError,
+                prefixIcon: const Icon(LucideIcons.car),
+                suffixIcon: _plateController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(LucideIcons.x),
+                        onPressed: () {
+                          _plateController.clear();
+                          setState(() => _plateError = null);
+                        },
+                      )
+                    : null,
+              ),
+              onChanged: (value) {
+                setState(() => _plateError = null);
+              },
             ),
 
             const Gap(AppDimensions.spacingXl),
 
-            // Save Button
+            // === Good/Bad Selection ===
+            Text(
+              'How was this driver?',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const Gap(AppDimensions.spacingMd),
+            Row(
+              children: [
+                Expanded(
+                  child: _RatingChoice(
+                    icon: LucideIcons.thumbsUp,
+                    label: 'Good',
+                    isSelected: _isGood == true,
+                    color: AppColors.success,
+                    onTap: () {
+                      setState(() {
+                        _isGood = true;
+                        _selectedTags.clear();
+                      });
+                    },
+                  ),
+                ),
+                const Gap(AppDimensions.spacingMd),
+                Expanded(
+                  child: _RatingChoice(
+                    icon: LucideIcons.thumbsDown,
+                    label: 'Bad',
+                    isSelected: _isGood == false,
+                    color: AppColors.error,
+                    onTap: () {
+                      setState(() {
+                        _isGood = false;
+                        _selectedTags.clear();
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            // === Tag Chips ===
+            if (_isGood != null) ...[
+              const Gap(AppDimensions.spacingLg),
+              Text(
+                'Quick feedback (optional)',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const Gap(AppDimensions.spacingSm),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: availableTags.map((tag) {
+                  final isSelected = _selectedTags.contains(tag);
+                  return FilterChip(
+                    label: Text(tag),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedTags.add(tag);
+                        } else {
+                          _selectedTags.remove(tag);
+                        }
+                      });
+                    },
+                    selectedColor: (_isGood! ? AppColors.success : AppColors.error)
+                        .withValues(alpha: 0.2),
+                    checkmarkColor: _isGood! ? AppColors.success : AppColors.error,
+                  );
+                }).toList(),
+              ),
+            ],
+
+            const Gap(AppDimensions.spacingLg),
+
+            // === Comment ===
+            TextField(
+              controller: _commentController,
+              decoration: const InputDecoration(
+                labelText: 'Add a comment (optional)',
+                hintText: 'Any feedback about the driver?',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+
+            const Gap(AppDimensions.spacingXl),
+
+            // === Save Button ===
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveTrip,
-                child: _isSaving 
+                onPressed: _isSaving ? null : () => _saveTrip(),
+                child: _isSaving
                     ? const CircularProgressIndicator()
-                    : const Text('SAVE TRIP'),
+                    : Text(
+                        _isGood != null && _plateController.text.isNotEmpty
+                            ? 'Submit rating'
+                            : 'Save trip',
+                      ),
               ),
             ),
-             const Gap(AppDimensions.spacingMd),
-             TextButton(
-                 onPressed: () {
-                     // Discard? Or save without rating?
-                     // Let's assume skip = save without rating
-                     _saveTrip();
-                 },
-                 child: const Text('Skip Rating'),
-             ),
+            const Gap(AppDimensions.spacingMd),
+            TextButton(
+              onPressed: _isSaving
+                  ? null
+                  : () => _saveTrip(skipRating: true),
+              child: const Text('Skip rating'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Good/Bad choice card.
+class _RatingChoice extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _RatingChoice({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.15)
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          border: Border.all(
+            color: isSelected ? color : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 36, color: isSelected ? color : null),
+            const Gap(8),
+            Text(
+              label,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: isSelected ? color : null,
+                fontWeight: isSelected ? FontWeight.bold : null,
+              ),
+            ),
           ],
         ),
       ),
@@ -230,10 +409,14 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppDimensions.spacingMd),
       decoration: BoxDecoration(
-        color: isAlert ? theme.colorScheme.errorContainer : theme.colorScheme.surface,
+        color: isAlert
+            ? theme.colorScheme.errorContainer
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         border: Border.all(
-             color: isAlert ? theme.colorScheme.error : theme.colorScheme.outline,
+          color: isAlert
+              ? theme.colorScheme.error
+              : theme.colorScheme.outline,
         ),
       ),
       child: Column(
@@ -241,15 +424,18 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: theme.textTheme.headlineMedium?.copyWith(
-                color: isAlert ? theme.colorScheme.onErrorContainer : null,
-                fontWeight: FontWeight.bold,
+              color:
+                  isAlert ? theme.colorScheme.onErrorContainer : null,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const Gap(4),
           Text(
             label,
             style: theme.textTheme.labelSmall?.copyWith(
-                 color: isAlert ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurfaceVariant,
+              color: isAlert
+                  ? theme.colorScheme.onErrorContainer
+                  : theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -257,3 +443,4 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+

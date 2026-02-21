@@ -14,6 +14,7 @@ import '../../../core/router/routes.dart';
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/permission_service.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../../shared/widgets/gps_status_banner.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
 import '../../trip/application/trip_service.dart';
@@ -88,8 +89,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Speed limit exceeded! '
-                      '${ts.speedKmh.toStringAsFixed(0)} km/h > $speedLimit km/h',
+                      'Overspeeding! Slow down',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
@@ -132,7 +132,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                 speed: ts.speedKmh,
                 speedLimit: speedLimit.toDouble(),
                 hasSignal: ts.hasSignal || !isTracking,
-                accuracy: ts.accuracy,
                 size: 120,
               ),
               const SizedBox(width: AppDimensions.spacingMd),
@@ -159,7 +158,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isTracking ? 'Tracking Active' : 'Ready to Track',
+                          isTracking ? 'Monitoring speed' : 'Ready to go',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color:
                                 colorScheme.onSurface.withValues(alpha: 0.6),
@@ -189,7 +188,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'REC',
+                              'LIVE',
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: AppColors.error,
                                 fontWeight: FontWeight.w700,
@@ -202,16 +201,16 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   ],
                 ),
               ),
-
-              IconButton(
-                onPressed: () => context.go(Routes.search),
-                icon: Icon(LucideIcons.search,
-                    color: colorScheme.onSurface.withValues(alpha: 0.6)),
-              ),
             ],
           ),
 
           const SizedBox(height: AppDimensions.spacingLg),
+
+          // === GPS STATUS BANNER ===
+          GpsStatusBanner(
+            quality: ts.gpsSignalQuality,
+            isTracking: isTracking,
+          ),
 
           // === LIVE TRIP STATS (shown when tracking) ===
           if (isTracking && tripState == TripState.recording)
@@ -253,7 +252,7 @@ class _LiveTripStats extends ConsumerWidget {
             children: [
               _StatCard(
                 icon: LucideIcons.timer,
-                label: 'DURATION',
+                label: 'TIME',
                 value:
                     '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
                 color: colorScheme.primary,
@@ -272,14 +271,14 @@ class _LiveTripStats extends ConsumerWidget {
             children: [
               _StatCard(
                 icon: LucideIcons.zap,
-                label: 'TOP SPEED',
+                label: 'FASTEST',
                 value: '${maxSpeed.toStringAsFixed(0)} km/h',
                 color: maxSpeed > speedLimit ? AppColors.error : AppColors.success,
               ),
               const SizedBox(width: AppDimensions.spacingSm),
               _StatCard(
                 icon: LucideIcons.gauge,
-                label: 'LIMIT',
+                label: 'SPEED LIMIT',
                 value: '$speedLimit km/h',
                 color: colorScheme.tertiary,
               ),
@@ -344,7 +343,7 @@ class _QuickStatsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trips = StorageService.instance.tripsBox.values.toList();
+    final trips = StorageService.instance.currentUserTrips;
     final totalTrips = trips.length;
     final totalDistance =
         trips.fold<double>(0, (sum, t) => sum + t.distance);
@@ -379,7 +378,7 @@ class _QuickStatsRow extends ConsumerWidget {
               Text(totalDistance.toStringAsFixed(1),
                   style: theme.textTheme.headlineMedium
                       ?.copyWith(fontWeight: FontWeight.w700)),
-              Text('km total',
+              Text('km travelled',
                   style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurface
                           .withValues(alpha: 0.6))),
@@ -395,7 +394,7 @@ class _QuickStatsRow extends ConsumerWidget {
                   style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: colorScheme.primary)),
-              Text('km/h limit',
+              Text('km/h max',
                   style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurface
                           .withValues(alpha: 0.6))),
@@ -415,14 +414,14 @@ class _QuickActions extends StatelessWidget {
       children: [
         _ActionButton(
           icon: LucideIcons.search,
-          label: 'Search\nDriver',
+          label: 'Look Up\nDriver',
           onTap: () => context.go(Routes.search),
           color: colorScheme.primary,
         ),
         const SizedBox(width: AppDimensions.spacingSm),
         _ActionButton(
           icon: LucideIcons.barChart3,
-          label: 'View\nStats',
+          label: 'Your\nTrips',
           onTap: () => context.go(Routes.stats),
           color: colorScheme.secondary,
         ),
@@ -516,7 +515,7 @@ class _TrackingButton extends ConsumerWidget {
                 color:
                     isTracking ? colorScheme.onError : colorScheme.onPrimary),
         label: Text(
-          isTracking ? 'Stop Tracking' : 'Start Tracking',
+          isTracking ? 'Stop' : 'Start',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -683,8 +682,8 @@ class _PermissionRequired extends ConsumerWidget {
                       ? 'Open Settings'
                       : permission ==
                               LocationPermissionState.serviceDisabled
-                          ? 'Enable Location'
-                          : 'Grant Permission',
+                          ? 'Turn on location'
+                          : 'Allow location access',
                   style: TextStyle(
                       color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w600),

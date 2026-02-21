@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/password_reset_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/search/presentation/driver_detail_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/shell/shell_screen.dart';
@@ -46,6 +49,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Get auth status
       final user = authState.valueOrNull;
       final isLoggedIn = user != null;
+
+      // Sync Firebase user to Hive on every auth check
+      if (isLoggedIn) {
+        final storage = StorageService.instance;
+        if (storage.userId != user.uid) {
+          unawaited(
+            storage.saveUserLogin(
+              id: user.uid,
+              name: user.nameOrEmail,
+              isGuest: user.isAnonymous,
+            ).catchError((_) {}),
+          );
+        }
+      }
 
       // If user is logged in
       if (isLoggedIn) {
@@ -152,6 +169,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final trip = state.extra as TripModel;
           return RatingScreen(trip: trip);
+        },
+      ),
+      GoRoute(
+        path: Routes.vehicleDetails,
+        name: RouteNames.vehicleDetails,
+        builder: (context, state) {
+          final plateNumber = Uri.decodeComponent(
+            state.pathParameters['plateNumber']!,
+          );
+          return DriverDetailScreen(plateNumber: plateNumber);
         },
       ),
     ],

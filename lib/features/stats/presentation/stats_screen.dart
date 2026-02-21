@@ -10,7 +10,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/theme.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../trip/domain/models/rating_model.dart';
 import '../../trip/domain/models/trip_model.dart';
+
+/// Looks up a rating by trip's ratingId from the ratings box.
+RatingModel? _lookupRating(TripModel trip) {
+  if (trip.ratingId == null) return null;
+  return StorageService.instance.ratingsBox.get(trip.ratingId);
+}
 
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
@@ -19,7 +26,7 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final trips = StorageService.instance.tripsBox.values.toList()
+    final trips = StorageService.instance.currentUserTrips
       ..sort((a, b) => b.startTime.compareTo(a.startTime));
 
     return Scaffold(
@@ -37,10 +44,33 @@ class StatsScreen extends ConsumerWidget {
 }
 
 /// Full-scroll stats content - everything scrolls together.
-class _StatsContent extends StatelessWidget {
+class _StatsContent extends StatefulWidget {
   final List<TripModel> trips;
 
   const _StatsContent({required this.trips});
+
+  @override
+  State<_StatsContent> createState() => _StatsContentState();
+}
+
+class _StatsContentState extends State<_StatsContent> {
+  bool _isSheetOpen = false;
+
+  @override
+  void deactivate() {
+    if (_isSheetOpen) {
+      try {
+        final navigator = Navigator.maybeOf(context);
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+        }
+      } catch (_) {
+        // Context may not have a valid navigator during disposal
+      }
+      _isSheetOpen = false;
+    }
+    super.deactivate();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +78,7 @@ class _StatsContent extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     // Aggregate stats
+    final trips = widget.trips;
     final totalTrips = trips.length;
     final totalDistance = trips.fold<double>(0, (sum, t) => sum + t.distance);
     final totalDuration = trips.fold<Duration>(
@@ -83,10 +114,10 @@ class _StatsContent extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your Stats', style: theme.textTheme.headlineMedium),
+              Text('Your Trips', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 4),
               Text(
-                '$totalTrips trip${totalTrips == 1 ? '' : 's'} recorded',
+                '$totalTrips trip${totalTrips == 1 ? '' : 's'} so far',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -137,7 +168,7 @@ class _StatsContent extends StatelessWidget {
                 const SizedBox(width: AppDimensions.spacingSm),
                 _SummaryCard(
                   icon: LucideIcons.zap,
-                  label: 'Top Speed',
+                  label: 'Fastest speed',
                   value: '${topSpeed.toStringAsFixed(0)} km/h',
                   color: topSpeed >
                           StorageService.instance.speedLimitThreshold
@@ -198,6 +229,7 @@ class _StatsContent extends StatelessWidget {
   }
 
   void _showTripDetail(BuildContext context, TripModel trip) {
+    _isSheetOpen = true;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final duration = trip.endTime != null
@@ -208,6 +240,9 @@ class _StatsContent extends StatelessWidget {
       context: context,
       backgroundColor: colorScheme.surface,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppDimensions.spacingLg)),
@@ -278,7 +313,7 @@ class _StatsContent extends StatelessWidget {
                 children: [
                   _DetailStat(
                     icon: LucideIcons.gauge,
-                    label: 'Avg Speed',
+                    label: 'Average speed',
                     value:
                         '${(trip.avgSpeed * 3.6).toStringAsFixed(1)} km/h',
                     color: AppColors.success,
@@ -286,7 +321,7 @@ class _StatsContent extends StatelessWidget {
                   const SizedBox(width: AppDimensions.spacingSm),
                   _DetailStat(
                     icon: LucideIcons.zap,
-                    label: 'Max Speed',
+                    label: 'Top speed',
                     value:
                         '${(trip.maxSpeed * 3.6).toStringAsFixed(1)} km/h',
                     color: (trip.maxSpeed * 3.6) >
@@ -342,7 +377,7 @@ class _StatsContent extends StatelessWidget {
                           color: colorScheme.onSurface
                               .withValues(alpha: 0.6)),
                       const SizedBox(width: 10),
-                      Text('Plate: ${trip.plateNumber}',
+                      Text('Vehicle: ${trip.plateNumber}',
                           style: theme.textTheme.bodyMedium),
                     ],
                   ),
@@ -350,79 +385,91 @@ class _StatsContent extends StatelessWidget {
               ],
 
               // Rating
-              if (trip.rating != null) ...[
-                const SizedBox(height: AppDimensions.spacingSm),
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.all(AppDimensions.spacingMd),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusMd),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              Builder(builder: (context) {
+                final rating = _lookupRating(trip);
+                if (rating == null) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    const SizedBox(height: AppDimensions.spacingSm),
+                    Container(
+                      width: double.infinity,
+                      padding:
+                          const EdgeInsets.all(AppDimensions.spacingMd),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusMd),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(LucideIcons.star,
-                              size: 18,
-                              color: AppColors.warning),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Rating: ${trip.rating!.rating}/5',
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(
-                                    fontWeight: FontWeight.w600),
+                          Row(
+                            children: [
+                              Icon(
+                                rating.isGood
+                                    ? LucideIcons.thumbsUp
+                                    : LucideIcons.thumbsDown,
+                                size: 18,
+                                color: rating.isGood
+                                    ? AppColors.success
+                                    : AppColors.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                rating.isGood ? 'Good driver' : 'Bad driver',
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(
+                                        fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
+                          if (rating.comment != null &&
+                              rating.comment!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(rating.comment!,
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                )),
+                          ],
+                          if (rating.tags.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: rating.tags.map((tag) {
+                                return Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            AppDimensions
+                                                .radiusFull),
+                                  ),
+                                  child: Text(tag,
+                                      style: theme
+                                          .textTheme.labelSmall
+                                          ?.copyWith(
+                                        color:
+                                            colorScheme.primary,
+                                      )),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ],
                       ),
-                      if (trip.rating!.comment != null &&
-                          trip.rating!.comment!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(trip.rating!.comment!,
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(
-                              color: colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                            )),
-                      ],
-                      if (trip.rating!.tags.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: trip.rating!.tags.map((tag) {
-                            return Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary
-                                    .withValues(alpha: 0.1),
-                                borderRadius:
-                                    BorderRadius.circular(
-                                        AppDimensions
-                                            .radiusFull),
-                              ),
-                              child: Text(tag,
-                                  style: theme
-                                      .textTheme.labelSmall
-                                      ?.copyWith(
-                                    color:
-                                        colorScheme.primary,
-                                  )),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              }),
 
               // Notes
               if (trip.notes != null &&
@@ -460,7 +507,7 @@ class _StatsContent extends StatelessWidget {
           ),
         );
       },
-    );
+    ).then((_) => _isSheetOpen = false);
   }
 
   String _formatFullDate(DateTime date) {
@@ -600,15 +647,31 @@ class _TripCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (trip.rating != null) ...[
-                    Icon(LucideIcons.star,
-                        size: 14, color: AppColors.warning),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${trip.rating!.rating}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
+                  if (trip.ratingId != null) ...[
+                    Builder(builder: (context) {
+                      final rating = _lookupRating(trip);
+                      if (rating == null) return const SizedBox.shrink();
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            rating.isGood
+                                ? LucideIcons.thumbsUp
+                                : LucideIcons.thumbsDown,
+                            size: 14,
+                            color: rating.isGood
+                                ? AppColors.success
+                                : AppColors.error,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            rating.isGood ? 'Good' : 'Bad',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      );
+                    }),
                   ],
                   const SizedBox(width: 4),
                   Icon(
@@ -809,7 +872,7 @@ class _EmptyState extends StatelessWidget {
           Text('No Trips Yet', style: theme.textTheme.titleLarge),
           const SizedBox(height: AppDimensions.spacingSm),
           Text(
-            'Start tracking a trip from the home screen\nto see your stats here.',
+            'Start monitoring a trip from the home screen\nto see your trips here.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color:
                   colorScheme.onSurface.withValues(alpha: 0.6),

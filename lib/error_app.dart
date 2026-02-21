@@ -15,6 +15,8 @@ class ErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Log the error so "Technical details have been logged" is truthful
+    debugPrint('ErrorApp: Initialization failed: $error');
     // Use a simple theme since the app theme might not be initialized
     return MaterialApp(
       theme: ThemeData(
@@ -49,7 +51,7 @@ class ErrorApp extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Initialization Failed',
+                      'Something went wrong',
                       style: AppTypography.headlineMedium.copyWith(
                         color: colorScheme.onSurface,
                       ),
@@ -57,7 +59,7 @@ class ErrorApp extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'RoadGuard could not start due to an initialization error.',
+                      'RoadGuard couldn\'t start. Please try again or reinstall the app.',
                       style: AppTypography.bodyMedium.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -74,7 +76,7 @@ class ErrorApp extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        error.toString(),
+                        'Technical details have been logged.',
                         style: AppTypography.bodySmall.copyWith(
                           fontFamily: 'monospace',
                           color: colorScheme.onErrorContainer,

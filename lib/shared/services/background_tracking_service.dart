@@ -19,7 +19,7 @@ class BackgroundTrackingService {
     // Notification setup for Android
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       notificationChannelId,
-      'RoadGuard Tracking',
+      'RoadGuard Speed Monitor',
       description: 'Monitoring your speed for safety',
       importance: Importance.low,
     );
@@ -43,8 +43,8 @@ class BackgroundTrackingService {
         isForegroundMode: true,
 
         notificationChannelId: notificationChannelId,
-        initialNotificationTitle: 'RoadGuard Service',
-        initialNotificationContent: 'Initializing...',
+        initialNotificationTitle: 'RoadGuard',
+        initialNotificationContent: 'Starting up...',
         foregroundServiceNotificationId: notificationId,
       ),
       iosConfiguration: IosConfiguration(
@@ -73,8 +73,8 @@ class BackgroundTrackingService {
     if (service is AndroidServiceInstance) {
       service.setAsForegroundService();
       service.setForegroundNotificationInfo(
-        title: "RoadGuard Tracking",
-        content: "Starting GPS...",
+        title: "RoadGuard",
+        content: "Getting your location...",
       );
     }
 
@@ -100,9 +100,9 @@ class BackgroundTrackingService {
         // Update notification with speed and accuracy
         if (service is AndroidServiceInstance) {
           service.setForegroundNotificationInfo(
-            title: "RoadGuard Tracking",
+            title: "RoadGuard",
             content:
-                "Speed: ${speedKmh.toStringAsFixed(0)} km/h | ±${position.accuracy.toStringAsFixed(0)}m",
+                "${speedKmh.toStringAsFixed(0)} km/h",
           );
         }
 
@@ -123,8 +123,8 @@ class BackgroundTrackingService {
         service.invoke('log', {'message': 'GPS Error: $e'});
         if (service is AndroidServiceInstance) {
           service.setForegroundNotificationInfo(
-            title: "RoadGuard Error",
-            content: "GPS Error: $e",
+            title: "RoadGuard",
+            content: "Location lost \u2014 check your settings",
           );
         }
         service.invoke('error', {'message': e.toString()});

@@ -1636,6 +1636,308 @@ Deferred to Phase 3 (Issue #5).
 
 ---
 
+#### M059: Broken Hive Adapters — hive_generator_plus Generated Empty Serialization
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-18  
+**Detected By:** Self (Agent) — discovered during PR #7 round 3 review
+
+**Symptom:**
+All three Hive TypeAdapters (TripModel, RatingModel, DriverModel) wrote 0 fields and read no data. All persisted data was effectively lost/empty.
+
+**Cause:**
+`hive_generator_plus` v4.0.2 (383 downloads, 4 likes) generated completely broken adapters. The `write()` method wrote `writeByte(0)` (0 fields) and `read()` created models with default constructors, ignoring all `@HiveField` annotations.
+
+**Prevention:**
+- Always verify generated code is correct — check `.g.dart` files after running `build_runner`
+- Prefer well-maintained official packages: `hive_generator` (172K downloads) over obscure forks
+- Write integration tests that actually serialize/deserialize model data to catch adapter bugs
+
+**Fix:**
+Removed `hive_generator_plus` from dev_dependencies. Wrote hand-coded standalone adapter files (`*_adapter.dart`) for all three models, removing the `part` directive dependency. Bumped schema version to 3.
+
+---
+
+#### M060: DriverModel Region Field Never Populated
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Completeness)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+DriverModel has a `region` field (HiveField 6) but it was always `null`. The driver detail screen showed no region info.
+
+**Cause:**
+Created the field in the model but forgot to extract and pass the region from `PlateValidator.regionNames` when constructing a new `DriverModel` in `saveRating()`.
+
+**Prevention:**
+When adding a model field, search all construction sites to ensure the field is populated everywhere.
+
+**Fix:**
+Extract region code from `rating.plateNumber.split('-').first` and look up `PlateValidator.regionNames[regionCode]` in `saveRating()`.
+
+---
+
+#### M061: Tag Aggregation Loses Historical Frequency
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+After 100 ratings with "Safe" tag, adding one "Reckless" rating gave both tags equal weight (count=1), because `applyRating()` counted each entry in `commonTags` as 1.
+
+**Cause:**
+`commonTags` is a `List<String>` storing only tag names (not counts). Re-counting the list on each call reset all historical frequency data to 1.
+
+**Prevention:**
+When implementing aggregate statistics, always verify the data structure preserves the accumulation. A list of names cannot hold frequency data.
+
+**Fix:**
+Added `tagFrequency` field (`Map<String, int>`, HiveField 7) to DriverModel. `applyRating()` now accumulates counts in the map and derives `commonTags` (top 5) from it.
+
+---
+
+#### M062: Inconsistent Rating ID Generation
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Data Integrity)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+`rating_screen.dart` used `Uuid().v4()` for rating IDs but `driver_detail_screen.dart` used `DateTime.now().millisecondsSinceEpoch.toString()`, risking ID collisions.
+
+**Cause:**
+Quick rating sheet was developed as a separate component and didn't use the same ID pattern.
+
+**Prevention:**
+Extract ID generation to a shared utility. Always search codebase for existing patterns before implementing a similar one.
+
+**Fix:**
+Replaced `millisecondsSinceEpoch` with `const Uuid().v4()` in `driver_detail_screen.dart`.
+
+---
+
+#### M063: DRY Violation — Duplicated Rating Tag Constants
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+Good/bad tag lists (`_goodTags`, `_badTags`) were duplicated in `rating_screen.dart` and `driver_detail_screen.dart`.
+
+**Cause:**
+The quick rating sheet was developed inside `driver_detail_screen.dart` and copied the constants locally instead of sharing them.
+
+**Prevention:**
+When reusing the same data in multiple files, extract to a shared constants file immediately.
+
+**Fix:**
+Created `lib/features/trip/domain/constants/rating_constants.dart` with `goodDriverTags` and `badDriverTags`. Both screens now import from there.
+
+---
+
+#### M064: _isFirstBuild Flag Consumed on No-Op Rebuild
+**Status:** 🟢 Resolved  
+**Severity:** Low (UI Polish)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+If the parent widget rebuilt with the same digit value before an actual digit change, `_isFirstBuild` was set to `false` prematurely. The next real digit change would then animate when it should have been skipped.
+
+**Cause:**
+The `_isFirstBuild` check was outside the `digit != widget.digit` conditional, so any rebuild consumed it.
+
+**Prevention:**
+Guards that depend on "the first time X happens" should be inside the condition that detects X, not outside it.
+
+**Fix:**
+Moved `_isFirstBuild` check inside the `if (oldWidget.digit != widget.digit)` block in `didUpdateWidget`.
+
+---
+
+#### M065: Schema Migration Crashes Release Builds
+**Status:** 🟢 Resolved  
+**Severity:** Critical (App Crash)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+Previous fix gated box deletion to `kDebugMode` only. Release builds would skip deletion but then try to open Hive boxes with incompatible schemas, causing a crash.
+
+**Cause:**
+Over-correction from round 2 review — tried to preserve offline data in release but didn't implement forward migration, leaving boxes in an inconsistent state.
+
+**Prevention:**
+When gating code by build mode, always verify the "else" path is also correct. Pre-launch apps should not worry about data preservation since there are no real users.
+
+**Fix:**
+Removed `kDebugMode` gate. All builds now clear data boxes on schema change (pre-launch). Added TODO comment for forward migration post-launch.
+
+---
+
+#### M066: Screen Not Refreshing After Quick Rating
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 3)
+
+**Symptom:**
+After submitting a rating via the quick rating bottom sheet on `DriverDetailScreen`, the screen didn't show the new rating until the user navigated away and back.
+
+**Cause:**
+`showModalBottomSheet` returned `true` on success but the return value was never handled. The `ConsumerWidget` had no mechanism to trigger a rebuild.
+
+**Prevention:**
+When implementing modal flows that modify data, always handle the return value and trigger a UI refresh.
+
+**Fix:**
+Converted `DriverDetailScreen` to `ConsumerStatefulWidget`. Added `.then((rated) { if (rated == true && mounted) setState(() {}); })` to force rebuild after successful rating.
+
+---
+
+#### M067: Account Enumeration via Auth Error Messages
+**Status:** 🟢 Resolved  
+**Severity:** High (Security)  
+**Date Found:** 2026-02-18  
+**Detected By:** Copilot Review (PR #7 round 4)
+
+**Symptom:**
+Distinct error messages for `userNotFound` ("We couldn't find an account with that email") vs `wrongPassword` ("The password you entered is incorrect") vs `emailAlreadyInUse` ("This email is already in use") revealed to attackers which emails are registered, enabling account enumeration for phishing/credential stuffing.
+
+**Cause:**
+Error messages were written for UX clarity without considering security implications. Each auth failure mode had a unique, specific message.
+
+**Prevention:**
+Auth error messages shown to users must never reveal whether an email exists. Use a generic "email or password is incorrect" message for all credential errors. Keep distinct enum values for internal routing only.
+
+**Fix:**
+Changed `userNotFound`, `wrongPassword`, and `invalidCredential` messages to the same generic string: "The email or password you entered is incorrect". Changed `emailAlreadyInUse` to "Unable to create account. Try signing in instead." (does not confirm the email exists). Internal enum values preserved for the signup-offer dialog flow.
+
+---
+
+#### M068: Data Deletion on Sign-Out Instead of User Scoping
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing
+
+**Symptom:**
+Signing out deleted ALL trips, ratings, and drivers from the device. Signing back into the same account showed no data. The `clearUserData()` method was called during sign-out, wiping Hive boxes completely.
+
+**Cause:**
+Previous fix for "data isolation" (M049 duplicate) was too aggressive — called `clearUserData()` which clears all Hive boxes instead of scoping data by user.
+
+**Prevention:**
+Data isolation between accounts should use FILTERING (query by userId), not DELETION. Never delete community data (drivers, ratings) on sign-out.
+
+**Fix:**
+Reverted sign-out to only call `clearUser()`. Added `currentUserTrips` getter that filters by userId. Updated all screens (home, stats, search, settings) to use filtered trips. Clear Trip History now only deletes current user's trips.
+
+---
+
+#### M069: Missing raterId on Rating Creation
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-20  
+**Detected By:** Code Review (Self)
+
+**Symptom:**
+Ratings created in `rating_screen.dart` and `driver_detail_screen.dart` didn't set the `raterId` field, making it impossible to scope ratings by user.
+
+**Cause:**
+The `raterId` field existed on `RatingModel` but was never populated during creation.
+
+**Prevention:**
+When a model has a user-association field, ensure it's populated at ALL creation points.
+
+**Fix:**
+Added `raterId: StorageService.instance.userId` to both `RatingModel` creation sites.
+
+---
+
+#### M070: Incomplete Ghana Plate Region Codes
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Feature Gap)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing + Research
+
+**Symptom:**
+Plate validator only recognized 22 region codes. Many valid Ghana plates (e.g. GB, GC, GE, AE, AK, EN, VA, WT) were rejected as "Unknown region".
+
+**Cause:**
+Initial region code list was incomplete. Ghana DVLA issues supplemental codes per region as registration demand grows (e.g. Greater Accra has 15+ codes).
+
+**Prevention:**
+Research official sources (DVLA, Wikipedia) for complete data before implementing validators. Validate against real-world examples.
+
+**Fix:**
+Expanded `validRegions` to 50+ codes covering all 16 regions plus special codes (police, fire, prisons, diplomatic). Updated `regionNames` map. Changed number regex from `\d{4,5}` to `\d{1,4}` to match actual Ghana format (1-9999).
+
+---
+
+#### M071: Bottom Sheet Not Dismissed on Tab Switch
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-20  
+**Detected By:** Device Testing
+
+**Symptom:**
+Opening trip details bottom sheet on Stats tab, then switching to another tab via FloatingNavBar, left the bottom sheet visible over the new tab content.
+
+**Cause:**
+`showModalBottomSheet` pushes a modal route on the shell navigator. GoRouter's `context.go()` replaces the child widget but doesn't auto-pop modal routes from the navigator stack.
+
+**Prevention:**
+When using `showModalBottomSheet` inside tab-based navigation, track open state and dismiss in `deactivate()`.
+
+**Fix:**
+Converted `_StatsContent` to `StatefulWidget`, added `_isSheetOpen` tracking flag, and `deactivate()` override that pops the sheet if open.
+
+---
+
+#### M072: User ID Never Persisted to Hive After Login
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Data Loss)  
+**Date Found:** 2026-02-19  
+**Detected By:** Device Testing
+
+**Symptom:**
+Trips saved after a trip recording didn't appear in the user's Stats, Home quick stats, or Search trips. The plate number showed in driver search (community data) but trips were invisible. Also, `hasTripsWithPlate` always returned false, preventing users from rating drivers they rode with.
+
+**Cause:**
+`StorageService.saveUserLogin()` was defined but NEVER called anywhere. After Firebase Auth login, `_handleResult()` set `AuthState` to `AuthAuthenticated` but never persisted `userId` to Hive. This meant `StorageService.userId` returned null. Trips were saved with userId='guest' (the fallback), but `currentUserTrips` returned empty because `uid == null` short-circuits to `[]`.
+
+**Prevention:**
+When adding a method like `saveUserLogin()`, immediately verify it has at least one call site. Write an integration test that verifies the full sign-in → create trip → query trips flow.
+
+**Fix:**
+Called `saveUserLogin()` in `_handleResult()`, `checkEmailVerified()`, and in the router redirect (for app restart with existing Firebase session). This ensures userId is always persisted before any trip or rating operations.
+
+---
+
+#### M073: Search Uses Exact String Match Only
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-19  
+**Detected By:** Device Testing
+
+**Symptom:**
+Searching for "GR1234" didn't find "GR-1234-21". Searching for "JR222" didn't find "JR-2220-19". Users had to type the exact formatted plate string with hyphens to get results.
+
+**Cause:**
+`searchDrivers()` used `String.contains()` on the raw formatted plate. Since "GR1234" doesn't appear in "GR-1234-21" (because of hyphens), the search returned nothing.
+
+**Prevention:**
+Search implementations should ALWAYS normalize input (strip separators, case-fold) before comparison. Consider fuzzy matching for user-facing search where typos are common.
+
+**Fix:**
+Created `PlateSearchEngine` with fuzzy matching: normalizes both query and candidates by stripping non-alphanumeric chars, scores by relevance (exact > starts-with > contains > fuzzy edit distance), and returns results ranked by score.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
@@ -1862,15 +2164,95 @@ Closed PR #4, using PR #3 which correctly targets develop.
 
 ---
 
+#### M048: Black Text on Red Background (Contrast)
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UI/Accessibility)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Sign-out, "Turn Off", and "Delete All" buttons in settings dialogs had black text on red background — unreadable in dark mode.
+
+**Cause:**
+`FilledButton.styleFrom(backgroundColor: colorScheme.error)` was used without setting `foregroundColor`. Default `foregroundColor` falls through to `colorScheme.onPrimary` (black in dark theme) instead of `colorScheme.onError` (white).
+
+**Prevention:**
+ALWAYS pair `backgroundColor` overrides on `FilledButton` with the matching `foregroundColor`. When using `error`, use `onError`. When using `primary`, use `onPrimary`.
+
+**Fix:**
+Added `foregroundColor: colorScheme.onError` to all three `FilledButton.styleFrom` calls in settings_screen.dart.
+
+---
+
+#### M049: Trip Details Sheet Fills Entire Screen
+**Status:** 🟢 Resolved  
+**Severity:** Medium (UX)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Trip details bottom sheet expanded to cover 100% of the screen for long trips, preventing users from swiping it down to dismiss.
+
+**Cause:**
+`showModalBottomSheet` used `isScrollControlled: true` with `SingleChildScrollView` and `MainAxisSize.min` but no max height constraint.
+
+**Prevention:**
+Always add `constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8)` to `showModalBottomSheet` with `isScrollControlled: true` to reserve space for dismissal.
+
+**Fix:**
+Added `constraints` parameter capping the sheet at 80% of screen height.
+
+---
+
+#### M050: Unrestricted Driver Ratings
+**Status:** 🟢 Resolved  
+**Severity:** High (Data Integrity)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+Any user could rate any driver by searching their plate number, even without ever riding with that driver. Allows spam/fake ratings.
+
+**Cause:**
+No trip history check before allowing rating submission.
+
+**Prevention:**
+Enforce business rules at the action layer — require trip history before allowing rating.
+
+**Fix:**
+Added `hasTripsWithPlate()` to `RatingRepository`. Gate the "Rate this driver" action in `driver_detail_screen.dart` — shows SnackBar if user has no trips with that plate.
+
+---
+
+#### M051: Data Leaks Between User Accounts
+**Status:** 🟢 Resolved  
+**Severity:** Critical (Privacy/Security)  
+**Date Found:** 2026-02-10  
+**Detected By:** User (device testing)
+
+**Symptom:**
+After signing out and into a different account (or guest), trips and ratings from the previous account were still visible.
+
+**Cause:**
+Sign-out only cleared the user identity box but not the data boxes (trips, ratings, drivers).
+
+**Prevention:**
+Always scope or clear user-specific data on sign-out.
+
+**Fix:**
+Added `clearUserData()` to `StorageService` (clears trips, ratings, drivers, user boxes). Called from `AuthNotifier.signOut()`. Updated sign-out dialog text to inform user.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
-| 🔴 Critical | 4 | 1 | 0 |
-| 🟠 High | 4 | 0 | 4 |
-| 🟡 Medium | 4 | 0 | 2 |
+| 🔴 Critical | 4 | 1 | 1 |
+| 🟠 High | 5 | 0 | 5 |
+| 🟡 Medium | 6 | 0 | 4 |
 | 🟢 Low | 2 | 0 | 1 |
-| **Total** | **14** | **1** | **7** |
+| **Total** | **17** | **1** | **11** |
 
 ---
 
