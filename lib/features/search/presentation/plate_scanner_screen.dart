@@ -1,0 +1,655 @@
+/// Plate Scanner Screen — Camera viewfinder for scanning car numbers.
+///
+/// Uses the device camera with a guide overlay to help passengers
+/// frame the plate number. OCR processes the image on-device.
+library;
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import 'package:road_guard/core/theme/app_colors.dart';
+import 'package:road_guard/core/theme/app_dimensions.dart';
+import 'package:road_guard/shared/services/ocr_service.dart';
+import 'package:road_guard/shared/services/permission_service.dart';
+import 'package:road_guard/shared/services/plate_recognition_service.dart';
+
+/// Screen that opens the camera for scanning a vehicle plate number.
+///
+/// Returns the scanned plate number as a [String] via [Navigator.pop].
+/// Returns `null` if the user cancels or scanning fails.
+class PlateScannerScreen extends StatefulWidget {
+  const PlateScannerScreen({super.key});
+
+  @override
+  State<PlateScannerScreen> createState() => _PlateScannerScreenState();
+}
+
+class _PlateScannerScreenState extends State<PlateScannerScreen>
+    with WidgetsBindingObserver {
+  CameraController? _cameraController;
+  List<CameraDescription>? _cameras;
+  bool _isInitialized = false;
+  bool _isProcessing = false;
+  bool _hasError = false;
+  String? _errorMessage;
+  String? _detectedPlate;
+  bool _flashOn = false;
+
+  final _ocrService = OcrService();
+  final _plateRecognition = PlateRecognitionService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeCamera();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
+    _ocrService.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive) {
+      controller.dispose();
+      _cameraController = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      // Check camera permission first
+      var camState = await PermissionService.instance.checkCameraPermission();
+      if (!camState.canUseCamera) {
+        camState = await PermissionService.instance.requestCameraPermission();
+      }
+      if (!camState.canUseCamera) {
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+            _errorMessage = camState.message;
+          });
+        }
+        return;
+      }
+
+      _cameras = await availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'No camera found on this device.';
+        });
+        return;
+      }
+
+      // Use the back camera (index 0 is usually rear)
+      final camera = _cameras!.first;
+      _cameraController = CameraController(
+        camera,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await _cameraController!.initialize();
+
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Could not start the camera. '
+              'Make sure camera access is allowed.';
+        });
+      }
+    }
+  }
+
+  Future<void> _captureAndProcess() async {
+    if (_isProcessing || _cameraController == null) return;
+
+    setState(() {
+      _isProcessing = true;
+      _detectedPlate = null;
+    });
+
+    try {
+      final image = await _cameraController!.takePicture();
+      final file = File(image.path);
+
+      final ocrResult = await _ocrService.processImage(file);
+
+      if (!ocrResult.hasText) {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+            _detectedPlate = null;
+          });
+          _showSnackBar(
+            'No text found. Move closer to the car number and try again.',
+          );
+        }
+        return;
+      }
+
+      final candidates = _plateRecognition.extractPlates(ocrResult);
+
+      if (candidates.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+            _detectedPlate = null;
+          });
+          _showSnackBar(
+            'Couldn\'t read a car number. '
+            'Try again or type it in manually.',
+          );
+        }
+        return;
+      }
+
+      // Take the best candidate
+      final best = candidates.first;
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _detectedPlate = best.plateNumber;
+        });
+      }
+
+      // Clean up the captured file
+      try {
+        await file.delete();
+      } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showSnackBar(
+          'Couldn\'t read the number. Try again or type it in.',
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_cameraController == null) return;
+    try {
+      _flashOn = !_flashOn;
+      await _cameraController!.setFlashMode(
+        _flashOn ? FlashMode.torch : FlashMode.off,
+      );
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  void _confirmPlate() {
+    if (_detectedPlate != null) {
+      Navigator.of(context).pop(_detectedPlate);
+    }
+  }
+
+  void _retake() {
+    setState(() {
+      _detectedPlate = null;
+    });
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Camera preview
+          if (_isInitialized && _cameraController != null)
+            Center(child: CameraPreview(_cameraController!))
+          else if (_hasError)
+            _ErrorView(message: _errorMessage ?? 'Camera not available')
+          else
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+
+          // Guide overlay
+          if (_isInitialized && _detectedPlate == null)
+            const _ScanGuideOverlay(),
+
+          // Top bar
+          Positioned(
+            top: MediaQuery.of(context).padding.top + AppDimensions.spacingSm,
+            left: AppDimensions.spacingSm,
+            right: AppDimensions.spacingSm,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Close button
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(LucideIcons.x, color: Colors.white),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black54,
+                  ),
+                ),
+                // Flash toggle
+                if (_isInitialized)
+                  IconButton(
+                    onPressed: _toggleFlash,
+                    icon: Icon(
+                      _flashOn ? LucideIcons.zapOff : LucideIcons.zap,
+                      color: Colors.white,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Bottom controls
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _detectedPlate != null
+                ? _PlateConfirmation(
+                    plateNumber: _detectedPlate!,
+                    onConfirm: _confirmPlate,
+                    onRetake: _retake,
+                    colorScheme: colorScheme,
+                    theme: theme,
+                  )
+                : _CaptureControls(
+                    isProcessing: _isProcessing,
+                    onCapture: _captureAndProcess,
+                    theme: theme,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Camera Preview ────────────────────────────────────────
+
+/// Wraps [CameraPreview] to size it correctly.
+class CameraPreview extends StatelessWidget {
+  final CameraController controller;
+
+  const CameraPreview(this.controller, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: controller.value.previewSize?.height ?? 1,
+          height: controller.value.previewSize?.width ?? 1,
+          child: controller.buildPreview(),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Scan Guide Overlay ────────────────────────────────────
+
+class _ScanGuideOverlay extends StatelessWidget {
+  const _ScanGuideOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _GuideBoxPainter(),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Position the hint text below the guide box
+              const SizedBox(height: 110),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.spacingMd,
+                  vertical: AppDimensions.spacingSm,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius:
+                      BorderRadius.circular(AppDimensions.radiusFull),
+                ),
+                child: Text(
+                  'Position the car number inside the frame',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Draws a rounded guide rectangle with semi-transparent overlay.
+class _GuideBoxPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Semi-transparent overlay
+    final overlayPaint = Paint()..color = Colors.black45;
+
+    // Guide box dimensions — sized for a license plate aspect ratio
+    final boxWidth = size.width * 0.82;
+    final boxHeight = boxWidth * 0.28;
+    final left = (size.width - boxWidth) / 2;
+    final top = (size.height - boxHeight) / 2 - 40;
+    final guideRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(left, top, boxWidth, boxHeight),
+      const Radius.circular(AppDimensions.radiusMd),
+    );
+
+    // Draw overlay with cutout
+    final overlayPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final cutoutPath = Path()..addRRect(guideRect);
+    final combinedPath =
+        Path.combine(PathOperation.difference, overlayPath, cutoutPath);
+    canvas.drawPath(combinedPath, overlayPaint);
+
+    // Draw guide border
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    canvas.drawRRect(guideRect, borderPaint);
+
+    // Draw corner accents
+    final accentPaint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    const cornerLen = 24.0;
+    final r = guideRect.outerRect;
+
+    // Top-left
+    canvas.drawLine(Offset(r.left, r.top + cornerLen),
+        Offset(r.left, r.top), accentPaint);
+    canvas.drawLine(Offset(r.left, r.top),
+        Offset(r.left + cornerLen, r.top), accentPaint);
+
+    // Top-right
+    canvas.drawLine(Offset(r.right - cornerLen, r.top),
+        Offset(r.right, r.top), accentPaint);
+    canvas.drawLine(Offset(r.right, r.top),
+        Offset(r.right, r.top + cornerLen), accentPaint);
+
+    // Bottom-left
+    canvas.drawLine(Offset(r.left, r.bottom - cornerLen),
+        Offset(r.left, r.bottom), accentPaint);
+    canvas.drawLine(Offset(r.left, r.bottom),
+        Offset(r.left + cornerLen, r.bottom), accentPaint);
+
+    // Bottom-right
+    canvas.drawLine(Offset(r.right - cornerLen, r.bottom),
+        Offset(r.right, r.bottom), accentPaint);
+    canvas.drawLine(Offset(r.right, r.bottom),
+        Offset(r.right, r.bottom - cornerLen), accentPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─── Capture Controls ──────────────────────────────────────
+
+class _CaptureControls extends StatelessWidget {
+  final bool isProcessing;
+  final VoidCallback onCapture;
+  final ThemeData theme;
+
+  const _CaptureControls({
+    required this.isProcessing,
+    required this.onCapture,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppDimensions.spacingLg,
+        AppDimensions.spacingMd,
+        AppDimensions.spacingLg,
+        MediaQuery.of(context).padding.bottom + AppDimensions.spacingLg,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black87],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Capture button
+          GestureDetector(
+            onTap: isProcessing ? null : onCapture,
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+                color: isProcessing ? Colors.white24 : Colors.white30,
+              ),
+              child: isProcessing
+                  ? const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Icon(
+                      LucideIcons.camera,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          Text(
+            isProcessing ? 'Reading...' : 'Tap to scan',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white70,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Plate Confirmation ────────────────────────────────────
+
+class _PlateConfirmation extends StatelessWidget {
+  final String plateNumber;
+  final VoidCallback onConfirm;
+  final VoidCallback onRetake;
+  final ColorScheme colorScheme;
+  final ThemeData theme;
+
+  const _PlateConfirmation({
+    required this.plateNumber,
+    required this.onConfirm,
+    required this.onRetake,
+    required this.colorScheme,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppDimensions.spacingLg,
+        AppDimensions.spacingLg,
+        AppDimensions.spacingLg,
+        MediaQuery.of(context).padding.bottom + AppDimensions.spacingLg,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppDimensions.radiusXl),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Detected plate display
+          Text(
+            'Car number found',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.spacingLg,
+              vertical: AppDimensions.spacingMd,
+            ),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius:
+                  BorderRadius.circular(AppDimensions.radiusMd),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: Text(
+              plateNumber,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingLg),
+
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onRetake,
+                  icon: const Icon(LucideIcons.refreshCw, size: 18),
+                  label: const Text('Scan again'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize:
+                        const Size.fromHeight(AppDimensions.buttonHeightLg),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppDimensions.spacingMd),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onConfirm,
+                  icon: const Icon(LucideIcons.check, size: 18),
+                  label: const Text('Use this number'),
+                  style: FilledButton.styleFrom(
+                    minimumSize:
+                        const Size.fromHeight(AppDimensions.buttonHeightLg),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Error View ────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+
+  const _ErrorView({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.spacingXl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.cameraOff,
+              size: 56,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: AppDimensions.spacingMd),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: AppDimensions.spacingLg),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white38),
+              ),
+              child: const Text('Go back'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

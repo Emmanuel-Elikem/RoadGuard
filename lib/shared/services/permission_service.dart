@@ -1,6 +1,6 @@
-/// Permission Service - Handles runtime permissions for location access.
+/// Permission Service - Handles runtime permissions for location and camera.
 ///
-/// Provides a clean API for checking and requesting location permissions
+/// Provides a clean API for checking and requesting permissions
 /// with proper state tracking and error handling.
 library;
 
@@ -27,6 +27,40 @@ enum LocationPermissionState {
 
   /// Full "always" permission granted (background tracking).
   grantedAlways,
+}
+
+/// Represents the current state of camera permissions.
+enum CameraPermissionState {
+  /// Permission not yet determined.
+  unknown,
+
+  /// User denied permission (can ask again).
+  denied,
+
+  /// User permanently denied permission (must go to settings).
+  deniedForever,
+
+  /// Camera access granted.
+  granted,
+}
+
+/// Extension for camera permission helpers.
+extension CameraPermissionStateX on CameraPermissionState {
+  /// Whether camera can be used.
+  bool get canUseCamera => this == CameraPermissionState.granted;
+
+  /// User-friendly message for denied state.
+  String get message {
+    return switch (this) {
+      CameraPermissionState.unknown =>
+        'Camera access is needed to scan car numbers.',
+      CameraPermissionState.denied =>
+        'Camera access is needed to scan car numbers. Tap below to allow it.',
+      CameraPermissionState.deniedForever =>
+        'Camera access was blocked. Open Settings, find RoadGuard, and turn on Camera.',
+      CameraPermissionState.granted => 'Camera access enabled.',
+    };
+  }
 }
 
 /// Extension for user-friendly messages.
@@ -178,6 +212,38 @@ class PermissionService {
         LocationPermissionState.deniedForever,
       ph.PermissionStatus.provisional =>
         LocationPermissionState.grantedWhileInUse,
+    };
+  }
+
+  // ==========================================================================
+  // Camera Permissions
+  // ==========================================================================
+
+  /// Check current camera permission state without requesting.
+  Future<CameraPermissionState> checkCameraPermission() async {
+    final status = await ph.Permission.camera.status;
+    debugPrint('PermissionService: Camera status = $status');
+    return _mapCameraStatus(status);
+  }
+
+  /// Request camera permission from user.
+  Future<CameraPermissionState> requestCameraPermission() async {
+    debugPrint('PermissionService: Requesting camera permission');
+    final status = await ph.Permission.camera.request();
+    debugPrint('PermissionService: Camera request result = $status');
+    return _mapCameraStatus(status);
+  }
+
+  /// Map permission_handler status to camera state enum.
+  CameraPermissionState _mapCameraStatus(ph.PermissionStatus status) {
+    return switch (status) {
+      ph.PermissionStatus.granted => CameraPermissionState.granted,
+      ph.PermissionStatus.limited => CameraPermissionState.granted,
+      ph.PermissionStatus.denied => CameraPermissionState.denied,
+      ph.PermissionStatus.restricted => CameraPermissionState.deniedForever,
+      ph.PermissionStatus.permanentlyDenied =>
+        CameraPermissionState.deniedForever,
+      ph.PermissionStatus.provisional => CameraPermissionState.granted,
     };
   }
 }

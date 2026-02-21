@@ -14,6 +14,7 @@ import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/services/storage_service.dart';
 import 'package:road_guard/shared/utils/plate_number_formatter.dart';
 import 'package:road_guard/shared/utils/plate_validator.dart';
+import 'package:road_guard/features/search/presentation/plate_scanner_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class RatingScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,18 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
     _commentController.dispose();
     _plateController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const PlateScannerScreen()),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _plateController.text = result;
+        _plateError = null;
+      });
+    }
   }
 
   Future<void> _saveTrip({bool skipRating = false}) async {
@@ -192,31 +205,47 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
 
             // === Plate Number Input ===
             Text(
-              'Vehicle plate number',
+              'Car number',
               style: theme.textTheme.titleMedium,
             ),
             const Gap(AppDimensions.spacingSm),
-            TextField(
-              controller: _plateController,
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: [PlateNumberFormatter()],
-              decoration: InputDecoration(
-                hintText: 'e.g. GR-1234-24',
-                errorText: _plateError,
-                prefixIcon: const Icon(LucideIcons.car),
-                suffixIcon: _plateController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(LucideIcons.x),
-                        onPressed: () {
-                          _plateController.clear();
-                          setState(() => _plateError = null);
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (value) {
-                setState(() => _plateError = null);
-              },
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _plateController,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [PlateNumberFormatter()],
+                    decoration: InputDecoration(
+                      hintText: 'e.g. GR-1234-24',
+                      errorText: _plateError,
+                      prefixIcon: const Icon(LucideIcons.car),
+                      suffixIcon: _plateController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(LucideIcons.x),
+                              onPressed: () {
+                                _plateController.clear();
+                                setState(() => _plateError = null);
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _plateError = null);
+                    },
+                  ),
+                ),
+                const Gap(AppDimensions.spacingSm),
+                SizedBox(
+                  height: AppDimensions.inputHeight,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _openScanner,
+                    icon: const Icon(LucideIcons.camera, size: 20),
+                    label: const Text('Scan'),
+                  ),
+                ),
+              ],
             ),
 
             const Gap(AppDimensions.spacingXl),
