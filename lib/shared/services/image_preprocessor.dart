@@ -76,11 +76,7 @@ class ImagePreprocessor {
     try {
       final result = await compute(
         _processInIsolate,
-        _ProcessArgs(
-          imagePath: imageFile.path,
-          screenWidth: screenWidth,
-          screenHeight: screenHeight,
-        ),
+        (imageFile.path, screenWidth, screenHeight),
       );
 
       if (result == null) {
@@ -103,10 +99,16 @@ class ImagePreprocessor {
   }
 
   /// Runs in an isolate to avoid blocking the UI.
-  static Uint8List? _processInIsolate(_ProcessArgs args) {
+  ///
+  /// Takes a record `(imagePath, screenWidth, screenHeight)` to
+  /// guarantee all arguments are trivially sendable across isolates.
+  static Uint8List? _processInIsolate(
+    (String imagePath, double screenWidth, double screenHeight) args,
+  ) {
+    final (imagePath, screenWidth, screenHeight) = args;
     try {
       // Decode the image
-      final bytes = File(args.imagePath).readAsBytesSync();
+      final bytes = File(imagePath).readAsBytesSync();
       final original = img.decodeImage(bytes);
       if (original == null) return null;
 
@@ -116,8 +118,8 @@ class ImagePreprocessor {
       final cropRect = calculateCropRect(
         imageWidth: original.width,
         imageHeight: original.height,
-        screenWidth: args.screenWidth,
-        screenHeight: args.screenHeight,
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
       );
 
       // 1. Crop to the guide box area (with some padding)
@@ -213,19 +215,6 @@ class ImagePreprocessor {
 
     return CropRect(x: x, y: y, width: w, height: h);
   }
-}
-
-/// Arguments passed to the isolate for image processing.
-class _ProcessArgs {
-  final String imagePath;
-  final double screenWidth;
-  final double screenHeight;
-
-  const _ProcessArgs({
-    required this.imagePath,
-    required this.screenWidth,
-    required this.screenHeight,
-  });
 }
 
 /// Rectangle for crop coordinates.

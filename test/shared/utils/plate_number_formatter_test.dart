@@ -68,5 +68,21 @@ void main() {
       final result = format('GR-12', cursor: 5);
       expect(result.selection.baseOffset, 5);
     });
+
+    test('cursor adjusts when invalid chars are removed before it', () {
+      // Typing G@R with cursor after @ (position 2)
+      // Should strip @, cursor should land after G (position 1)
+      final result = format('G@R', cursor: 2);
+      expect(result.text, 'GR');
+      expect(result.selection.baseOffset, 1);
+    });
+
+    test('cursor correct when multiple invalid chars removed', () {
+      // 'A#B!C' with cursor at end (pos 5)
+      // Cleaned: 'ABC', cursor mapped: 3
+      final result = format('A#B!C', cursor: 5);
+      expect(result.text, 'ABC');
+      expect(result.selection.baseOffset, 3);
+    });
   });
 }

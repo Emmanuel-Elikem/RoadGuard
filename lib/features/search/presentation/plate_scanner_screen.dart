@@ -23,7 +23,15 @@ import 'package:road_guard/shared/services/plate_recognition_service.dart';
 /// Returns the scanned plate number as a [String] via [Navigator.pop].
 /// Returns `null` if the user cancels or scanning fails.
 class PlateScannerScreen extends StatefulWidget {
-  const PlateScannerScreen({super.key});
+  /// Services can be injected for testing; defaults to real implementations.
+  final OcrService? ocrService;
+  final PlateRecognitionService? plateRecognitionService;
+
+  const PlateScannerScreen({
+    super.key,
+    this.ocrService,
+    this.plateRecognitionService,
+  });
 
   @override
   State<PlateScannerScreen> createState() => _PlateScannerScreenState();
@@ -41,12 +49,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
   bool _flashOn = false;
   final _plateEditController = TextEditingController();
 
-  final _ocrService = OcrService();
-  final _plateRecognition = PlateRecognitionService();
+  late final OcrService _ocrService;
+  late final PlateRecognitionService _plateRecognition;
 
   @override
   void initState() {
     super.initState();
+    _ocrService = widget.ocrService ?? OcrService();
+    _plateRecognition = widget.plateRecognitionService ?? PlateRecognitionService();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
   }
@@ -136,12 +146,14 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
       _detectedPlate = null;
     });
 
+    File? file;
+    PreprocessedImage? processed;
     try {
       final image = await _cameraController!.takePicture();
-      final file = File(image.path);
+      file = File(image.path);
 
       // Crop to the guide box region and enhance for OCR
-      final processed = await ImagePreprocessor.processForOcr(
+      processed = await ImagePreprocessor.processForOcr(
         imageFile: file,
         screenWidth: screenSize.width,
         screenHeight: screenSize.height,
@@ -159,8 +171,6 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
             'No text found. Move closer to the car number and try again.',
           );
         }
-        // Clean up files
-        _cleanupFiles(file, processed);
         return;
       }
 
@@ -175,7 +185,6 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
             _plateEditController.text = _detectedPlate!;
           });
         }
-        _cleanupFiles(file, processed);
         return;
       }
 
@@ -188,8 +197,6 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
           _plateEditController.text = best.plateNumber;
         });
       }
-
-      _cleanupFiles(file, processed);
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -197,15 +204,17 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
           'Could not read the number. Try again or type it manually.',
         );
       }
+    } finally {
+      if (file != null) _cleanupFiles(file, processed);
     }
   }
 
   /// Clean up temporary image files.
-  void _cleanupFiles(File original, PreprocessedImage processed) {
+  void _cleanupFiles(File original, PreprocessedImage? processed) {
     try {
       original.deleteSync();
     } catch (_) {}
-    if (processed.wasProcessed) {
+    if (processed != null && processed.wasProcessed) {
       try {
         processed.file.deleteSync();
       } catch (_) {}
@@ -259,7 +268,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
         children: [
           // Camera preview
           if (_isInitialized && _cameraController != null)
-            Center(child: CameraPreview(_cameraController!))
+            Center(child: _CameraPreviewCover(_cameraController!))
           else if (_hasError)
             _ErrorView(message: _errorMessage ?? 'Camera not available')
           else
@@ -330,11 +339,11 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
 
 // ─── Camera Preview ────────────────────────────────────────
 
-/// Wraps [CameraPreview] to size it correctly.
-class CameraPreview extends StatelessWidget {
+/// Wraps the camera preview in FittedBox.cover to fill the screen.
+class _CameraPreviewCover extends StatelessWidget {
   final CameraController controller;
 
-  const CameraPreview(this.controller, {super.key});
+  const _CameraPreviewCover(this.controller);
 
   @override
   Widget build(BuildContext context) {
@@ -406,11 +415,11 @@ class _GuideBoxPainter extends CustomPainter {
     // Semi-transparent overlay
     final overlayPaint = Paint()..color = Colors.black45;
 
-    // Guide box dimensions — sized for a license plate aspect ratio
-    final boxWidth = size.width * 0.82;
-    final boxHeight = boxWidth * 0.28;
+    // Guide box dimensions — matches GuideBoxRegion used by ImagePreprocessor
+    final boxWidth = size.width * GuideBoxRegion.widthFraction;
+    final boxHeight = boxWidth * GuideBoxRegion.aspectRatio;
     final left = (size.width - boxWidth) / 2;
-    final top = (size.height - boxHeight) / 2 - 40;
+    final top = (size.height - boxHeight) / 2 - GuideBoxRegion.verticalOffset;
     final guideRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(left, top, boxWidth, boxHeight),
       const Radius.circular(AppDimensions.radiusMd),

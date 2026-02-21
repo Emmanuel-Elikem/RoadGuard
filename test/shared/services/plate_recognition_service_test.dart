@@ -123,12 +123,8 @@ void main() {
     });
 
     group('Strategy 3 — OCR error correction', () {
-      test('corrects O→0 in digit positions', () {
-        // "GR-12O4-24" → Strategy 2 matches GR-12-O4 (valid suffix).
-        // To test OCR digit correction, use a case where the
-        // region stays clean but numbers are embedded so the
-        // regex cannot find a match without correction.
-        // "GR I234 24" also tests I→1.
+      test('corrects I→1 in digit positions', () {
+        // "GR I234 24" — I in a digit position should become 1.
         final result = service.extractPlates(_ocrFromText('GR I234 24'));
 
         expect(result, isNotEmpty);

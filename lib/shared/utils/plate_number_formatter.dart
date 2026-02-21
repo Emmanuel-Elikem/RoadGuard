@@ -18,20 +18,29 @@ class PlateNumberFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Keep alphanumeric, hyphens, and spaces
-    final cleaned = newValue.text
-        .replaceAll(RegExp(r'[^a-zA-Z0-9\- ]'), '')
-        .toUpperCase();
+    final raw = newValue.text;
+    final validChars = RegExp(r'[a-zA-Z0-9\- ]');
 
-    // Preserve cursor position relative to new length
-    final cursorOffset = cleaned.length < newValue.selection.baseOffset
-        ? cleaned.length
-        : newValue.selection.baseOffset;
+    // Build cleaned text and map cursor offset simultaneously — count
+    // only valid characters up to the original cursor position so the
+    // cursor stays in the right place after stripping invalid chars.
+    final buffer = StringBuffer();
+    int mappedOffset = 0;
+    final origOffset = newValue.selection.baseOffset;
+
+    for (var i = 0; i < raw.length; i++) {
+      if (validChars.hasMatch(raw[i])) {
+        buffer.write(raw[i].toUpperCase());
+        if (i < origOffset) mappedOffset++;
+      }
+    }
+
+    final cleaned = buffer.toString();
 
     return TextEditingValue(
       text: cleaned,
       selection: TextSelection.collapsed(
-        offset: cursorOffset.clamp(0, cleaned.length),
+        offset: mappedOffset.clamp(0, cleaned.length),
       ),
     );
   }

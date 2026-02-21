@@ -32,7 +32,6 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _plateController = TextEditingController();
   bool _isSaving = false;
-  String? _plateError;
 
   @override
   void initState() {
@@ -57,7 +56,6 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
     if (result != null && mounted) {
       setState(() {
         _plateController.text = result;
-        _plateError = null;
       });
     }
   }
@@ -211,21 +209,18 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                     inputFormatters: [PlateNumberFormatter()],
                     decoration: InputDecoration(
                       hintText: 'e.g. GR-1234-24',
-                      errorText: _plateError,
                       prefixIcon: const Icon(LucideIcons.car),
                       suffixIcon: _plateController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(LucideIcons.x),
                               onPressed: () {
                                 _plateController.clear();
-                                setState(() => _plateError = null);
+                                setState(() {});
                               },
                             )
                           : null,
                     ),
-                    onChanged: (value) {
-                      setState(() => _plateError = null);
-                    },
+                    onChanged: (_) => setState(() {}),  
                   ),
                 ),
                 const Gap(AppDimensions.spacingSm),
