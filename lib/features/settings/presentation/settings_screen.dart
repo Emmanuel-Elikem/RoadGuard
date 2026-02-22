@@ -634,12 +634,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await tileService.clearStore();
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Map cache cleared')),
-                );
+              try {
+                await tileService.clearStore();
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Map cache cleared')),
+                  );
+                }
+              } catch (_) {
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not clear cache. Try again later.'),
+                    ),
+                  );
+                }
               }
             },
             child: Text(

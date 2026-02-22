@@ -68,7 +68,7 @@ class TripController extends _$TripController {
     state = TripState.recording;
     
     // Persist draft immediately so it survives app kill
-    _persistDraftTrip();
+    unawaited(_persistDraftTrip());
     
     // Subscribe to location updates from the shared broadcast stream
     _locationSubscription?.cancel();
@@ -118,7 +118,7 @@ class TripController extends _$TripController {
     );
     
     // Clear draft — trip is now finalized
-    _clearDraftTrip();
+    await _clearDraftTrip();
     
     state = TripState.idle;
   }
@@ -162,22 +162,25 @@ class TripController extends _$TripController {
   // ===========================================================================
 
   /// Persist current trip state to Hive so it can be resumed after app kill.
-  void _persistDraftTrip() {
+  Future<void> _persistDraftTrip() async {
     if (_currentTrip == null || _startTime == null) return;
     try {
       final storage = ref.read(storageServiceProvider);
       final settingsBox = storage.settingsBox;
-      settingsBox.put(_kDraftTripId, _currentTrip!.id);
-      settingsBox.put(_kDraftTripUserId, _currentTrip!.userId);
-      settingsBox.put(_kDraftTripStartTime, _startTime!.toIso8601String());
-      settingsBox.put(_kDraftTripMaxSpeed, _maxSpeed);
-      settingsBox.put(_kDraftTripDistance, _totalDistance);
 
-      // Encode route points as JSON string (Hive can't store List<Map>)
+      // Encode route points as a CSV string (lat,lng,speed;...)
       final routeJson = _routePoints
           .map((r) => '${r.latitude},${r.longitude},${r.speedMs}')
           .join(';');
-      settingsBox.put(_kDraftTripRoutePoints, routeJson);
+
+      await Future.wait([
+        settingsBox.put(_kDraftTripId, _currentTrip!.id),
+        settingsBox.put(_kDraftTripUserId, _currentTrip!.userId),
+        settingsBox.put(_kDraftTripStartTime, _startTime!.toIso8601String()),
+        settingsBox.put(_kDraftTripMaxSpeed, _maxSpeed),
+        settingsBox.put(_kDraftTripDistance, _totalDistance),
+        settingsBox.put(_kDraftTripRoutePoints, routeJson),
+      ]);
 
       debugPrint('TripController: Draft persisted '
           '(${_routePoints.length} points, '
@@ -188,16 +191,18 @@ class TripController extends _$TripController {
   }
 
   /// Clear the draft trip from Hive (called after stop or discard).
-  void _clearDraftTrip() {
+  Future<void> _clearDraftTrip() async {
     try {
       final storage = ref.read(storageServiceProvider);
       final settingsBox = storage.settingsBox;
-      settingsBox.delete(_kDraftTripId);
-      settingsBox.delete(_kDraftTripUserId);
-      settingsBox.delete(_kDraftTripStartTime);
-      settingsBox.delete(_kDraftTripRoutePoints);
-      settingsBox.delete(_kDraftTripMaxSpeed);
-      settingsBox.delete(_kDraftTripDistance);
+      await Future.wait([
+        settingsBox.delete(_kDraftTripId),
+        settingsBox.delete(_kDraftTripUserId),
+        settingsBox.delete(_kDraftTripStartTime),
+        settingsBox.delete(_kDraftTripRoutePoints),
+        settingsBox.delete(_kDraftTripMaxSpeed),
+        settingsBox.delete(_kDraftTripDistance),
+      ]);
       debugPrint('TripController: Draft cleared');
     } catch (e) {
       debugPrint('TripController: Failed to clear draft: $e');
@@ -205,12 +210,12 @@ class TripController extends _$TripController {
   }
 
   /// Public discard for stale drafts (e.g. background service died).
-  void discardDraftTrip() => _clearDraftTrip();
+  Future<void> discardDraftTrip() => _clearDraftTrip();
 
   /// Called on app lifecycle pause/detach to flush immediately.
   void onAppLifecyclePaused() {
     if (state == TripState.recording) {
-      _persistDraftTrip();
+      unawaited(_persistDraftTrip());
       debugPrint('TripController: Flushed draft on lifecycle pause');
     }
   }
@@ -243,7 +248,7 @@ class TripController extends _$TripController {
           settingsBox.get(_kDraftTripUserId, defaultValue: 'guest') as String;
       final startTimeStr = settingsBox.get(_kDraftTripStartTime) as String?;
       if (startTimeStr == null) {
-        _clearDraftTrip();
+        unawaited(_clearDraftTrip());
         return false;
       }
 
@@ -307,7 +312,7 @@ class TripController extends _$TripController {
       return true;
     } catch (e) {
       debugPrint('TripController: Failed to resume draft: $e');
-      _clearDraftTrip();
+      unawaited(_clearDraftTrip());
       return false;
     }
   }
@@ -316,7 +321,7 @@ class TripController extends _$TripController {
   void _startPersistTimer() {
     _persistTimer?.cancel();
     _persistTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _persistDraftTrip();
+      unawaited(_persistDraftTrip());
     });
   }
 

@@ -13,6 +13,7 @@ import 'package:road_guard/core/theme/app_colors.dart';
 import 'package:road_guard/core/theme/app_dimensions.dart';
 import 'package:road_guard/features/trip/domain/models/route_point.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
+import 'package:road_guard/shared/utils/map_geometry.dart';
 import 'package:road_guard/shared/widgets/roadguard_map.dart';
 
 /// Displays a completed trip route on a map card.
@@ -37,7 +38,7 @@ class TripRouteMap extends StatelessWidget {
     }
 
     final latLngs = routePoints.toLatLngList();
-    final bounds = _computeBounds(latLngs);
+    final bounds = computeRouteBounds(latLngs);
     final center = LatLng(
       (bounds.$1.latitude + bounds.$2.latitude) / 2,
       (bounds.$1.longitude + bounds.$2.longitude) / 2,
@@ -49,7 +50,7 @@ class TripRouteMap extends StatelessWidget {
         height: height,
         child: RoadGuardMap(
           center: center,
-          zoom: _computeZoom(bounds),
+          zoom: computeRouteZoom(bounds),
           routePoints: latLngs,
           showUserLocation: false,
           interactive: true,
@@ -62,39 +63,6 @@ class TripRouteMap extends StatelessWidget {
   List<RoutePoint>? _getRoutePoints() {
     if (trip.routeData == null || trip.routeData!.isEmpty) return null;
     return decodeRoutePoints(trip.routeData!);
-  }
-
-  /// Compute bounding box (SW, NE corners) from a list of LatLngs.
-  (LatLng, LatLng) _computeBounds(List<LatLng> points) {
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
-
-    for (final p in points) {
-      if (p.latitude < minLat) minLat = p.latitude;
-      if (p.latitude > maxLat) maxLat = p.latitude;
-      if (p.longitude < minLng) minLng = p.longitude;
-      if (p.longitude > maxLng) maxLng = p.longitude;
-    }
-
-    return (LatLng(minLat, minLng), LatLng(maxLat, maxLng));
-  }
-
-  /// Estimate a zoom level that fits the route bounds.
-  double _computeZoom((LatLng, LatLng) bounds) {
-    final latDiff = (bounds.$2.latitude - bounds.$1.latitude).abs();
-    final lngDiff = (bounds.$2.longitude - bounds.$1.longitude).abs();
-    final maxDiff = latDiff > lngDiff ? latDiff : lngDiff;
-
-    if (maxDiff < 0.002) return 17.0;
-    if (maxDiff < 0.005) return 16.0;
-    if (maxDiff < 0.01) return 15.0;
-    if (maxDiff < 0.02) return 14.0;
-    if (maxDiff < 0.05) return 13.0;
-    if (maxDiff < 0.1) return 12.0;
-    if (maxDiff < 0.2) return 11.0;
-    return 10.0;
   }
 
   List<Marker> _buildMarkers(List<LatLng> points) {

@@ -111,7 +111,7 @@ class _RoadGuardAppState extends ConsumerState<RoadGuardApp>
     } else {
       // Service was killed too — draft data is stale, discard it
       debugPrint('RoadGuardApp: Service dead — clearing stale draft');
-      tripController.discardDraftTrip();
+      await tripController.discardDraftTrip();
     }
   }
 

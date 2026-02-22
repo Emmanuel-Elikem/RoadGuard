@@ -16,6 +16,7 @@ import 'package:road_guard/core/theme/app_colors.dart';
 import 'package:road_guard/core/theme/app_dimensions.dart';
 import 'package:road_guard/shared/providers/map_providers.dart';
 import 'package:road_guard/shared/services/map_tile_service.dart' show kDefaultTileStoreName, mapTileServiceProvider;
+import 'package:road_guard/shared/widgets/osm_attribution.dart';
 
 /// A reusable map widget that handles tile caching, user location,
 /// and route polylines.
@@ -56,6 +57,7 @@ class RoadGuardMap extends ConsumerStatefulWidget {
 class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
   late final MapController _mapController;
   bool _ownsController = false;
+  ProviderSubscription<LatLng?>? _positionSub;
 
   @override
   void initState() {
@@ -68,10 +70,9 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
     }
 
     // Listen for position changes and auto-center when following.
-    // Using ref.listenManual avoids the postFrameCallback-per-build issue.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.showUserLocation) return;
-      ref.listenManual(currentLatLngProvider, (prev, next) {
+      _positionSub = ref.listenManual(currentLatLngProvider, (prev, next) {
         if (!mounted) return;
         final follow = ref.read(mapFollowUserProvider);
         if (follow && next != null) {
@@ -80,11 +81,15 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
           } catch (_) {}
         }
       });
+
+      // Notify caller once map controller is ready
+      widget.onMapReady?.call();
     });
   }
 
   @override
   void dispose() {
+    _positionSub?.close();
     if (_ownsController) {
       _mapController.dispose();
     }
@@ -136,6 +141,9 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
         // Extra markers (start/end points, etc.)
         if (widget.extraMarkers != null && widget.extraMarkers!.isNotEmpty)
           MarkerLayer(markers: widget.extraMarkers!),
+
+        // OSM attribution (required by tile usage policy)
+        const OsmAttribution(),
       ],
     );
   }

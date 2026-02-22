@@ -70,18 +70,28 @@ class MapTileService {
   Future<void> clearStore([
     String storeName = kDefaultTileStoreName,
   ]) async {
-    final store = FMTCStore(storeName);
-    await store.manage.reset();
-    debugPrint('MapTileService: Store "$storeName" cleared');
+    try {
+      final store = FMTCStore(storeName);
+      await store.manage.reset();
+      debugPrint('MapTileService: Store "$storeName" cleared');
+    } catch (e, st) {
+      debugPrint('MapTileService: Failed to clear store "$storeName": $e\n$st');
+      rethrow;
+    }
   }
 
   /// Delete all tile stores and reset FMTC completely.
   Future<void> resetAll() async {
-    await FMTCObjectBoxBackend().uninitialise(deleteRoot: true);
-    _isInitialized = false;
-    debugPrint('MapTileService: All stores reset');
-    // Re-initialize after reset
-    await initialize();
+    try {
+      await FMTCObjectBoxBackend().uninitialise(deleteRoot: true);
+      _isInitialized = false;
+      debugPrint('MapTileService: All stores reset');
+      // Re-initialize after reset
+      await initialize();
+    } catch (e, st) {
+      debugPrint('MapTileService: Failed to reset tile stores: $e\n$st');
+      rethrow;
+    }
   }
 }
 
