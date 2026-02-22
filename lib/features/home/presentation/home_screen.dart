@@ -18,6 +18,7 @@ import '../../../shared/widgets/gps_status_banner.dart';
 import '../../../shared/widgets/speedometer_widget.dart';
 import '../../tracking/domain/providers/tracking_providers.dart';
 import '../../trip/application/trip_service.dart';
+import '../../../main.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -211,6 +212,9 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
             quality: ts.gpsSignalQuality,
             isTracking: isTracking,
           ),
+
+          // === RECOVERED TRIP BANNER ===
+          _RecoveredTripBanner(),
 
           // === LIVE TRIP STATS (shown when tracking) ===
           if (isTracking && tripState == TripState.recording)
@@ -548,6 +552,86 @@ class _TrackingButton extends ConsumerWidget {
       await ref.read(speedTrackingProvider.notifier).toggleTracking();
       ref.read(tripControllerProvider.notifier).startTrip();
     }
+  }
+}
+
+/// Banner shown when a trip was recovered after app kill.
+class _RecoveredTripBanner extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recovered = ref.watch(recoveredTripProvider);
+    if (recovered == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final duration = recovered.endTime != null
+        ? recovered.endTime!.difference(recovered.startTime)
+        : Duration.zero;
+    final mins = duration.inMinutes;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDimensions.spacingSm),
+      child: Container(
+        padding: const EdgeInsets.all(AppDimensions.spacingMd),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+          border: Border.all(
+            color: AppColors.warning.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(LucideIcons.alertCircle,
+                    color: AppColors.warning, size: AppDimensions.iconSm),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Trip recovered',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'A ${mins}min trip was interrupted. '
+              'Would you like to save it?',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: AppDimensions.spacingSm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    ref.read(recoveredTripProvider.notifier).state = null;
+                  },
+                  child: Text('Discard',
+                      style: TextStyle(color: colorScheme.outline)),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    ref.read(recoveredTripProvider.notifier).state = null;
+                    context.push(Routes.tripSummary, extra: recovered);
+                  },
+                  child: const Text('Review & Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
 
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -17,21 +18,25 @@ import 'trip_service_test.mocks.dart';
   MockSpec<LocationService>(),
   MockSpec<StorageService>(),
   MockSpec<TripRepository>(),
+  MockSpec<Box<dynamic>>(),
 ])
 void main() {
   late MockLocationService mockLocationService;
   late MockStorageService mockStorageService;
   late MockTripRepository mockTripRepository;
+  late MockBox mockSettingsBox;
   late ProviderContainer container;
 
   setUp(() {
     mockLocationService = MockLocationService();
     mockStorageService = MockStorageService();
     mockTripRepository = MockTripRepository();
+    mockSettingsBox = MockBox();
 
     // Default stubs
     when(mockLocationService.speedStream).thenAnswer((_) => const Stream.empty());
     when(mockStorageService.userId).thenReturn('test_user_id');
+    when(mockStorageService.settingsBox).thenReturn(mockSettingsBox);
 
     container = ProviderContainer(
       overrides: [
@@ -69,10 +74,8 @@ void main() {
       // Start trip
       controller.startTrip();
       
-      // Simulate some time passing (controller uses DateTime.now(), difficult to mock exact duration without Clock)
-      // For this test, we just check state transition
-      
-      controller.stopTrip();
+      // Must await since stopTrip is async
+      await controller.stopTrip();
       
       expect(container.read(tripControllerProvider), TripState.idle);
       expect(controller.currentTrip!.endTime, isNotNull);

@@ -58,6 +58,21 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
   void initState() {
     super.initState();
     _mapController = widget.mapController ?? MapController();
+
+    // Listen for position changes and auto-center when following.
+    // Using ref.listenManual avoids the postFrameCallback-per-build issue.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.showUserLocation) return;
+      ref.listenManual(currentLatLngProvider, (prev, next) {
+        if (!mounted) return;
+        final follow = ref.read(mapFollowUserProvider);
+        if (follow && next != null) {
+          try {
+            _mapController.move(next, _mapController.camera.zoom);
+          } catch (_) {}
+        }
+      });
+    });
   }
 
   @override
@@ -69,17 +84,6 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
         ? ref.watch(currentHeadingProvider)
         : 0.0;
     final followUser = ref.watch(mapFollowUserProvider);
-
-    // Auto-center on user when following
-    if (followUser && userLatLng != null && widget.showUserLocation) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          _mapController.move(userLatLng, _mapController.camera.zoom);
-        } catch (_) {
-          // Controller not ready yet
-        }
-      });
-    }
 
     final effectiveCenter = widget.center ?? userLatLng ?? kDefaultCenter;
 

@@ -42,7 +42,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Future<void> _openScanner() async {
-    final result = await Navigator.of(context).push<String>(
+    // Push using root navigator so the camera covers the entire screen
+    // including the floating nav bar (which lives in the ShellRoute)
+    final result = await Navigator.of(context, rootNavigator: true).push<String>(
       MaterialPageRoute(builder: (_) => const PlateScannerScreen()),
     );
     if (result != null && mounted) {

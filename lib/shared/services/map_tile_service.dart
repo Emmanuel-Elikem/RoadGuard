@@ -44,7 +44,10 @@ class MapTileService {
   /// Ensure the default tile store exists.
   Future<void> _ensureDefaultStore() async {
     final store = FMTCStore(kDefaultTileStoreName);
-    await store.manage.create();
+    final isReady = await store.manage.ready;
+    if (!isReady) {
+      await store.manage.create();
+    }
     debugPrint('MapTileService: Default store ready');
   }
 
