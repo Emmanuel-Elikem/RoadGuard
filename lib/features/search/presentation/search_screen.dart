@@ -150,6 +150,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       LucideIcons.search,
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

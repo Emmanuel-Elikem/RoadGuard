@@ -2364,6 +2364,26 @@ Added `if (!mounted) return;` before the `setState` call.
 
 ---
 
+#### M058: Missing Input Formatter on Editable Fields
+**Status:** 🟢 Resolved  
+**Severity:** Low (Data consistency)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+The editable confirmation `TextField` in `PlateScannerScreen` lacked the `PlateNumberFormatter`, allowing users to enter invalid characters that would normally be stripped.
+
+**Cause:**
+Assumed that because the OCR output was already formatted, the input field didn't need strict formatting. Forgot that users can manually edit the text and introduce invalid characters.
+
+**Prevention:**
+Always apply the same `inputFormatters` to all text fields that represent the same data type (e.g., plate numbers), regardless of how the field is initially populated.
+
+**Fix:**
+Added `inputFormatters: [PlateNumberFormatter()]` to the editable `TextField`.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

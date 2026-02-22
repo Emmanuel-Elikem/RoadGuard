@@ -17,6 +17,8 @@ import 'package:road_guard/shared/services/image_preprocessor.dart';
 import 'package:road_guard/shared/services/ocr_service.dart';
 import 'package:road_guard/shared/services/permission_service.dart';
 import 'package:road_guard/shared/services/plate_recognition_service.dart';
+import 'package:road_guard/shared/utils/plate_number_formatter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Screen that opens the camera for scanning a vehicle plate number.
 ///
@@ -603,6 +605,7 @@ class _PlateConfirmation extends StatelessWidget {
             controller: controller,
             textAlign: TextAlign.center,
             textCapitalization: TextCapitalization.characters,
+            inputFormatters: [PlateNumberFormatter()],
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 3,
@@ -704,13 +707,29 @@ class _ErrorView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppDimensions.spacingLg),
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white38),
-              ),
-              child: const Text('Go back'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white38),
+                  ),
+                  child: const Text('Go back'),
+                ),
+                if (message.contains('allow')) ...[
+                  const SizedBox(width: AppDimensions.spacingMd),
+                  FilledButton(
+                    onPressed: () => openAppSettings(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Open Settings'),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
