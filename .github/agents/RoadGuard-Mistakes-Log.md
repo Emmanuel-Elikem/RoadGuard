@@ -2304,6 +2304,66 @@ Added `_ownsOcrService` flag set in `initState()`. `dispose()` only calls `_ocrS
 
 ---
 
+#### M055: Hardcoded UI Dimensions (Magic Numbers)
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`PlateScannerScreen` contained hardcoded dimensions like `SizedBox(height: 110)`, `width: 72`, and `cornerLen = 24.0`.
+
+**Cause:**
+Failed to strictly adhere to Rule #2 (No Hardcoded Values) when building the UI layout. Used magic numbers for quick positioning instead of relying on `AppDimensions`.
+
+**Prevention:**
+Always check `AppDimensions` first. If a specific size is needed, calculate it dynamically or add a semantic constant to the theme.
+
+**Fix:**
+Replaced magic numbers with `AppDimensions.spacingXxxl + AppDimensions.spacingXxl`, `AppDimensions.captureButtonSize`, and `AppDimensions.spacingLg`.
+
+---
+
+#### M056: Hardcoded Algorithm Parameters
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`ImagePreprocessor` and `PlateRecognitionService` contained hardcoded values for contrast (`1.5`), JPEG quality (`95`), convolution filters, confidence scores (`1.0`, `0.9`, `0.7`, `0.3`), and scoring thresholds (`20`, `10`, `3`).
+
+**Cause:**
+Treated algorithm tuning parameters as implementation details rather than configuration. This makes the algorithms opaque and hard to tune later.
+
+**Prevention:**
+Extract all tuning parameters, thresholds, and weights into named `static const` variables at the top of the class with documentation explaining their purpose.
+
+**Fix:**
+Extracted all magic numbers into named constants (e.g., `_contrastBoost`, `_confidenceDirect`, `_scoreLettersAndDigits`).
+
+---
+
+#### M057: Missing `mounted` Check Before `setState`
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Crash risk)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`_initializeCamera` in `PlateScannerScreen` called `setState` after an `await availableCameras()` without checking if the widget was still mounted.
+
+**Cause:**
+Inconsistent application of the `mounted` check rule. Other `await` calls in the same method had the check, but this specific early-return path missed it.
+
+**Prevention:**
+Always add `if (!mounted) return;` immediately after *every* `await` in a `StatefulWidget` before calling `setState` or using `context`.
+
+**Fix:**
+Added `if (!mounted) return;` before the `setState` call.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |

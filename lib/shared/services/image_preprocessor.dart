@@ -61,6 +61,16 @@ class PreprocessedImage {
 /// 3. Boost contrast (makes text stand out)
 /// 4. Apply sharpening (crisper edges)
 class ImagePreprocessor {
+  // --- Image Processing Constants ---
+  /// Contrast boost factor to make dark text darker and light background lighter.
+  static const double _contrastBoost = 1.5;
+
+  /// 3x3 unsharp mask filter kernel for sharpening edges.
+  static const List<num> _sharpeningKernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+
+  /// JPEG encoding quality for the final processed image.
+  static const int _jpegQuality = 95;
+
   /// Crop and enhance an image for OCR.
   ///
   /// [imageFile] — The raw camera capture.
@@ -137,18 +147,18 @@ class ImagePreprocessor {
       // 3. Boost contrast — makes dark text darker, light background lighter
       final contrasted = img.adjustColor(
         grayscale,
-        contrast: 1.5,
+        contrast: _contrastBoost,
       );
 
       // 4. Sharpen for crisper edges
       final sharpened = img.convolution(
         contrasted,
-        filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
+        filter: _sharpeningKernel,
         div: 1,
       );
 
       // Encode back to JPEG (high quality)
-      return Uint8List.fromList(img.encodeJpg(sharpened, quality: 95));
+      return Uint8List.fromList(img.encodeJpg(sharpened, quality: _jpegQuality));
 
     } catch (e) {
       return null;

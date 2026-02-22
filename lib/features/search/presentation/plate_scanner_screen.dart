@@ -105,6 +105,7 @@ class _PlateScannerScreenState extends State<PlateScannerScreen>
 
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _hasError = true;
           _errorMessage = 'No camera found on this device.';
@@ -384,7 +385,8 @@ class _ScanGuideOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Position the hint text below the guide box
-              const SizedBox(height: 110),
+              const SizedBox(
+                  height: AppDimensions.spacingXxxl + AppDimensions.spacingXxl),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.spacingMd,
@@ -449,7 +451,7 @@ class _GuideBoxPainter extends CustomPainter {
       ..strokeWidth = 4.0
       ..strokeCap = StrokeCap.round;
 
-    const cornerLen = 24.0;
+    const cornerLen = AppDimensions.spacingLg;
     final r = guideRect.outerRect;
 
     // Top-left
@@ -517,8 +519,8 @@ class _CaptureControls extends StatelessWidget {
           GestureDetector(
             onTap: isProcessing ? null : onCapture,
             child: Container(
-              width: 72,
-              height: 72,
+              width: AppDimensions.captureButtonSize,
+              height: AppDimensions.captureButtonSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 4),

@@ -37,6 +37,35 @@ class PlateCandidate {
 /// - S/5 confusion
 /// - B/8 confusion
 class PlateRecognitionService {
+  // --- Confidence Scores ---
+  /// Confidence when text perfectly matches a plate pattern directly.
+  static const double _confidenceDirect = 1.0;
+
+  /// Confidence when a plate pattern is found within a larger text block.
+  static const double _confidencePatternMatch = 0.9;
+
+  /// Confidence when OCR error corrections were needed to find a match.
+  static const double _confidenceOcrCorrected = 0.7;
+
+  /// Confidence when falling back to the best raw line (no strict match).
+  static const double _confidenceRawFallback = 0.3;
+
+  // --- Scoring Thresholds ---
+  /// Maximum length of a line to be considered a potential plate.
+  static const int _maxPlateLineLength = 20;
+
+  /// Score bonus for lines containing both letters and digits.
+  static const int _scoreLettersAndDigits = 10;
+
+  /// Score bonus for lines containing letters.
+  static const int _scoreLettersOnly = 3;
+
+  /// Score bonus for lines containing digits.
+  static const int _scoreDigitsOnly = 3;
+
+  /// Maximum score bonus for shorter lines.
+  static const int _maxLengthBonus = 10;
+
   /// Common OCR character substitutions for digits.
   static const _digitFixes = {
     'O': '0',
@@ -109,7 +138,7 @@ class PlateRecognitionService {
         results.add(PlateCandidate(
           plateNumber: bestLine.trim().toUpperCase(),
           rawText: bestLine,
-          confidence: 0.3,
+          confidence: _confidenceRawFallback,
         ));
       }
     }
@@ -128,17 +157,17 @@ class PlateRecognitionService {
     for (final block in ocrResult.blocks) {
       for (final line in block.lines) {
         final text = line.text.trim();
-        if (text.isEmpty || text.length > 20) continue;
+        if (text.isEmpty || text.length > _maxPlateLineLength) continue;
 
         // Score: prefer lines with both letters and digits
         final hasLetters = RegExp(r'[A-Za-z]').hasMatch(text);
         final hasDigits = RegExp(r'\d').hasMatch(text);
         int score = 0;
-        if (hasLetters && hasDigits) score += 10;
-        if (hasLetters) score += 3;
-        if (hasDigits) score += 3;
+        if (hasLetters && hasDigits) score += _scoreLettersAndDigits;
+        if (hasLetters) score += _scoreLettersOnly;
+        if (hasDigits) score += _scoreDigitsOnly;
         // Prefer shorter lines (more likely a plate)
-        score += (20 - text.length).clamp(0, 10);
+        score += (_maxPlateLineLength - text.length).clamp(0, _maxLengthBonus);
 
         if (score > bestScore) {
           bestScore = score;
@@ -170,7 +199,7 @@ class PlateRecognitionService {
         PlateCandidate(
           plateNumber: directResult.formatted!,
           rawText: text,
-          confidence: 1.0,
+          confidence: _confidenceDirect,
         ),
       ];
     }
@@ -189,7 +218,7 @@ class PlateRecognitionService {
         candidates.add(PlateCandidate(
           plateNumber: result.formatted!,
           rawText: raw,
-          confidence: 0.9,
+          confidence: _confidencePatternMatch,
         ));
       }
     }
@@ -207,7 +236,7 @@ class PlateRecognitionService {
             candidates.add(PlateCandidate(
               plateNumber: result.formatted!,
               rawText: raw,
-              confidence: 0.7,
+              confidence: _confidenceOcrCorrected,
             ));
           }
         }
