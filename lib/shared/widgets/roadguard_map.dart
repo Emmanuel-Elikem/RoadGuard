@@ -4,6 +4,8 @@
 /// without internet. Shows the user's live position when tracking.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
@@ -53,11 +55,17 @@ class RoadGuardMap extends ConsumerStatefulWidget {
 
 class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
   late final MapController _mapController;
+  bool _ownsController = false;
 
   @override
   void initState() {
     super.initState();
-    _mapController = widget.mapController ?? MapController();
+    if (widget.mapController != null) {
+      _mapController = widget.mapController!;
+    } else {
+      _mapController = MapController();
+      _ownsController = true;
+    }
 
     // Listen for position changes and auto-center when following.
     // Using ref.listenManual avoids the postFrameCallback-per-build issue.
@@ -73,6 +81,14 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
         }
       });
     });
+  }
+
+  @override
+  void dispose() {
+    if (_ownsController) {
+      _mapController.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -130,7 +146,7 @@ class _RoadGuardMapState extends ConsumerState<RoadGuardMap> {
 
     return TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'com.roadguard.app',
+      userAgentPackageName: 'com.roadguard.road_guard',
       maxZoom: kMaxZoom,
       tileProvider: tileService.isInitialized
           ? FMTCTileProvider(
@@ -193,7 +209,7 @@ class _UserLocationDot extends StatelessWidget {
         // Heading direction cone
         if (heading != 0)
           Transform.rotate(
-            angle: heading * (3.14159265 / 180),
+            angle: heading * (math.pi / 180),
             child: CustomPaint(
               size: const Size(AppDimensions.iconLg, AppDimensions.iconLg),
               painter: _HeadingConePainter(),

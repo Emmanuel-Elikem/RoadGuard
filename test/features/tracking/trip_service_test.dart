@@ -89,5 +89,74 @@ void main() {
        
        verify(mockTripRepository.saveTrip(trip)).called(1);
     });
+
+    group('draft trip persistence', () {
+      test('hasDraftTrip returns false when no draft exists', () {
+        when(mockSettingsBox.get('draft_trip_id')).thenReturn(null);
+
+        final controller = container.read(tripControllerProvider.notifier);
+        expect(controller.hasDraftTrip, isFalse);
+      });
+
+      test('hasDraftTrip returns true when draft exists', () {
+        when(mockSettingsBox.get('draft_trip_id')).thenReturn('trip-123');
+
+        final controller = container.read(tripControllerProvider.notifier);
+        expect(controller.hasDraftTrip, isTrue);
+      });
+
+      test('resumeTrip restores state from draft and sets recording', () {
+        final startTime = DateTime.now().subtract(const Duration(minutes: 5));
+        when(mockSettingsBox.get('draft_trip_id')).thenReturn('trip-123');
+        when(mockSettingsBox.get('draft_trip_user_id', defaultValue: 'guest'))
+            .thenReturn('test_user');
+        when(mockSettingsBox.get('draft_trip_start_time'))
+            .thenReturn(startTime.toIso8601String());
+        when(mockSettingsBox.get('draft_trip_max_speed', defaultValue: 0.0))
+            .thenReturn(25.5);
+        when(mockSettingsBox.get('draft_trip_distance', defaultValue: 0.0))
+            .thenReturn(1500.0);
+        when(mockSettingsBox.get('draft_trip_route_points', defaultValue: ''))
+            .thenReturn('5.55,-0.20,10.0;5.56,-0.21,12.0');
+
+        final controller = container.read(tripControllerProvider.notifier);
+        final result = controller.resumeTrip();
+
+        expect(result, isTrue);
+        expect(container.read(tripControllerProvider), TripState.recording);
+        expect(controller.currentTrip, isNotNull);
+        expect(controller.currentTrip!.id, 'trip-123');
+        expect(controller.currentTrip!.userId, 'test_user');
+        expect(controller.currentMaxSpeed, closeTo(25.5 * 3.6, 0.01));
+        expect(controller.currentDistance, closeTo(1.5, 0.001));
+      });
+
+      test('resumeTrip returns false when no draft exists', () {
+        when(mockSettingsBox.get('draft_trip_id')).thenReturn(null);
+
+        final controller = container.read(tripControllerProvider.notifier);
+        expect(controller.resumeTrip(), isFalse);
+        expect(container.read(tripControllerProvider), TripState.idle);
+      });
+
+      test('resumeTrip returns false when already recording', () {
+        final controller = container.read(tripControllerProvider.notifier);
+        controller.startTrip();
+
+        expect(controller.resumeTrip(), isFalse);
+      });
+
+      test('discardDraftTrip clears all draft keys from Hive', () {
+        final controller = container.read(tripControllerProvider.notifier);
+        controller.discardDraftTrip();
+
+        verify(mockSettingsBox.delete('draft_trip_id')).called(1);
+        verify(mockSettingsBox.delete('draft_trip_user_id')).called(1);
+        verify(mockSettingsBox.delete('draft_trip_start_time')).called(1);
+        verify(mockSettingsBox.delete('draft_trip_route_points')).called(1);
+        verify(mockSettingsBox.delete('draft_trip_max_speed')).called(1);
+        verify(mockSettingsBox.delete('draft_trip_distance')).called(1);
+      });
+    });
   });
 }

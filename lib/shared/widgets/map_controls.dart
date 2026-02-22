@@ -33,7 +33,7 @@ class MapControls extends ConsumerWidget {
           _MapButton(
             icon: LucideIcons.locate,
             isActive: isFollowing,
-            tooltip: 'Centre on my location',
+            tooltip: 'Center on my location',
             onPressed: () {
               ref.read(mapFollowUserProvider.notifier).enable();
               final userPos = ref.read(currentLatLngProvider);

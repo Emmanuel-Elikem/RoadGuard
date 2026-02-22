@@ -4,13 +4,14 @@ library;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/router.dart';
 import 'core/theme/theme.dart';
 import 'error_app.dart';
+import 'features/tracking/domain/providers/tracking_providers.dart';
 import 'features/trip/application/trip_service.dart';
-import 'features/trip/domain/models/trip_model.dart';
 import 'firebase_options.dart';
 import 'shared/services/location_service.dart';
 import 'shared/services/map_tile_service.dart';
@@ -94,13 +95,23 @@ class _RoadGuardAppState extends ConsumerState<RoadGuardApp>
     }
   }
 
-  void _checkForRecoveredTrip() {
-    final recovered =
-        ref.read(tripControllerProvider.notifier).recoverDraftTrip();
-    if (recovered != null) {
-      debugPrint('RoadGuardApp: Found recovered trip ${recovered.id}');
-      // Store it so the home screen can prompt the user
-      ref.read(recoveredTripProvider.notifier).state = recovered;
+  void _checkForRecoveredTrip() async {
+    final tripController = ref.read(tripControllerProvider.notifier);
+    if (!tripController.hasDraftTrip) return;
+
+    // Check if the background service is still running (survived app kill)
+    final isServiceRunning =
+        await FlutterBackgroundService().isRunning();
+
+    if (isServiceRunning) {
+      // Background service survived — seamlessly resume tracking + trip
+      debugPrint('RoadGuardApp: Background service alive — resuming trip');
+      await ref.read(speedTrackingProvider.notifier).startTracking();
+      tripController.resumeTrip();
+    } else {
+      // Service was killed too — draft data is stale, discard it
+      debugPrint('RoadGuardApp: Service dead — clearing stale draft');
+      tripController.discardDraftTrip();
     }
   }
 
@@ -137,6 +148,3 @@ class _RoadGuardAppState extends ConsumerState<RoadGuardApp>
     );
   }
 }
-
-/// Holds a recovered draft trip for the home screen to pick up.
-final recoveredTripProvider = StateProvider<TripModel?>((ref) => null);

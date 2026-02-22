@@ -204,6 +204,9 @@ class TripController extends _$TripController {
     }
   }
 
+  /// Public discard for stale drafts (e.g. background service died).
+  void discardDraftTrip() => _clearDraftTrip();
+
   /// Called on app lifecycle pause/detach to flush immediately.
   void onAppLifecyclePaused() {
     if (state == TripState.recording) {
@@ -212,83 +215,100 @@ class TripController extends _$TripController {
     }
   }
 
-  /// Check for a persisted draft trip and resume it.
+  /// Check if there is a persisted draft trip that can be resumed.
+  bool get hasDraftTrip {
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final draftId = storage.settingsBox.get(_kDraftTripId) as String?;
+      return draftId != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Resume a persisted draft trip — restores in-memory state and continues
+  /// recording. The background service is assumed to be already running.
   ///
-  /// Returns the recovered [TripModel] if a draft was found (already finalized
-  /// with endTime = now), or null if no draft exists.
-  /// The caller should present this trip for saving/rating.
-  TripModel? recoverDraftTrip() {
+  /// Returns `true` if the trip was resumed successfully.
+  bool resumeTrip() {
+    if (state == TripState.recording) return false;
+
     try {
       final storage = ref.read(storageServiceProvider);
       final settingsBox = storage.settingsBox;
       final draftId = settingsBox.get(_kDraftTripId) as String?;
-      if (draftId == null) return null;
+      if (draftId == null) return false;
 
       final userId =
           settingsBox.get(_kDraftTripUserId, defaultValue: 'guest') as String;
       final startTimeStr = settingsBox.get(_kDraftTripStartTime) as String?;
       if (startTimeStr == null) {
         _clearDraftTrip();
-        return null;
+        return false;
       }
 
       final startTime = DateTime.parse(startTimeStr);
-      final maxSpeed =
+      _maxSpeed =
           (settingsBox.get(_kDraftTripMaxSpeed, defaultValue: 0.0) as num)
               .toDouble();
-      final totalDistance =
+      _totalDistance =
           (settingsBox.get(_kDraftTripDistance, defaultValue: 0.0) as num)
               .toDouble();
       final routeJson =
           settingsBox.get(_kDraftTripRoutePoints, defaultValue: '') as String;
 
-      // Decode route points
-      List<double>? routeData;
+      // Decode persisted route points back into SpeedReadings
+      _routePoints = [];
       if (routeJson.isNotEmpty) {
-        final points = <RoutePoint>[];
         for (final entry in routeJson.split(';')) {
           if (entry.isEmpty) continue;
           final parts = entry.split(',');
           if (parts.length == 3) {
-            points.add(RoutePoint(
+            _routePoints.add(SpeedReading(
               latitude: double.parse(parts[0]),
               longitude: double.parse(parts[1]),
               speedMs: double.parse(parts[2]),
+              accuracy: 0,
+              heading: 0,
+              altitude: 0,
+              timestamp: startTime,
             ));
           }
         }
-        if (points.isNotEmpty) {
-          routeData = points.encode();
-        }
       }
 
-      final endTime = DateTime.now();
-      final durationSeconds = endTime.difference(startTime).inSeconds;
-      final avgSpeed =
-          durationSeconds > 0 ? totalDistance / durationSeconds : 0.0;
-
-      final recoveredTrip = TripModel(
+      _startTime = startTime;
+      _currentTrip = TripModel(
         id: draftId,
         userId: userId,
         startTime: startTime,
-        endTime: endTime,
-        distance: totalDistance / 1000.0,
-        maxSpeed: maxSpeed,
-        avgSpeed: avgSpeed,
-        routeData: routeData,
       );
 
-      // Clear the draft now that we've recovered it
-      _clearDraftTrip();
+      // Set state to recording so incoming location updates are processed
+      state = TripState.recording;
 
-      debugPrint('TripController: Recovered draft trip $draftId '
-          '(started ${startTime.toIso8601String()})');
+      // Re-subscribe to location stream (already running via background service)
+      _locationSubscription?.cancel();
+      final locationService = ref.read(locationServiceProvider);
+      final stream = locationService.speedStream;
+      if (stream != null) {
+        _locationSubscription = stream.listen(_onLocationUpdate);
+        debugPrint('TripController: Re-subscribed to location stream');
+      }
 
-      return recoveredTrip;
+      _startTimer();
+      _startPersistTimer();
+
+      debugPrint('TripController: Resumed draft trip $draftId '
+          '(started ${startTime.toIso8601String()}, '
+          '${_routePoints.length} points, '
+          '${(_totalDistance / 1000).toStringAsFixed(2)} km)');
+
+      return true;
     } catch (e) {
-      debugPrint('TripController: Failed to recover draft: $e');
+      debugPrint('TripController: Failed to resume draft: $e');
       _clearDraftTrip();
-      return null;
+      return false;
     }
   }
 

@@ -4,7 +4,7 @@ import 'trip_model.dart';
 
 /// Hand-written Hive adapter for [TripModel].
 ///
-/// Replaces broken hive_generator_plus output. Serializes all 11 fields.
+/// Replaces broken hive_generator_plus output. Serializes all 12 fields.
 class TripModelAdapter extends TypeAdapter<TripModel> {
   @override
   final int typeId = 3;

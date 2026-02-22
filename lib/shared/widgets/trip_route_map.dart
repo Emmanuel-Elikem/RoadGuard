@@ -104,7 +104,7 @@ class TripRouteMap extends StatelessWidget {
         point: points.first,
         width: AppDimensions.iconLg,
         height: AppDimensions.iconLg,
-        child: const _RouteEndpointMarker(
+        child: _RouteEndpointMarker(
           icon: LucideIcons.play,
           color: AppColorsDark.primary,
           label: 'S',
@@ -115,7 +115,7 @@ class TripRouteMap extends StatelessWidget {
         point: points.last,
         width: AppDimensions.iconLg,
         height: AppDimensions.iconLg,
-        child: const _RouteEndpointMarker(
+        child: _RouteEndpointMarker(
           icon: LucideIcons.mapPin,
           color: AppColorsDark.error,
           label: 'E',
@@ -154,10 +154,10 @@ class _RouteEndpointMarker extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColorsDark.onPrimary,
             fontWeight: FontWeight.w800,
-            fontSize: 14,
+            fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14,
           ),
         ),
       ),
