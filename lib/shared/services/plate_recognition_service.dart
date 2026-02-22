@@ -1,0 +1,306 @@
+/// Plate Recognition Service — Extracts Ghana vehicle plates from OCR text.
+///
+/// Takes raw OCR results and identifies text that matches Ghana plate
+/// patterns. Handles noisy OCR output with fuzzy matching.
+library;
+
+import 'package:road_guard/shared/services/ocr_service.dart';
+import 'package:road_guard/shared/utils/plate_validator.dart';
+
+/// A candidate plate extracted from OCR with a confidence indicator.
+class PlateCandidate {
+  /// The normalized plate number (e.g., "GR-1234-24").
+  final String plateNumber;
+
+  /// The raw text that was matched before normalization.
+  final String rawText;
+
+  /// How confident we are this is correct (0.0 to 1.0).
+  final double confidence;
+
+  const PlateCandidate({
+    required this.plateNumber,
+    required this.rawText,
+    required this.confidence,
+  });
+
+  @override
+  String toString() => 'PlateCandidate($plateNumber, raw: $rawText, '
+      'confidence: ${(confidence * 100).toStringAsFixed(0)}%)';
+}
+
+/// Extracts Ghana vehicle plate numbers from OCR results.
+///
+/// Handles common OCR misreads:
+/// - O/0 confusion (letter O vs digit 0)
+/// - I/1 confusion (letter I vs digit 1)
+/// - S/5 confusion
+/// - B/8 confusion
+class PlateRecognitionService {
+  // --- Confidence Scores ---
+  /// Confidence when text perfectly matches a plate pattern directly.
+  static const double _confidenceDirect = 1.0;
+
+  /// Confidence when a plate pattern is found within a larger text block.
+  static const double _confidencePatternMatch = 0.9;
+
+  /// Confidence when OCR error corrections were needed to find a match.
+  static const double _confidenceOcrCorrected = 0.7;
+
+  /// Confidence when falling back to the best raw line (no strict match).
+  static const double _confidenceRawFallback = 0.3;
+
+  // --- Scoring Thresholds ---
+  /// Maximum length of a line to be considered a potential plate.
+  static const int _maxPlateLineLength = 20;
+
+  /// Score bonus for lines containing both letters and digits.
+  static const int _scoreLettersAndDigits = 10;
+
+  /// Score bonus for lines containing letters.
+  static const int _scoreLettersOnly = 3;
+
+  /// Score bonus for lines containing digits.
+  static const int _scoreDigitsOnly = 3;
+
+  /// Maximum score bonus for shorter lines.
+  static const int _maxLengthBonus = 10;
+
+  /// Common OCR character substitutions for digits.
+  static const _digitFixes = {
+    'O': '0',
+    'o': '0',
+    'I': '1',
+    'l': '1',
+    'S': '5',
+    'B': '8',
+    'Z': '2',
+    'G': '6',
+  };
+
+  /// Common OCR character substitutions for letters.
+  static const _letterFixes = {
+    '0': 'O',
+    '1': 'I',
+    '5': 'S',
+    '8': 'B',
+    '2': 'Z',
+    '6': 'G',
+  };
+
+  /// Extract plate candidates from OCR results.
+  ///
+  /// Returns candidates sorted by confidence (best first).
+  /// If no Ghana-format plate is found, returns the best raw OCR
+  /// text as a low-confidence candidate so users can edit it.
+  List<PlateCandidate> extractPlates(OcrResult ocrResult) {
+    final candidates = <PlateCandidate>[];
+
+    // Try each text line individually
+    for (final block in ocrResult.blocks) {
+      for (final line in block.lines) {
+        final lineCandidates = _tryExtractFromText(line.text);
+        candidates.addAll(lineCandidates);
+
+        // Also try individual elements within the line
+        // (OCR might split plate into separate elements)
+        if (line.elements.length >= 2) {
+          final combined = line.elements.join('');
+          candidates.addAll(_tryExtractFromText(combined));
+        }
+      }
+
+      // Try the full block text (plate might span lines)
+      final blockCandidates = _tryExtractFromText(block.text);
+      candidates.addAll(blockCandidates);
+    }
+
+    // Also try the full OCR text
+    candidates.addAll(_tryExtractFromText(ocrResult.fullText));
+
+    // Deduplicate by normalized plate number, keeping highest confidence
+    final seen = <String, PlateCandidate>{};
+    for (final c in candidates) {
+      final existing = seen[c.plateNumber];
+      if (existing == null || c.confidence > existing.confidence) {
+        seen[c.plateNumber] = c;
+      }
+    }
+
+    final results = seen.values.toList()
+      ..sort((a, b) => b.confidence.compareTo(a.confidence));
+
+    // If no structured plate was found, return the best raw OCR
+    // line so the user can still see and edit what was captured.
+    if (results.isEmpty && ocrResult.hasText) {
+      final bestLine = _pickBestRawLine(ocrResult);
+      if (bestLine != null && bestLine.trim().isNotEmpty) {
+        results.add(PlateCandidate(
+          plateNumber: bestLine.trim().toUpperCase(),
+          rawText: bestLine,
+          confidence: _confidenceRawFallback,
+        ));
+      }
+    }
+
+    return results;
+  }
+
+  /// Pick the most plate-like raw line from OCR output.
+  ///
+  /// Prefers short lines with mixed letters+digits (plate-like)
+  /// over long paragraphs of text.
+  String? _pickBestRawLine(OcrResult ocrResult) {
+    String? best;
+    int bestScore = -1;
+
+    for (final block in ocrResult.blocks) {
+      for (final line in block.lines) {
+        final text = line.text.trim();
+        if (text.isEmpty || text.length > _maxPlateLineLength) continue;
+
+        // Score: prefer lines with both letters and digits
+        final hasLetters = RegExp(r'[A-Za-z]').hasMatch(text);
+        final hasDigits = RegExp(r'\d').hasMatch(text);
+        int score = 0;
+        if (hasLetters && hasDigits) score += _scoreLettersAndDigits;
+        if (hasLetters) score += _scoreLettersOnly;
+        if (hasDigits) score += _scoreDigitsOnly;
+        // Prefer shorter lines (more likely a plate)
+        score += (_maxPlateLineLength - text.length).clamp(0, _maxLengthBonus);
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = text;
+        }
+      }
+    }
+
+    return best;
+  }
+
+  /// Try to extract plate numbers from a text string.
+  List<PlateCandidate> _tryExtractFromText(String text) {
+    final candidates = <PlateCandidate>[];
+
+    // Clean the text: remove newlines, excess spaces
+    final cleaned = text
+        .replaceAll('\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toUpperCase();
+
+    if (cleaned.isEmpty) return candidates;
+
+    // Strategy 1: Direct validation (text already looks like a plate)
+    final directResult = PlateValidator.validate(cleaned);
+    if (directResult.isValid) {
+      return [
+        PlateCandidate(
+          plateNumber: directResult.formatted!,
+          rawText: text,
+          confidence: _confidenceDirect,
+        ),
+      ];
+    }
+
+    // Strategy 2: Find plate-like patterns within the text
+    // Ghana plates: 2 letters, 1-4 digits, 2 alphanumeric
+    final platePattern = RegExp(
+      r'([A-Z]{2})\s*[-\s]?\s*(\d{1,4})\s*[-\s]?\s*([A-Z0-9]{2})',
+    );
+
+    for (final match in platePattern.allMatches(cleaned)) {
+      final raw = match.group(0)!;
+      final candidate = '${match.group(1)}-${match.group(2)}-${match.group(3)}';
+      final result = PlateValidator.validate(candidate);
+      if (result.isValid) {
+        candidates.add(PlateCandidate(
+          plateNumber: result.formatted!,
+          rawText: raw,
+          confidence: _confidencePatternMatch,
+        ));
+      }
+    }
+
+    // Strategy 3: Apply OCR error corrections and retry
+    if (candidates.isEmpty) {
+      final corrected = _applyOcrCorrections(cleaned);
+      for (final variant in corrected) {
+        for (final match in platePattern.allMatches(variant)) {
+          final raw = match.group(0)!;
+          final candidate =
+              '${match.group(1)}-${match.group(2)}-${match.group(3)}';
+          final result = PlateValidator.validate(candidate);
+          if (result.isValid) {
+            candidates.add(PlateCandidate(
+              plateNumber: result.formatted!,
+              rawText: raw,
+              confidence: _confidenceOcrCorrected,
+            ));
+          }
+        }
+      }
+    }
+
+    return candidates;
+  }
+
+  /// Generate variants of the text with common OCR fixes applied.
+  ///
+  /// Produces up to three variants:
+  /// 1. Letter-position fixes only (first 2 chars)
+  /// 2. Digit-position fixes only (chars after position 2)
+  /// 3. Both fixes combined (handles multi-error OCR output)
+  List<String> _applyOcrCorrections(String text) {
+    final variants = <String>[];
+
+    // Fix digits in letter positions (first 2 chars)
+    String letterFixed = text;
+    if (text.length >= 2) {
+      for (var i = 0; i < 2 && i < letterFixed.length; i++) {
+        final char = letterFixed[i];
+        if (_letterFixes.containsKey(char)) {
+          letterFixed = letterFixed.substring(0, i) +
+              _letterFixes[char]! +
+              letterFixed.substring(i + 1);
+        }
+      }
+      if (letterFixed != text) variants.add(letterFixed);
+    }
+
+    // Fix letters in digit positions (middle section)
+    String digitFixed = text;
+    if (text.length >= 4) {
+      for (var i = 2; i < digitFixed.length; i++) {
+        final char = digitFixed[i];
+        if (_digitFixes.containsKey(char)) {
+          digitFixed = digitFixed.substring(0, i) +
+              _digitFixes[char]! +
+              digitFixed.substring(i + 1);
+        }
+      }
+      if (digitFixed != text) variants.add(digitFixed);
+    }
+
+    // Combined: apply both letter and digit fixes together
+    if (letterFixed != text && digitFixed != text) {
+      var combined = letterFixed;
+      if (combined.length >= 4) {
+        for (var i = 2; i < combined.length; i++) {
+          final char = combined[i];
+          if (_digitFixes.containsKey(char)) {
+            combined = combined.substring(0, i) +
+                _digitFixes[char]! +
+                combined.substring(i + 1);
+          }
+        }
+        if (combined != letterFixed && combined != digitFixed) {
+          variants.add(combined);
+        }
+      }
+    }
+
+    return variants;
+  }
+}

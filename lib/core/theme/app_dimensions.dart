@@ -38,6 +38,7 @@ abstract final class AppDimensions {
   static const double buttonHeightSm = 36.0;
   static const double buttonHeightMd = 48.0;
   static const double buttonHeightLg = 56.0;
+  static const double captureButtonSize = 72.0;
   static const double inputHeight = 56.0;
   static const double appBarHeight = 64.0;
   static const double bottomNavHeight = 80.0;

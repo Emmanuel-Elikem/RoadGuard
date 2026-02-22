@@ -14,6 +14,7 @@ import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/services/storage_service.dart';
 import 'package:road_guard/shared/utils/plate_number_formatter.dart';
 import 'package:road_guard/shared/utils/plate_validator.dart';
+import 'package:road_guard/features/search/presentation/plate_scanner_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class RatingScreen extends ConsumerStatefulWidget {
@@ -31,7 +32,6 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _plateController = TextEditingController();
   bool _isSaving = false;
-  String? _plateError;
 
   @override
   void initState() {
@@ -49,21 +49,24 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
     super.dispose();
   }
 
+  Future<void> _openScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const PlateScannerScreen()),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _plateController.text = result;
+      });
+    }
+  }
+
   Future<void> _saveTrip({bool skipRating = false}) async {
     setState(() => _isSaving = true);
 
     try {
       String? normalizedPlate;
-      if (_plateController.text.isNotEmpty) {
-        final result = PlateValidator.validate(_plateController.text);
-        if (!result.isValid) {
-          setState(() {
-            _plateError = result.error;
-            _isSaving = false;
-          });
-          return;
-        }
-        normalizedPlate = result.formatted;
+      if (_plateController.text.trim().isNotEmpty) {
+        normalizedPlate = PlateValidator.normalize(_plateController.text);
       }
 
       RatingModel? rating;
@@ -192,31 +195,44 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
 
             // === Plate Number Input ===
             Text(
-              'Vehicle plate number',
+              'Car number',
               style: theme.textTheme.titleMedium,
             ),
             const Gap(AppDimensions.spacingSm),
-            TextField(
-              controller: _plateController,
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: [PlateNumberFormatter()],
-              decoration: InputDecoration(
-                hintText: 'e.g. GR-1234-24',
-                errorText: _plateError,
-                prefixIcon: const Icon(LucideIcons.car),
-                suffixIcon: _plateController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(LucideIcons.x),
-                        onPressed: () {
-                          _plateController.clear();
-                          setState(() => _plateError = null);
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (value) {
-                setState(() => _plateError = null);
-              },
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _plateController,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [PlateNumberFormatter()],
+                    decoration: InputDecoration(
+                      hintText: 'e.g. GR-1234-24',
+                      prefixIcon: const Icon(LucideIcons.car),
+                      suffixIcon: _plateController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(LucideIcons.x),
+                              onPressed: () {
+                                _plateController.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (_) => setState(() {}),  
+                  ),
+                ),
+                const Gap(AppDimensions.spacingSm),
+                SizedBox(
+                  height: AppDimensions.inputHeight,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _openScanner,
+                    icon: const Icon(LucideIcons.camera, size: 20),
+                    label: const Text('Scan'),
+                  ),
+                ),
+              ],
             ),
 
             const Gap(AppDimensions.spacingXl),

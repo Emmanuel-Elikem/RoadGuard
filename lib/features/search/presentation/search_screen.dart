@@ -18,6 +18,7 @@ import '../../trip/data/repositories/rating_repository.dart';
 import '../../trip/domain/models/driver_model.dart';
 import '../../trip/domain/models/rating_model.dart';
 import '../../trip/domain/models/trip_model.dart';
+import 'plate_scanner_screen.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -38,6 +39,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _openScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const PlateScannerScreen()),
+    );
+    if (result != null && mounted) {
+      _searchController.text = result;
+      _search(result);
+    }
   }
 
   void _search(String query) {
@@ -131,7 +142,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   textCapitalization: TextCapitalization.characters,
                   style: theme.textTheme.bodyLarge,
                   decoration: InputDecoration(
-                    hintText: 'Enter plate number (e.g. GR-1234-24)',
+                    hintText: 'Search by car number (e.g. GR-1234-24) or notes',
                     hintStyle: theme.textTheme.bodyLarge?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
@@ -139,8 +150,23 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       LucideIcons.search,
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            LucideIcons.camera,
+                            color: colorScheme.primary,
+                          ),
+                          tooltip: 'Scan car number',
+                          onPressed: _openScanner,
+                        ),
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
                             icon: Icon(
                               LucideIcons.x,
                               color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -150,8 +176,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               _search('');
                               _focusNode.unfocus();
                             },
-                          )
-                        : null,
+                          ),
+                      ],
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppDimensions.spacingMd,

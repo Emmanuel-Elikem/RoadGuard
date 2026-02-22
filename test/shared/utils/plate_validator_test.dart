@@ -117,13 +117,13 @@ void main() {
       test('rejects empty input', () {
         final result = PlateValidator.validate('');
         expect(result.isValid, isFalse);
-        expect(result.error, 'Enter a plate number');
+        expect(result.error, 'Enter a car number');
       });
 
       test('rejects whitespace-only input', () {
         final result = PlateValidator.validate('   ');
         expect(result.isValid, isFalse);
-        expect(result.error, 'Enter a plate number');
+        expect(result.error, 'Enter a car number');
       });
 
       test('rejects invalid format', () {
@@ -171,12 +171,38 @@ void main() {
     });
 
     group('normalization', () {
-      test('normalize returns formatted plate', () {
+      test('normalize returns formatted plate for standard format', () {
         expect(PlateValidator.normalize('gr 1234 21'), 'GR-1234-21');
       });
 
-      test('normalize returns null for invalid', () {
-        expect(PlateValidator.normalize('invalid'), isNull);
+      test('normalize returns uppercased text for non-standard plate', () {
+        expect(PlateValidator.normalize('xyz 123'), 'XYZ 123');
+      });
+
+      test('normalize returns uppercased text for arbitrary input', () {
+        expect(PlateValidator.normalize('custom plate'), 'CUSTOM PLATE');
+      });
+    });
+
+    group('lenient mode', () {
+      test('accepts any non-empty text when strict=false', () {
+        final result =
+            PlateValidator.validate('XYZ-ABC-123', strict: false);
+        expect(result.isValid, isTrue);
+        expect(result.formatted, 'XYZ-ABC-123');
+      });
+
+      test('still rejects empty when strict=false', () {
+        final result = PlateValidator.validate('', strict: false);
+        expect(result.isValid, isFalse);
+      });
+
+      test('still recognizes Ghana format when strict=false', () {
+        final result =
+            PlateValidator.validate('GR-1234-21', strict: false);
+        expect(result.isValid, isTrue);
+        expect(result.formatted, 'GR-1234-21');
+        expect(result.region, 'GR');
       });
     });
 

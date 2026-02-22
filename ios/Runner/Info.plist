@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>RoadGuard needs camera access to scan car numbers.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>RoadGuard needs your location to track vehicle speed and display your position on the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

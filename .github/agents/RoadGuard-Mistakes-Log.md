@@ -2244,15 +2244,155 @@ Added `clearUserData()` to `StorageService` (clears trips, ratings, drivers, use
 
 ---
 
+#### M052: Created Duplicate Test Names During Rename
+**Status:** 🟢 Resolved  
+**Severity:** Low (Test quality)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+Two tests named "corrects I→1 in digit positions" with identical inputs/assertions. The first was originally "corrects O→0" but was renamed in a PR review fix without checking the test immediately below it.
+
+**Cause:**
+When addressing a PR comment to rename a mislabeled test, I changed "O→0" to "I→1" without scrolling down to see the next test already had that exact name and input. Careless refactoring without full context.
+
+**Prevention:**
+When renaming or modifying a test, always read the surrounding tests in the same group to check for duplication. Don't just fix the flagged line — scan the neighbors.
+
+**Fix:**
+Changed the duplicate to test a different OCR correction (S→5 in digit positions) with distinct input `'GR 12S4 24'`.
+
+---
+
+#### M053: Hardcoded `/tmp` Paths in Tests
+**Status:** 🟢 Resolved  
+**Severity:** Low (Portability)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+Tests used hardcoded `/tmp/` paths for file operations. Would fail on Windows where `/tmp` doesn't exist.
+
+**Cause:**
+Some tests were written using `Directory.systemTemp.createTemp()` (correct) while others were written with shorthand `/tmp/` paths for brevity. Inconsistency within the same test file.
+
+**Prevention:**
+Always use `Directory.systemTemp` for temp file paths in tests. Never hardcode `/tmp/` or any OS-specific path.
+
+**Fix:**
+Replaced all `/tmp/` references with `Directory.systemTemp.path` construction.
+
+---
+
+#### M054: Disposing Injected Service (Ownership Violation)
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Testing bug, resource management)  
+**Date Detected:** 2026-02-21  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`PlateScannerScreen.dispose()` unconditionally called `_ocrService.dispose()`, even when the service was injected by the caller. This would cause use-after-dispose errors in tests or any DI scenario.
+
+**Cause:**
+When adding constructor injection for testability (previous PR fix), I only added the optional parameters but didn't consider that `dispose()` should respect ownership. Classic oversight when retrofitting DI onto existing code.
+
+**Prevention:**
+When adding injectable dependencies, always track ownership with a boolean flag (e.g., `_ownsOcrService = widget.ocrService == null`). Only dispose resources you created.
+
+**Fix:**
+Added `_ownsOcrService` flag set in `initState()`. `dispose()` only calls `_ocrService.dispose()` when the screen created the instance.
+
+---
+
+#### M055: Hardcoded UI Dimensions (Magic Numbers)
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`PlateScannerScreen` contained hardcoded dimensions like `SizedBox(height: 110)`, `width: 72`, and `cornerLen = 24.0`.
+
+**Cause:**
+Failed to strictly adhere to Rule #2 (No Hardcoded Values) when building the UI layout. Used magic numbers for quick positioning instead of relying on `AppDimensions`.
+
+**Prevention:**
+Always check `AppDimensions` first. If a specific size is needed, calculate it dynamically or add a semantic constant to the theme.
+
+**Fix:**
+Replaced magic numbers with `AppDimensions.spacingXxxl + AppDimensions.spacingXxl`, `AppDimensions.captureButtonSize`, and `AppDimensions.spacingLg`.
+
+---
+
+#### M056: Hardcoded Algorithm Parameters
+**Status:** 🟢 Resolved  
+**Severity:** Low (Maintainability)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`ImagePreprocessor` and `PlateRecognitionService` contained hardcoded values for contrast (`1.5`), JPEG quality (`95`), convolution filters, confidence scores (`1.0`, `0.9`, `0.7`, `0.3`), and scoring thresholds (`20`, `10`, `3`).
+
+**Cause:**
+Treated algorithm tuning parameters as implementation details rather than configuration. This makes the algorithms opaque and hard to tune later.
+
+**Prevention:**
+Extract all tuning parameters, thresholds, and weights into named `static const` variables at the top of the class with documentation explaining their purpose.
+
+**Fix:**
+Extracted all magic numbers into named constants (e.g., `_contrastBoost`, `_confidenceDirect`, `_scoreLettersAndDigits`).
+
+---
+
+#### M057: Missing `mounted` Check Before `setState`
+**Status:** 🟢 Resolved  
+**Severity:** Medium (Crash risk)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+`_initializeCamera` in `PlateScannerScreen` called `setState` after an `await availableCameras()` without checking if the widget was still mounted.
+
+**Cause:**
+Inconsistent application of the `mounted` check rule. Other `await` calls in the same method had the check, but this specific early-return path missed it.
+
+**Prevention:**
+Always add `if (!mounted) return;` immediately after *every* `await` in a `StatefulWidget` before calling `setState` or using `context`.
+
+**Fix:**
+Added `if (!mounted) return;` before the `setState` call.
+
+---
+
+#### M058: Missing Input Formatter on Editable Fields
+**Status:** 🟢 Resolved  
+**Severity:** Low (Data consistency)  
+**Date Detected:** 2026-02-22  
+**Detected By:** Self (Agent) — caught by PR review
+
+**Symptom:**
+The editable confirmation `TextField` in `PlateScannerScreen` lacked the `PlateNumberFormatter`, allowing users to enter invalid characters that would normally be stripped.
+
+**Cause:**
+Assumed that because the OCR output was already formatted, the input field didn't need strict formatting. Forgot that users can manually edit the text and introduce invalid characters.
+
+**Prevention:**
+Always apply the same `inputFormatters` to all text fields that represent the same data type (e.g., plate numbers), regardless of how the field is initially populated.
+
+**Fix:**
+Added `inputFormatters: [PlateNumberFormatter()]` to the editable `TextField`.
+
+---
+
 ## 📊 Issue Statistics
 
 | Severity | Pre-Populated | Active | Resolved |
 |----------|---------------|--------|----------|
 | 🔴 Critical | 4 | 1 | 1 |
 | 🟠 High | 5 | 0 | 5 |
-| 🟡 Medium | 6 | 0 | 4 |
-| 🟢 Low | 2 | 0 | 1 |
-| **Total** | **17** | **1** | **11** |
+| 🟡 Medium | 6 | 0 | 5 |
+| 🟢 Low | 2 | 0 | 3 |
+| **Total** | **17** | **1** | **14** |
 
 ---
 
