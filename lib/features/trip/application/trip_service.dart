@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:road_guard/features/trip/data/repositories/trip_repository.dart';
+import 'package:road_guard/features/trip/domain/models/route_point.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/services/location_service.dart';
 import 'package:road_guard/shared/services/storage_service.dart';
@@ -14,9 +15,18 @@ part 'trip_service.g.dart';
 
 enum TripState { idle, recording, paused }
 
+/// Keys for persisting in-progress trip data to Hive settings box.
+const String _kDraftTripId = 'draft_trip_id';
+const String _kDraftTripUserId = 'draft_trip_user_id';
+const String _kDraftTripStartTime = 'draft_trip_start_time';
+const String _kDraftTripRoutePoints = 'draft_trip_route_points';
+const String _kDraftTripMaxSpeed = 'draft_trip_max_speed';
+const String _kDraftTripDistance = 'draft_trip_distance';
+
 @Riverpod(keepAlive: true)
 class TripController extends _$TripController {
   Timer? _timer;
+  Timer? _persistTimer;
   StreamSubscription<SpeedReading>? _locationSubscription;
   DateTime? _startTime;
   TripModel? _currentTrip;
@@ -29,6 +39,7 @@ class TripController extends _$TripController {
     ref.onDispose(() {
       _locationSubscription?.cancel();
       _timer?.cancel();
+      _persistTimer?.cancel();
     });
     return TripState.idle;
   }
@@ -56,6 +67,9 @@ class TripController extends _$TripController {
     // Set state BEFORE subscribing so _onLocationUpdate doesn't drop events
     state = TripState.recording;
     
+    // Persist draft immediately so it survives app kill
+    unawaited(_persistDraftTrip());
+    
     // Subscribe to location updates from the shared broadcast stream
     _locationSubscription?.cancel();
     final locationService = ref.read(locationServiceProvider);
@@ -68,12 +82,14 @@ class TripController extends _$TripController {
     }
 
     _startTimer();
+    _startPersistTimer();
   }
 
   Future<void> stopTrip() async {
     if (state == TripState.idle) return;
 
     _stopTimer();
+    _stopPersistTimer();
     await _locationSubscription?.cancel();
     _locationSubscription = null;
     
@@ -91,7 +107,18 @@ class TripController extends _$TripController {
       distance: _totalDistance / 1000.0,
       maxSpeed: _maxSpeed,
       avgSpeed: avgSpeed,
+      routeData: _routePoints
+          .map((r) => RoutePoint(
+                latitude: r.latitude,
+                longitude: r.longitude,
+                speedMs: r.speedMs,
+              ))
+          .toList()
+          .encode(),
     );
+    
+    // Clear draft — trip is now finalized
+    await _clearDraftTrip();
     
     state = TripState.idle;
   }
@@ -128,6 +155,179 @@ class TripController extends _$TripController {
     _routePoints.add(reading);
     debugPrint('TripController: point #${_routePoints.length}, '
         'dist=${(_totalDistance / 1000).toStringAsFixed(3)} km');
+  }
+
+  // ===========================================================================
+  // TRIP PERSISTENCE — survives app kill
+  // ===========================================================================
+
+  /// Persist current trip state to Hive so it can be resumed after app kill.
+  Future<void> _persistDraftTrip() async {
+    if (_currentTrip == null || _startTime == null) return;
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final settingsBox = storage.settingsBox;
+
+      // Encode route points as a CSV string (lat,lng,speed;...)
+      final routeJson = _routePoints
+          .map((r) => '${r.latitude},${r.longitude},${r.speedMs}')
+          .join(';');
+
+      await Future.wait([
+        settingsBox.put(_kDraftTripId, _currentTrip!.id),
+        settingsBox.put(_kDraftTripUserId, _currentTrip!.userId),
+        settingsBox.put(_kDraftTripStartTime, _startTime!.toIso8601String()),
+        settingsBox.put(_kDraftTripMaxSpeed, _maxSpeed),
+        settingsBox.put(_kDraftTripDistance, _totalDistance),
+        settingsBox.put(_kDraftTripRoutePoints, routeJson),
+      ]);
+
+      debugPrint('TripController: Draft persisted '
+          '(${_routePoints.length} points, '
+          '${(_totalDistance / 1000).toStringAsFixed(2)} km)');
+    } catch (e) {
+      debugPrint('TripController: Failed to persist draft: $e');
+    }
+  }
+
+  /// Clear the draft trip from Hive (called after stop or discard).
+  Future<void> _clearDraftTrip() async {
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final settingsBox = storage.settingsBox;
+      await Future.wait([
+        settingsBox.delete(_kDraftTripId),
+        settingsBox.delete(_kDraftTripUserId),
+        settingsBox.delete(_kDraftTripStartTime),
+        settingsBox.delete(_kDraftTripRoutePoints),
+        settingsBox.delete(_kDraftTripMaxSpeed),
+        settingsBox.delete(_kDraftTripDistance),
+      ]);
+      debugPrint('TripController: Draft cleared');
+    } catch (e) {
+      debugPrint('TripController: Failed to clear draft: $e');
+    }
+  }
+
+  /// Public discard for stale drafts (e.g. background service died).
+  Future<void> discardDraftTrip() => _clearDraftTrip();
+
+  /// Called on app lifecycle pause/detach to flush immediately.
+  void onAppLifecyclePaused() {
+    if (state == TripState.recording) {
+      unawaited(_persistDraftTrip());
+      debugPrint('TripController: Flushed draft on lifecycle pause');
+    }
+  }
+
+  /// Check if there is a persisted draft trip that can be resumed.
+  bool get hasDraftTrip {
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final draftId = storage.settingsBox.get(_kDraftTripId) as String?;
+      return draftId != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Resume a persisted draft trip — restores in-memory state and continues
+  /// recording. The background service is assumed to be already running.
+  ///
+  /// Returns `true` if the trip was resumed successfully.
+  bool resumeTrip() {
+    if (state == TripState.recording) return false;
+
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final settingsBox = storage.settingsBox;
+      final draftId = settingsBox.get(_kDraftTripId) as String?;
+      if (draftId == null) return false;
+
+      final userId =
+          settingsBox.get(_kDraftTripUserId, defaultValue: 'guest') as String;
+      final startTimeStr = settingsBox.get(_kDraftTripStartTime) as String?;
+      if (startTimeStr == null) {
+        unawaited(_clearDraftTrip());
+        return false;
+      }
+
+      final startTime = DateTime.parse(startTimeStr);
+      _maxSpeed =
+          (settingsBox.get(_kDraftTripMaxSpeed, defaultValue: 0.0) as num)
+              .toDouble();
+      _totalDistance =
+          (settingsBox.get(_kDraftTripDistance, defaultValue: 0.0) as num)
+              .toDouble();
+      final routeJson =
+          settingsBox.get(_kDraftTripRoutePoints, defaultValue: '') as String;
+
+      // Decode persisted route points back into SpeedReadings
+      _routePoints = [];
+      if (routeJson.isNotEmpty) {
+        for (final entry in routeJson.split(';')) {
+          if (entry.isEmpty) continue;
+          final parts = entry.split(',');
+          if (parts.length == 3) {
+            _routePoints.add(SpeedReading(
+              latitude: double.parse(parts[0]),
+              longitude: double.parse(parts[1]),
+              speedMs: double.parse(parts[2]),
+              accuracy: 0,
+              heading: 0,
+              altitude: 0,
+              timestamp: startTime,
+            ));
+          }
+        }
+      }
+
+      _startTime = startTime;
+      _currentTrip = TripModel(
+        id: draftId,
+        userId: userId,
+        startTime: startTime,
+      );
+
+      // Set state to recording so incoming location updates are processed
+      state = TripState.recording;
+
+      // Re-subscribe to location stream (already running via background service)
+      _locationSubscription?.cancel();
+      final locationService = ref.read(locationServiceProvider);
+      final stream = locationService.speedStream;
+      if (stream != null) {
+        _locationSubscription = stream.listen(_onLocationUpdate);
+        debugPrint('TripController: Re-subscribed to location stream');
+      }
+
+      _startTimer();
+      _startPersistTimer();
+
+      debugPrint('TripController: Resumed draft trip $draftId '
+          '(started ${startTime.toIso8601String()}, '
+          '${_routePoints.length} points, '
+          '${(_totalDistance / 1000).toStringAsFixed(2)} km)');
+
+      return true;
+    } catch (e) {
+      debugPrint('TripController: Failed to resume draft: $e');
+      unawaited(_clearDraftTrip());
+      return false;
+    }
+  }
+
+  /// Start periodic flush timer (every 30s).
+  void _startPersistTimer() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(_persistDraftTrip());
+    });
+  }
+
+  void _stopPersistTimer() {
+    _persistTimer?.cancel();
+    _persistTimer = null;
   }
 
   void _startTimer() {

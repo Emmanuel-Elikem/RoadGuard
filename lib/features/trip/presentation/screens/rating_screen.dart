@@ -14,6 +14,7 @@ import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/services/storage_service.dart';
 import 'package:road_guard/shared/utils/plate_number_formatter.dart';
 import 'package:road_guard/shared/utils/plate_validator.dart';
+import 'package:road_guard/shared/widgets/trip_route_map.dart';
 import 'package:road_guard/features/search/presentation/plate_scanner_screen.dart';
 import 'package:uuid/uuid.dart';
 
@@ -188,6 +189,10 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
                 ),
               ],
             ),
+
+            // === Route Map ===
+            const Gap(AppDimensions.spacingMd),
+            TripRouteMap(trip: widget.trip),
 
             const Gap(AppDimensions.spacingXl),
             const Divider(),

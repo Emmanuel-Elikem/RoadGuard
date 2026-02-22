@@ -4,7 +4,7 @@ import 'trip_model.dart';
 
 /// Hand-written Hive adapter for [TripModel].
 ///
-/// Replaces broken hive_generator_plus output. Serializes all 11 fields.
+/// Replaces broken hive_generator_plus output. Serializes all 12 fields.
 class TripModelAdapter extends TypeAdapter<TripModel> {
   @override
   final int typeId = 3;
@@ -27,13 +27,14 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       notes: fields[8] as String?,
       isSynced: fields[9] as bool? ?? false,
       plateNumber: fields[10] as String?,
+      routeData: (fields[11] as List?)?.cast<double>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, TripModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -55,7 +56,9 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       ..writeByte(9)
       ..write(obj.isSynced)
       ..writeByte(10)
-      ..write(obj.plateNumber);
+      ..write(obj.plateNumber)
+      ..writeByte(11)
+      ..write(obj.routeData);
   }
 
   @override

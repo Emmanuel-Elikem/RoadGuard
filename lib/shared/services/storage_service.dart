@@ -66,6 +66,9 @@ class StorageService {
   Box<RatingModel> get ratingsBox => _ratings;
   Box<DriverModel> get driversBox => _drivers;
 
+  /// Settings box for lightweight key-value data (draft trips, preferences).
+  Box<dynamic> get settingsBox => _settings;
+
   /// Returns trips belonging to the current user.
   List<TripModel> get currentUserTrips {
     final uid = userId;

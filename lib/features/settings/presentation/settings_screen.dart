@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/router/routes.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/theme.dart';
+import '../../../shared/services/map_tile_service.dart';
 import '../../../shared/services/storage_service.dart';
 import '../../auth/domain/providers/auth_providers.dart';
 
@@ -189,6 +190,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               // === DATA SECTION ===
               _SectionHeader(title: 'Your data'),
+              const SizedBox(height: AppDimensions.spacingSm),
+
+              _SettingsTile(
+                icon: LucideIcons.mapPin,
+                title: 'Offline maps',
+                subtitle: 'Manage downloaded map tiles',
+                onTap: () => _showOfflineMapDialog(context),
+              ),
               const SizedBox(height: AppDimensions.spacingSm),
 
               _SettingsTile(
@@ -577,6 +586,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ],
     );
   }
+
+  void _showOfflineMapDialog(BuildContext context) {
+    final tileService = ref.read(mapTileServiceProvider);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Offline Maps'),
+        content: FutureBuilder<({int tileCount, double sizeMB})>(
+          future: tileService.isInitialized
+              ? tileService.getStoreStats()
+              : Future.value((tileCount: 0, sizeMB: 0.0)),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 60,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final stats = snapshot.data;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Maps you view are automatically saved for offline use.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppDimensions.spacingMd),
+                _OfflineMapStat(
+                  label: 'Cached tiles',
+                  value: '${stats?.tileCount ?? 0}',
+                ),
+                const SizedBox(height: AppDimensions.spacingXs),
+                _OfflineMapStat(
+                  label: 'Storage used',
+                  value: '${(stats?.sizeMB ?? 0).toStringAsFixed(1)} MB',
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await tileService.clearStore();
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Map cache cleared')),
+                  );
+                }
+              } catch (_) {
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not clear cache. Try again later.'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Clear cache',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Profile stat inside account bottom sheet.
@@ -599,6 +684,30 @@ class _ProfileStat extends StatelessWidget {
               color:
                   theme.colorScheme.onSurface.withValues(alpha: 0.5),
             )),
+      ],
+    );
+  }
+}
+
+/// Offline map stat row inside the dialog.
+class _OfflineMapStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _OfflineMapStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: theme.textTheme.bodySmall),
+        Text(
+          value,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
