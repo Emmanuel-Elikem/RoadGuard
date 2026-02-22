@@ -11,6 +11,7 @@ import 'core/theme/theme.dart';
 import 'error_app.dart';
 import 'firebase_options.dart';
 import 'shared/services/location_service.dart';
+import 'shared/services/map_tile_service.dart';
 import 'shared/services/storage_service.dart';
 
 void main() async {
@@ -27,6 +28,10 @@ void main() async {
     // Initialize local storage (Hive)
     // MUST happen before runApp() so storage is ready
     await StorageService.initialize();
+
+    // Initialize offline map tile caching (FMTC)
+    // Non-fatal if it fails — maps will still work online
+    await MapTileService.instance.initialize();
 
     // Initialize Background Location Service
     // This configures the plugin so it's ready to start when requested

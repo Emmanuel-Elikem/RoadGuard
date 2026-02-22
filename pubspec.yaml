@@ -99,6 +99,11 @@ dependencies:
   camera: ^0.11.4
   google_mlkit_text_recognition: ^0.15.1
   image: ^4.8.0
+  google_maps_flutter: ^2.14.2
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  internet_connection_checker_plus: ^2.9.1+2
+  flutter_map_tile_caching: ^10.1.1
 
 dev_dependencies:
   flutter_test:

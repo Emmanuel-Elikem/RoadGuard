@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:road_guard/features/trip/data/repositories/trip_repository.dart';
+import 'package:road_guard/features/trip/domain/models/route_point.dart';
 import 'package:road_guard/features/trip/domain/models/trip_model.dart';
 import 'package:road_guard/shared/services/location_service.dart';
 import 'package:road_guard/shared/services/storage_service.dart';
@@ -91,6 +92,14 @@ class TripController extends _$TripController {
       distance: _totalDistance / 1000.0,
       maxSpeed: _maxSpeed,
       avgSpeed: avgSpeed,
+      routeData: _routePoints
+          .map((r) => RoutePoint(
+                latitude: r.latitude,
+                longitude: r.longitude,
+                speedMs: r.speedMs,
+              ))
+          .toList()
+          .encode(),
     );
     
     state = TripState.idle;
